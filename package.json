@@ -1,0 +1,19 @@
+{
+  "name": "paisa-buddy",
+  "version": "1.0.0",
+  "description": "Paisa Buddy Application",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm start",
+    "dev:frontend": "cd frontend && npm run dev",
+    "start": "cd backend && npm start",
+    "build": "cd frontend && npm install && npm run build",
+    "build:android": "cd frontend && npm run build && npx cap sync android && cd android && .\\gradlew.bat assembleDebug",
+    "preview": "cd frontend && npm run preview",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

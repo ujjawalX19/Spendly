@@ -1,0 +1,52 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# testing
+coverage
+
+# vite / frontend build
+dist
+dist-ssr
+build
+out
+
+# env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+
+# ensure examples are checked in
+!.env.example
+!.env.sample
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# IDE / Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Android / Capacitor
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+android/capacitor.plugins.json
+
+# Typescript
+*.tsbuildinfo

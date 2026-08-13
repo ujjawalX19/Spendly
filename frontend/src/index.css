@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@theme {
+  --color-electric-midnight: #09090b;
+  --color-neon-green: #39ff14;
+  --color-electric-blue: #00f0ff;
+  --color-cyber-rose: #f43f5e;
+  --color-streak-orange: #f97316;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+:root {
+  font-family: 'Space Grotesk', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  margin: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* ── Dark Theme (Pitch Black) ── */
+:root.dark {
+  --color-bg: #000000;
+  --color-text: #fafafa;
+  --glass-bg: #0a0a0a;
+  --glass-border: #27272a;
+  --input-bg: #0a0a0a;
+  --card-bg: #09090b;
+  --card-border: #1c1c1e;
+}
+
+/* ── Light Theme ── */
+:root.light {
+  --color-bg: #f3f4f6;
+  --color-text: #1f2937;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+}
+
+/* ── Glassmorphism (nav bar only) ── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  transition: background 0.3s, border 0.3s;
+}
+
+/* ── Solid Cards (No blur — high FPS on mobile) ── */
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+/* ── Monospace Finance Numbers ── */
+.font-mono-finance {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── Neon Glow Utilities ── */
+.glow-green {
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.3), 0 0 40px rgba(57, 255, 20, 0.1);
+}
+
+.glow-red {
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.4), 0 0 40px rgba(244, 63, 94, 0.15);
+}
+
+.glow-blue {
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), 0 0 40px rgba(0, 240, 255, 0.1);
+}
+
+.glow-orange {
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.3), 0 0 40px rgba(249, 115, 22, 0.1);
+}
+
+/* ── Progress Bar Glow Animation ── */
+@keyframes pulse-glow-red {
+  0%, 100% { box-shadow: 0 0 8px rgba(244, 63, 94, 0.5), 0 0 20px rgba(244, 63, 94, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(244, 63, 94, 0.8), 0 0 40px rgba(244, 63, 94, 0.4); }
+}
+
+@keyframes pulse-glow-green {
+  0%, 100% { box-shadow: 0 0 6px rgba(57, 255, 20, 0.3), 0 0 15px rgba(57, 255, 20, 0.1); }
+  50% { box-shadow: 0 0 12px rgba(57, 255, 20, 0.5), 0 0 30px rgba(57, 255, 20, 0.2); }
+}
+
+.animate-pulse-glow-red {
+  animation: pulse-glow-red 2s ease-in-out infinite;
+}
+
+.animate-pulse-glow-green {
+  animation: pulse-glow-green 3s ease-in-out infinite;
+}
+
+/* ── Custom Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neon-green);
+}
