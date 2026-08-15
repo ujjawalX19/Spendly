@@ -15,7 +15,7 @@ import {
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
 
 // ─── ANIMATION VARIANTS ───────────────────────────────────────
 const pageVariants = {

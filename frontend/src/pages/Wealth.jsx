@@ -25,7 +25,7 @@ export default function Wealth() {
         const fetchInvestments = async () => {
             try {
                 // Fetch from the backend investments route
-                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/investments`);
+                const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api'}/investments`);
                 if (!res.ok) throw new Error('Failed to fetch investments data');
                 const data = await res.json();
                 setInvestments(data);

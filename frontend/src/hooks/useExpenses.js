@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/expenses`;
+const API_URL = `${import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api'}/expenses`;
 
 /**
  * useExpenses — Custom hook for personal expense CRUD via Express backend.
