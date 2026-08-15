@@ -89,7 +89,8 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/dash',
+        // Uses the active deployment origin (Vercel in production, localhost in development).
+        redirectTo: `${window.location.origin}/dash`,
       },
     });
     if (error) {
