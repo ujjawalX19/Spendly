@@ -37,27 +37,27 @@ function AppMockup() {
       className="relative w-72 md:w-80 cursor-none select-none"
     >
       {/* Phone shell */}
-      <div className="relative rounded-[2.5rem] border border-white/10 bg-zinc-900/80 backdrop-blur-xl p-1 shadow-2xl shadow-emerald-500/10">
+      <div className="relative rounded-[2.5rem] border border-zinc-800 bg-zinc-900/90 p-1 shadow-2xl shadow-lime-400/10">
         {/* Inner screen */}
-        <div className="rounded-[2.2rem] overflow-hidden bg-zinc-950 p-4 min-h-[520px] flex flex-col gap-3">
+        <div className="flex min-h-[520px] flex-col gap-3 overflow-hidden rounded-[2.2rem] bg-black p-4">
           {/* Top bar */}
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-[10px] text-zinc-500">Total Balance</p>
               <p className="text-2xl font-bold text-white tracking-tight">₹1,24,800</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-xs font-bold text-zinc-950">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-400 text-xs font-bold text-black">
               AK
             </div>
           </div>
 
           {/* Spending Card */}
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20 p-3">
-            <p className="text-[10px] text-emerald-400 font-semibold mb-1">↑ Saved this month</p>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
+            <p className="mb-1 text-[10px] font-semibold text-lime-400">↑ Saved this month</p>
             <p className="text-lg font-bold text-white">₹3,240</p>
             <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-400"
+                className="h-full rounded-full bg-lime-400 shadow-[0_0_10px_rgba(132,204,22,0.5)]"
                 initial={{ width: '0%' }}
                 animate={{ width: '68%' }}
                 transition={{ delay: 0.8, duration: 1.2, ease: 'easeOut' }}
@@ -71,7 +71,7 @@ function AppMockup() {
             { name: 'Swiggy', cat: 'Food', amt: '-₹320', color: 'text-rose-400', icon: '🍕' },
             { name: 'Netflix', cat: 'Entertainment', amt: '-₹199', color: 'text-purple-400', icon: '🎬' },
             { name: 'Salary', cat: 'Income', amt: '+₹45,000', color: 'text-emerald-400', icon: '💼' },
-            { name: 'Round-Up', cat: 'Savings', amt: '+₹48', color: 'text-teal-400', icon: '🪙' },
+            { name: 'Round-Up', cat: 'Savings', amt: '+₹48', color: 'text-emerald-400', icon: '🪙' },
           ].map((t, i) => (
             <motion.div
               key={t.name}
@@ -96,11 +96,11 @@ function AppMockup() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1 }}
-            className="mt-auto rounded-xl bg-zinc-900 border border-emerald-500/20 p-2.5 flex items-start gap-2"
+            className="mt-auto flex items-start gap-2 rounded-xl border border-lime-500/20 bg-lime-950/30 p-2.5"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lime-400" />
             <p className="text-[10px] text-zinc-400 leading-tight">
-              <span className="text-emerald-400 font-semibold">AI Insight: </span>
+              <span className="font-semibold text-lime-400">AI Insight: </span>
               You spend 23% less on food this week. Keep it up! 🎉
             </p>
           </motion.div>
@@ -108,7 +108,7 @@ function AppMockup() {
       </div>
 
       {/* Glow under the phone */}
-      <div className="absolute -bottom-8 inset-x-8 h-8 bg-emerald-500/20 blur-2xl rounded-full" />
+      <div className="absolute -bottom-8 inset-x-8 h-8 rounded-full bg-lime-400/20 blur-2xl" />
     </motion.div>
   );
 }
@@ -136,11 +136,11 @@ export default function Hero() {
   });
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-zinc-950 pt-24 pb-20 px-5">
+    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black px-5 pb-20 pt-24">
       {/* Background glow orbs */}
-      <GlowOrb className="w-96 h-96 bg-emerald-500 -top-20 -left-20" />
-      <GlowOrb className="w-80 h-80 bg-teal-500 bottom-0 right-0" />
-      <GlowOrb className="w-64 h-64 bg-emerald-700 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+      <GlowOrb className="-top-20 -left-20 h-96 w-96 bg-lime-500" />
+      <GlowOrb className="bottom-0 right-0 h-80 w-80 bg-emerald-500" />
+      <GlowOrb className="top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 bg-lime-700" />
 
       {/* Grid overlay */}
       <div
@@ -157,7 +157,7 @@ export default function Hero() {
         <div className="flex-1 text-center lg:text-left max-w-xl">
           {/* Badge */}
           <motion.div {...fadeUp(0)} className="inline-flex items-center gap-2 mb-6">
-            <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/25 text-emerald-400">
+            <span className="rounded-full border border-lime-500/30 bg-lime-950/40 px-4 py-1.5 text-xs font-semibold text-lime-400">
               🚀 Now in Early Access
             </span>
           </motion.div>
@@ -169,7 +169,7 @@ export default function Hero() {
           >
             Master Your Money.
             <br />
-            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+            <span className="text-lime-400">
               Split the Bills.
             </span>
             <br />
@@ -182,9 +182,9 @@ export default function Hero() {
             className="text-base md:text-lg text-zinc-400 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0"
           >
             Spendly is the ultimate financial companion. Track expenses effortlessly with{' '}
-            <span className="text-emerald-400 font-semibold">Spendly AI</span>, automate your{' '}
-            <span className="text-teal-400 font-semibold">Round-Ups</span>, and settle{' '}
-            <span className="text-white font-semibold">Group Splits</span> instantly.
+            <span className="font-semibold text-lime-400">Spendly AI</span>, automate your{' '}
+            <span className="font-semibold text-lime-400">Round-Ups</span>, and settle{' '}
+            <span className="font-semibold text-lime-400">Group Splits</span> instantly.
           </motion.p>
 
           {/* Waitlist Form */}
@@ -200,15 +200,14 @@ export default function Hero() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="flex-1 px-4 py-3.5 rounded-xl bg-zinc-900/80 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 transition-colors focus:border-lime-400 focus:outline-none"
                 />
                 <button
                   type="submit"
                   disabled={loading}
-                  className="relative px-6 py-3.5 rounded-xl font-semibold text-sm text-zinc-950 overflow-hidden group disabled:opacity-70 flex items-center gap-2 whitespace-nowrap"
+                  className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-lime-400 px-6 py-3 font-bold text-black transition-colors hover:bg-lime-300 disabled:opacity-70"
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 group-hover:from-emerald-300 group-hover:to-teal-300 transition-all duration-300" />
-                  <span className="relative flex items-center gap-2">
+                  <span className="flex items-center gap-2">
                     {loading ? (
                       <span className="w-4 h-4 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
                     ) : (
@@ -243,7 +242,7 @@ export default function Hero() {
               {['A', 'R', 'S', 'M'].map((l) => (
                 <div
                   key={l}
-                  className="w-7 h-7 rounded-full border-2 border-zinc-950 bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-[9px] font-bold text-zinc-950"
+                  className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-black bg-lime-400 text-[9px] font-bold text-black"
                 >
                   {l}
                 </div>

@@ -1,18 +1,17 @@
 import { Zap } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer className="bg-zinc-950 pt-20 pb-10 px-5 border-t border-white/5 relative">
+    <footer className="relative border-t border-zinc-800/80 bg-black px-5 pb-10 pt-20">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
         
         {/* Brand */}
         <div className="flex flex-col items-center md:items-start gap-4">
           <a href="#" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Zap className="w-3.5 h-3.5 text-zinc-950 fill-zinc-950" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-lime-400 shadow-lg shadow-lime-400/20">
+              <Zap className="h-3.5 w-3.5 fill-black text-black" />
             </div>
-            <span className="font-bold text-lg tracking-tight text-white">
+            <span className="text-lg font-bold tracking-tight text-lime-400">
               Spendly
             </span>
           </a>
@@ -23,9 +22,9 @@ export default function Footer() {
 
         {/* Links */}
         <div className="flex gap-8 text-sm font-medium text-zinc-400">
-          <a href="#" className="hover:text-emerald-400 transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-emerald-400 transition-colors">Terms of Service</a>
-          <a href="#" className="hover:text-emerald-400 transition-colors">Contact</a>
+          <a href="#" className="transition-colors hover:text-lime-400">Privacy Policy</a>
+          <a href="#" className="transition-colors hover:text-lime-400">Terms of Service</a>
+          <a href="#" className="transition-colors hover:text-lime-400">Contact</a>
         </div>
 
       </div>

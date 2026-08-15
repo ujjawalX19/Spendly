@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Menu, X } from 'lucide-react';
+import { Menu, Wallet, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const navLinks = [
@@ -33,15 +33,17 @@ export default function Navbar() {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
-            ? 'bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 shadow-xl shadow-black/40'
+            ? 'border-b border-zinc-800/60 bg-black/90 shadow-xl shadow-black/40 backdrop-blur-xl'
             : 'bg-transparent'
         }`}
       >
         <div className="max-w-7xl mx-auto px-5 md:px-8 flex items-center justify-between h-16">
           {/* Logo */}
           <a href="#" className="flex items-center gap-2 group">
-            <img src="/spendly-logo.svg" alt="Spendly Logo" className="w-9 h-9 rounded-xl group-hover:scale-105 transition-transform duration-300" />
-            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400/10">
+              <Wallet className="h-5 w-5 text-lime-400 drop-shadow-[0_0_8px_rgba(132,204,22,0.5)]" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-lime-400">
               Spendly
             </span>
           </a>
@@ -67,11 +69,9 @@ export default function Navbar() {
             </Link>
             <button
               onClick={() => handleNavClick('#waitlist')}
-              className="relative px-5 py-2.5 text-sm font-semibold rounded-xl overflow-hidden group"
+              className="rounded-xl bg-lime-400 px-5 py-2.5 text-sm font-bold text-black shadow-[0_0_15px_rgba(132,204,22,0.3)] transition-all hover:bg-lime-300"
             >
-              <span className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300 group-hover:from-emerald-400 group-hover:to-teal-300" />
-              <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-emerald-400/20 to-teal-300/20 blur-xl" />
-              <span className="relative text-zinc-950">Get Early Access</span>
+              Get Early Access
             </button>
           </div>
 
@@ -95,7 +95,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.25 }}
-            className="fixed top-16 inset-x-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-white/5 px-5 py-6 flex flex-col gap-4"
+            className="fixed top-16 inset-x-0 z-40 flex flex-col gap-4 border-b border-zinc-800/60 bg-black/95 px-5 py-6 backdrop-blur-xl"
           >
             {navLinks.map((link) => (
               <button
@@ -115,7 +115,7 @@ export default function Navbar() {
             </Link>
             <button
               onClick={() => handleNavClick('#waitlist')}
-              className="mt-2 w-full py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-zinc-950"
+              className="mt-2 w-full rounded-xl bg-lime-400 py-3 text-sm font-bold text-black transition-colors hover:bg-lime-300"
             >
               Get Early Access
             </button>

@@ -79,7 +79,7 @@ function SplitMockup() {
           className="flex items-center justify-between rounded-xl bg-zinc-900/60 border border-white/5 px-3 py-2"
         >
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-[10px] font-bold text-zinc-950">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-lime-400 text-[10px] font-bold text-black">
               {p.name[0]}
             </div>
             <span className="text-xs text-zinc-300 font-medium">{p.name}</span>
@@ -143,7 +143,7 @@ function RoundUpMockup() {
           <p className="text-[10px] text-zinc-500">Invested via Round-Ups</p>
           <p className="text-base font-bold text-white">₹1,248</p>
         </div>
-        <Coins className="w-8 h-8 text-teal-400 opacity-80" />
+        <Coins className="h-8 w-8 text-lime-400 opacity-80" />
       </div>
       {[
         { tx: 'Coffee ₹68', roundup: '+₹2' },
@@ -158,7 +158,7 @@ function RoundUpMockup() {
           className="flex items-center justify-between text-[10px] text-zinc-500 px-1"
         >
           <span>{r.tx}</span>
-          <span className="text-teal-400 font-bold">{r.roundup} saved</span>
+          <span className="font-bold text-lime-400">{r.roundup} saved</span>
         </motion.div>
       ))}
     </div>
@@ -174,11 +174,11 @@ function FeatureCard({ icon: Icon, iconColor, title, description, children, clas
       initial={reveal.initial}
       animate={reveal.animate}
       transition={reveal.transition}
-      className={`group relative rounded-3xl border border-white/5 bg-zinc-900/50 backdrop-blur-sm p-6 overflow-hidden
+      className={`group relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-6
         hover:-translate-y-1 hover:border-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 ${className}`}
     >
       {/* Card glow on hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-emerald-500/5 via-transparent to-teal-500/5 pointer-events-none rounded-3xl" />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-lime-400/5 via-transparent to-emerald-400/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
       <div className={`inline-flex p-2.5 rounded-xl mb-4 ${iconColor}`}>
         <Icon className="w-5 h-5" />
@@ -195,10 +195,10 @@ export default function Features() {
   const headingReveal = useReveal(0);
 
   return (
-    <section id="features" className="relative bg-zinc-950 py-28 px-5 overflow-hidden">
+    <section id="features" className="relative overflow-hidden bg-black px-5 py-28">
       {/* Background decoration */}
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-      <div className="absolute -top-40 right-0 w-96 h-96 bg-teal-700/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="pointer-events-none absolute -top-40 right-0 h-96 w-96 rounded-full bg-lime-700/10 blur-3xl" />
 
       <div className="max-w-6xl mx-auto">
         {/* Heading */}
@@ -214,7 +214,7 @@ export default function Features() {
           </span>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4">
             Built for the way you actually{' '}
-            <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+            <span className="text-lime-400">
               live & spend
             </span>
           </h2>
@@ -240,7 +240,7 @@ export default function Features() {
           {/* Card 2 — Round-Ups */}
           <FeatureCard
             icon={TrendingUp}
-            iconColor="bg-teal-500/15 text-teal-400"
+            iconColor="bg-lime-400/15 text-lime-400"
             title="Round-Ups"
             description="Save while you spend by auto-investing your spare change into a micro-savings vault."
             delay={0.1}

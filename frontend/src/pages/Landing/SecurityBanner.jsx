@@ -2,9 +2,9 @@ import { ShieldCheck, Database, Lock } from 'lucide-react';
 
 export default function SecurityBanner() {
   return (
-    <section id="security" className="bg-zinc-950 py-12 border-t border-b border-white/5 relative overflow-hidden">
+    <section id="security" className="relative overflow-hidden border-y border-zinc-800/80 bg-black py-12">
       {/* Subtle glow */}
-      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5" />
+      <div className="absolute inset-0 bg-gradient-to-r from-lime-400/5 via-transparent to-emerald-400/5" />
       
       <div className="max-w-7xl mx-auto px-5 relative z-10 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 text-sm text-zinc-400 font-medium">
         
@@ -16,7 +16,7 @@ export default function SecurityBanner() {
         <div className="hidden md:block w-1.5 h-1.5 rounded-full bg-zinc-800" />
 
         <div className="flex items-center gap-3">
-          <Database className="w-5 h-5 text-teal-400" />
+          <Database className="h-5 w-5 text-lime-400" />
           <span>Powered by PostgreSQL</span>
         </div>
 
