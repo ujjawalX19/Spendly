@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai = null;
+if (process.env.GEMINI_API_KEY) {
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+} else {
+    console.warn('⚠️  GEMINI_API_KEY not set — AI invest-advice will run in mock mode.');
+}
 
 // @route   POST /api/ai/invest-advice
 // @desc    Gen-Z sarcastic financial advisor using Gemini

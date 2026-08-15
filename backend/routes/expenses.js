@@ -5,7 +5,12 @@ const { GoogleGenAI } = require('@google/genai');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai = null;
+if (process.env.GEMINI_API_KEY) {
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+} else {
+    console.warn('⚠️  GEMINI_API_KEY not set — Receipt scanning will run in mock mode.');
+}
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────
 const VALID_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];

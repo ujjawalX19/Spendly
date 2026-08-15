@@ -3,7 +3,12 @@ const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
 const { protect } = require('../middleware/authMiddleware');
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai = null;
+if (process.env.GEMINI_API_KEY) {
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+} else {
+    console.warn('⚠️  GEMINI_API_KEY not set — Chatbot will run in mock mode.');
+}
 
 // @route   POST /api/chatbot/msg
 // @desc    Send message to AI Financial Dost
