@@ -67,8 +67,8 @@ function Layout({ children }) {
 
         <nav className="flex-1 px-4 space-y-2">
           <Link to="/dash" className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition"><LayoutGrid className="text-lime-400" /> Dashboard</Link>
-          <Link to="/pool" className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition"><Users className="text-[var(--color-electric-blue)]" /> Hostel Pool</Link>
-          <Link to="/bot" className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition"><Bot className="text-purple-400" /> AI Dost</Link>
+          <Link to="/pool" className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition"><Users className="text-[var(--color-electric-blue)]" /> Group Pool</Link>
+          <Link to="/bot" className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition"><Bot className="text-purple-400" /> Spendly AI</Link>
           <Link to="/wealth" className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition"><TrendingUp className="text-yellow-400" /> Wealth</Link>
         </nav>
 

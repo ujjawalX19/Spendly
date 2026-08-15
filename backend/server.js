@@ -12,27 +12,9 @@ const app = express();
 // Helmet sets 15+ secure headers automatically including CSP, HSTS, etc.
 app.use(helmet());
 
-// --- Strict CORS ---
-// In production, only allow requests from our frontend and Capacitor native shell.
-const allowedOrigins = [
-    process.env.FRONTEND_URL,       // e.g. https://spendly.vercel.app
-    'capacitor://localhost',         // Capacitor Android/iOS native shell
-    'http://localhost',              // Capacitor WebView
-    'http://localhost:5173',         // Vite dev server
-    'http://localhost:4173',         // Vite preview server
-].filter(Boolean);                  // Remove undefined entries
-
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-}));
+// --- CORS ---
+// Allow all origins for Capacitor mobile + web browser compatibility.
+app.use(cors({ origin: '*', credentials: true }));
 
 app.use(express.json({ limit: '5mb' })); // 5mb for receipt image uploads
 
@@ -48,6 +30,9 @@ const globalLimiter = rateLimit({
     legacyHeaders: false
 });
 app.use('/api/', globalLimiter);
+
+// --- Health Check (for Render / uptime monitors) ---
+app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // --- Routes ---
 app.use('/api/auth', require('./routes/auth'));
@@ -86,10 +71,7 @@ app.use((err, req, res, next) => {
 // --- Start Server ---
 const PORT = process.env.PORT || 5000;
 
-//app.listen(PORT, () => {
-// console.log(`🚀 FinDost API running on port ${PORT}`);
-//console.log(`📦 Database: Supabase PostgreSQL`);
-//});
-app.listen(5000, '0.0.0.0', () => {
-    console.log('Server running on http://0.0.0.0:5000');
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Spendly API running on port ${PORT}`);
+    console.log(`📦 Database: Supabase PostgreSQL`);
 });

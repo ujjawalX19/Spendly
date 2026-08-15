@@ -400,7 +400,7 @@ function RecentExpenses({ expenses, loading }) {
     <motion.div variants={cardVariants} className="rounded-2xl bg-[#141414] p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <span className="text-lg font-black text-white">Recent Kalesh</span>
+          <span className="text-lg font-black text-white">Recent Expenses</span>
           {recentCount > 0 && (
             <span className="w-5 h-5 rounded-full bg-[#f43f5e] text-white text-[11px] font-black
                              flex items-center justify-center">
@@ -485,7 +485,7 @@ function AiTipCard({ expenses }) {
         <Lightbulb className="w-6 h-6 text-[#a3e635]" />
       </div>
       <div className="min-w-0">
-        <p className="text-[15px] font-bold text-white leading-tight">Budget tip from AI Dost</p>
+        <p className="text-[15px] font-bold text-white leading-tight">Budget tip from Spendly AI</p>
         <p className="text-[13px] font-semibold text-[#a1a1aa] mt-1">
           Cut 2 late-night orders — save <span className="text-[#a3e635]">{'\u20b9'}{savings}/week</span>
         </p>
@@ -498,8 +498,8 @@ function AiTipCard({ expenses }) {
 function BottomNav() {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard',    icon: LayoutGrid, to: '/dash'  },
-    { id: 'pool',      label: 'Hostel Pool',  icon: Users,      to: '/pool'  },
-    { id: 'bot',       label: 'AI Dost',      icon: Bot,        to: '/bot'   },
+    { id: 'pool',      label: 'Group Pool',  icon: Users,      to: '/pool'  },
+    { id: 'bot',       label: 'Spendly AI',      icon: Bot,        to: '/bot'   },
     { id: 'wealth',    label: 'Wealth',       icon: BarChart2,  to: '/wealth' },
   ];
   const active = 'dashboard';

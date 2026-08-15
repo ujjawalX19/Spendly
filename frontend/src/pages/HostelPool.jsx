@@ -261,7 +261,7 @@ export default function HostelPool() {
                 className="flex justify-between items-end"
             >
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Hostel Pool</h1>
+                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Group Pool</h1>
                     <p className="text-[var(--color-text)]/60 mt-1">Split bills and track shared expenses.</p>
                 </div>
                 <motion.button

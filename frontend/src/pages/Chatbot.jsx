@@ -95,7 +95,7 @@ export default function Chatbot() {
                     <Bot className="w-6 h-6 text-[var(--color-neon-green)]" />
                 </div>
                 <div>
-                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">AI Dost</h1>
+                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Spendly AI</h1>
                     <p className="text-sm text-[var(--color-text)]/70">Your intelligent finance assistant</p>
                 </div>
             </div>
