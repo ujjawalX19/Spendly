@@ -1,13 +1,15 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Wallet } from 'lucide-react';
+import { Eye, EyeOff, LockKeyhole, Mail, Wallet } from 'lucide-react';
+import AuthLayout from '../components/AuthLayout';
 
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { login, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
 
@@ -20,7 +22,14 @@ export default function Login() {
         if (res.success) {
             navigate('/dash');
         } else {
-            setError(res.message || 'Login failed');
+            // Supabase returns "Invalid login credentials" for both wrong
+            // passwords AND unconfirmed emails — add a helpful hint.
+            const msg = res.message || 'Login failed';
+            if (msg.toLowerCase().includes('invalid login credentials')) {
+                setError('Invalid login credentials. If you just signed up, check your email for a confirmation link first.');
+            } else {
+                setError(msg);
+            }
         }
     };
 
@@ -30,30 +39,29 @@ export default function Login() {
         if (!res.success) {
             setError(res.message || 'Google login failed');
         }
-        // On success, Supabase redirects to Google OAuth â€” no manual navigation needed
+        // On success, Supabase redirects to Google OAuth — no manual navigation needed
     };
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4 sm:p-6">
-            <section className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900/60 p-6 shadow-2xl backdrop-blur-xl sm:p-8" aria-labelledby="login-title">
-                <div className="mb-8 flex flex-col items-center text-center">
-                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10">
-                        <Wallet className="h-8 w-8 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" aria-hidden="true" />
-                    </div>
-                    <h1 id="login-title" className="text-3xl font-extrabold tracking-tight text-emerald-500">Spendly</h1>
-                    <p className="mt-2 text-sm text-gray-400">Welcome back, dost!</p>
+        <AuthLayout eyebrow="WELCOME BACK">
+            <section aria-labelledby="login-title">
+                <div className="mb-8">
+                    <div className="mb-5 flex items-center gap-2 text-sm font-extrabold lg:hidden"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime-400 text-black"><Wallet className="h-4 w-4" /></span> Spendly</div>
+                    <p className="text-xs font-bold tracking-[.18em] text-lime-300">WELCOME BACK</p>
+                    <h1 id="login-title" className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Good to see you.</h1>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">Sign in to pick up where your money left off.</p>
                 </div>
 
                 {error && (
-                    <div className="mb-5 rounded-xl border border-red-500/50 bg-red-500/10 p-3 text-center text-sm text-red-300" role="alert">
+                    <div className="mb-5 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-center text-sm text-rose-200" role="alert">
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label htmlFor="email" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-400">Email</label>
-                        <input
+                        <label htmlFor="email" className="mb-2 block text-sm font-semibold text-zinc-300">Email address</label>
+                        <div className="relative"><Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input
                             id="email"
                             type="email"
                             autoComplete="email"
@@ -61,26 +69,26 @@ export default function Login() {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full rounded-xl border border-gray-800 bg-black/50 px-4 py-3 text-white placeholder:text-gray-600 transition-all duration-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                        />
+                            className="w-full rounded-xl border border-white/10 bg-black/30 py-3 pl-11 pr-4 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                        /></div>
                     </div>
                     <div>
-                        <label htmlFor="password" className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-400">Password</label>
-                        <input
+                        <label htmlFor="password" className="mb-2 block text-sm font-semibold text-zinc-300">Password</label>
+                        <div className="relative"><LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input
                             id="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="current-password"
                             placeholder="Enter your password"
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full rounded-xl border border-gray-800 bg-black/50 px-4 py-3 text-white placeholder:text-gray-600 transition-all duration-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                        />
+                            className="w-full rounded-xl border border-white/10 bg-black/30 py-3 pl-11 pr-12 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                        /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 text-zinc-500 transition hover:text-lime-300" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
                     </div>
                     <button 
                         type="submit" 
                         disabled={loading}
-                        className="mt-6 w-full rounded-xl bg-emerald-500 py-3 font-bold text-gray-950 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-gray-950 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="mt-3 w-full rounded-xl bg-lime-400 py-3.5 text-sm font-extrabold text-black shadow-lg shadow-lime-400/15 transition hover:-translate-y-0.5 hover:bg-lime-300 hover:shadow-lime-400/25 focus:outline-none focus:ring-4 focus:ring-lime-400/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {loading ? 'Logging in...' : 'Login'}
                     </button>
@@ -89,13 +97,13 @@ export default function Login() {
                 {/* Google OAuth */}
                 <div className="mt-4">
                     <div className="my-5 flex items-center gap-4">
-                        <div className="h-px flex-1 bg-gray-800" />
-                        <span className="text-xs font-medium tracking-wider text-gray-500">OR</span>
-                        <div className="h-px flex-1 bg-gray-800" />
+                        <div className="h-px flex-1 bg-white/10" />
+                        <span className="text-[10px] font-bold tracking-[.18em] text-zinc-500">OR</span>
+                        <div className="h-px flex-1 bg-white/10" />
                     </div>
                     <button
                         onClick={handleGoogleLogin}
-                        className="mt-4 flex w-full items-center justify-center gap-3 rounded-xl border border-gray-700 bg-gray-800 py-3 font-medium text-white transition-colors hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-950"
+                        className="mt-1 flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[.04] py-3 text-sm font-bold text-white transition hover:border-white/20 hover:bg-white/[.08] focus:outline-none focus:ring-4 focus:ring-white/10"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -107,10 +115,10 @@ export default function Login() {
                     </button>
                 </div>
 
-                <p className="mt-6 text-center text-sm text-gray-400">
-                    Don't have an account? <Link to="/signup" className="font-bold text-emerald-500 hover:underline focus:outline-none focus:underline">Sign up</Link>
+                <p className="mt-7 text-center text-sm text-zinc-400">
+                    New to Spendly? <Link to="/signup" className="font-bold text-lime-300 hover:text-lime-200 hover:underline focus:outline-none focus:underline">Create an account</Link>
                 </p>
             </section>
-        </main>
+        </AuthLayout>
     );
 }

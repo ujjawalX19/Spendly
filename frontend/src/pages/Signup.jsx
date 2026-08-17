@@ -1,13 +1,16 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Wallet } from 'lucide-react';
+import { Eye, EyeOff, LockKeyhole, Mail, MailCheck, UserRound, Wallet } from 'lucide-react';
+import AuthLayout from '../components/AuthLayout';
 
 export default function Signup() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [confirmationSent, setConfirmationSent] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { signup } = useAuth();
     const navigate = useNavigate();
 
@@ -17,70 +20,112 @@ export default function Signup() {
         const res = await signup(name, email, password);
         if (res.success) {
             navigate('/dash');
+        } else if (res.needsConfirmation) {
+            // Email confirmation required — show the success message
+            setConfirmationSent(true);
         } else {
             setError(res.message || 'Signup failed');
         }
     };
 
+    // ── Confirmation Success Screen ──
+    if (confirmationSent) {
+        return (
+            <AuthLayout eyebrow="ALMOST THERE">
+                <div className="text-center">
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-lime-400/20 bg-lime-400/10">
+                        <MailCheck className="w-8 h-8 text-lime-300" />
+                    </div>
+                    <p className="text-xs font-bold tracking-[.18em] text-lime-300">ONE MORE STEP</p>
+                    <h2 className="mb-3 mt-3 text-3xl font-extrabold tracking-tight">Check your inbox.</h2>
+                    <p className="mb-7 text-sm leading-6 text-zinc-400">
+                        We sent a confirmation link to <strong className="text-zinc-100">{email}</strong>.
+                        Click the link to activate your account, then come back and log in.
+                    </p>
+                    <Link
+                        to="/login"
+                        className="inline-block w-full rounded-xl bg-lime-400 py-3.5 text-sm font-extrabold text-black transition hover:bg-lime-300"
+                    >
+                        Go to Login
+                    </Link>
+                    <p className="mt-4 text-xs leading-5 text-zinc-500">
+                        Didn't get it? Check your spam folder or try signing up again.
+                    </p>
+                </div>
+            </AuthLayout>
+        );
+    }
+
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[var(--color-bg)]">
-            <div className="w-full max-w-md p-8 glass-card border border-[var(--color-electric-blue)]/30">
-                <div className="flex flex-col items-center mb-8">
-                    <Wallet className="w-12 h-12 text-[var(--color-electric-blue)] mb-2" />
-                    <h1 className="text-3xl font-extrabold text-[var(--color-electric-blue)]">Spendly</h1>
-                    <p className="text-[var(--color-text)]/70 text-sm mt-1">Join the smart spending club.</p>
+        <AuthLayout eyebrow="START SMARTER">
+            <section aria-labelledby="signup-title">
+                <div className="mb-8">
+                    <div className="mb-5 flex items-center gap-2 text-sm font-extrabold lg:hidden"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime-400 text-black"><Wallet className="h-4 w-4" /></span> Spendly</div>
+                    <p className="text-xs font-bold tracking-[.18em] text-lime-300">START SMARTER</p>
+                    <h1 id="signup-title" className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Make money feel easy.</h1>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">Create your free account and take control in minutes.</p>
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm text-center">
+                    <div className="mb-5 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-center text-sm text-rose-200">
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-[var(--color-text)]/80 mb-1">Name</label>
+                        <label htmlFor="name" className="mb-2 block text-sm font-semibold text-zinc-300">Your name</label>
+                        <div className="relative"><UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                         <input 
+                            id="name"
                             type="text" 
                             required 
                             value={name} 
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-[var(--input-bg)] border border-[var(--glass-border)] rounded-xl px-4 py-3 outline-none focus:border-[var(--color-electric-blue)] transition-colors"
-                        />
+                            placeholder="e.g. Aanya Sharma"
+                            className="w-full rounded-xl border border-white/10 bg-black/30 py-3 pl-11 pr-4 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                        /></div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-[var(--color-text)]/80 mb-1">Email</label>
+                        <label htmlFor="email" className="mb-2 block text-sm font-semibold text-zinc-300">Email address</label>
+                        <div className="relative"><Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                         <input 
+                            id="email"
                             type="email" 
                             required 
                             value={email} 
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-[var(--input-bg)] border border-[var(--glass-border)] rounded-xl px-4 py-3 outline-none focus:border-[var(--color-electric-blue)] transition-colors"
-                        />
+                            placeholder="you@example.com"
+                            className="w-full rounded-xl border border-white/10 bg-black/30 py-3 pl-11 pr-4 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                        /></div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-[var(--color-text)]/80 mb-1">Password</label>
+                        <label htmlFor="password" className="mb-2 block text-sm font-semibold text-zinc-300">Create a password</label>
+                        <div className="relative"><LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                         <input 
-                            type="password" 
+                            id="password"
+                            type={showPassword ? 'text' : 'password'} 
                             required 
                             minLength={6}
                             value={password} 
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-[var(--input-bg)] border border-[var(--glass-border)] rounded-xl px-4 py-3 outline-none focus:border-[var(--color-electric-blue)] transition-colors"
-                        />
+                            placeholder="At least 6 characters"
+                            className="w-full rounded-xl border border-white/10 bg-black/30 py-3 pl-11 pr-12 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                        /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 text-zinc-500 transition hover:text-lime-300" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
                     </div>
                     <button 
                         type="submit" 
-                        className="w-full bg-[var(--color-electric-blue)] text-black font-extrabold py-3 rounded-xl mt-4 hover:scale-[1.02] active:scale-95 transition-transform"
+                        className="mt-3 w-full rounded-xl bg-lime-400 py-3.5 text-sm font-extrabold text-black shadow-lg shadow-lime-400/15 transition hover:-translate-y-0.5 hover:bg-lime-300 hover:shadow-lime-400/25 focus:outline-none focus:ring-4 focus:ring-lime-400/20"
                     >
                         Sign Up
                     </button>
                 </form>
 
-                <p className="mt-6 text-center text-sm text-[var(--color-text)]/60">
-                    Already have an account? <Link to="/login" className="text-[var(--color-electric-blue)] font-bold hover:underline">Login</Link>
+                <p className="mt-7 text-center text-sm text-zinc-400">
+                    Already using Spendly? <Link to="/login" className="font-bold text-lime-300 hover:text-lime-200 hover:underline">Log in</Link>
                 </p>
-            </div>
-        </div>
+            </section>
+        </AuthLayout>
     );
 }
+

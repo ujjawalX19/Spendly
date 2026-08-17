@@ -82,8 +82,20 @@ export function AuthProvider({ children }) {
     if (error) {
       return { success: false, message: error.message };
     }
+
+    // Supabase returns data.user but data.session will be null when
+    // email confirmation is required (the default setting).
+    if (data?.user && !data.session) {
+      return {
+        success: false,
+        needsConfirmation: true,
+        message: 'Check your email and click the confirmation link to activate your account, then come back and log in.',
+      };
+    }
+
     return { success: true };
   };
+
 
   const loginWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({

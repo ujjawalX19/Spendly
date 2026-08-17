@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, TrendingUp, ShieldCheck, Banknote } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 // Pre-defined Action Chips based on keyword matching
 const CHIPS = [
@@ -25,15 +26,17 @@ const CHIPS = [
 ];
 
 export default function Chatbot() {
+    const { session } = useAuth();
     const [messages, setMessages] = useState([
         { 
             id: 1, 
             role: 'bot', 
-            content: "What's up, boss? ðŸ’¸ Ask me where to invest your pocket money before you blow it all on momos.",
+            content: "What’s up, boss? Ask me where to invest your money and I’ll use this month’s actual spending — no generic gyaan.",
             chips: []
         }
     ]);
     const [input, setInput] = useState('');
+    const [goal, setGoal] = useState('habit');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef(null);
 
@@ -54,8 +57,11 @@ export default function Chatbot() {
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api'}/ai/invest-advice`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: input })
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {})
+                },
+                body: JSON.stringify({ query: input, goal })
             });
             const data = await res.json();
             
@@ -125,7 +131,7 @@ export default function Chatbot() {
                                     msg.role === 'user'
                                         ? 'bg-[var(--color-electric-blue)]/10 border border-[var(--color-electric-blue)]/30 text-[var(--color-text)] rounded-tr-none'
                                         : 'bg-zinc-900 border border-[var(--glass-border)] text-[var(--color-text)]/90 rounded-tl-none'
-                                }`}>
+                                } whitespace-pre-wrap`}>
                                     {msg.content}
                                 </div>
 
@@ -174,6 +180,18 @@ export default function Chatbot() {
 
             {/* Input Area */}
             <div className="p-4 bg-black/40 backdrop-blur-md border-t border-[var(--glass-border)] rounded-b-2xl">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2" htmlFor="investment-goal">This month’s goal</label>
+                <select
+                    id="investment-goal"
+                    value={goal}
+                    onChange={(event) => setGoal(event.target.value)}
+                    disabled={isLoading}
+                    className="mb-3 w-full bg-[var(--input-bg)] border border-[var(--glass-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-neon-green)]"
+                >
+                    <option value="habit">Build an investing habit</option>
+                    <option value="passive growth">Passive growth with mutual funds</option>
+                    <option value="active learning">Learn direct stocks safely</option>
+                </select>
                 <form onSubmit={handleSend} className="relative flex items-center">
                     <input
                         type="text"
