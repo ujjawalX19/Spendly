@@ -46,7 +46,6 @@ export default function Login() {
         <AuthLayout eyebrow="WELCOME BACK">
             <section aria-labelledby="login-title">
                 <div className="mb-8">
-                    <div className="mb-5 flex items-center gap-2 text-sm font-extrabold lg:hidden"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime-400 text-black"><Wallet className="h-4 w-4" /></span> Spendly</div>
                     <p className="text-xs font-bold tracking-[.18em] text-lime-300">WELCOME BACK</p>
                     <h1 id="login-title" className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Good to see you.</h1>
                     <p className="mt-2 text-sm leading-6 text-zinc-400">Sign in to pick up where your money left off.</p>

@@ -1,4 +1,4 @@
-import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, Users, Wallet } from 'lucide-react';
+import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, Users, Wallet, FileText, Skull, Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const navigation = [
@@ -6,6 +6,9 @@ const navigation = [
   { to: '/pool', label: 'Group Pool', icon: Users },
   { to: '/bot', label: 'Spendly AI', icon: Bot },
   { to: '/wealth', label: 'Wealth', icon: TrendingUp },
+  { to: '/graveyard', label: 'Subscriptions', icon: Skull },
+  { to: '/import', label: 'Statement Import', icon: FileText },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function Sidebar({ theme, toggleTheme, onLogout }) {

@@ -1,9 +1,11 @@
 {
-  "name": "backend",
+  "name": "spendly-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Spendly — AI-powered expense tracker & investment guide backend",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -19,6 +21,9 @@
     "express-rate-limit": "^8.6.0",
     "express-validator": "^7.3.2",
     "helmet": "^8.3.0",
+    "multer": "^2.0.1",
+    "node-cron": "^3.0.3",
+    "pdf-parse": "^1.1.1",
     "zod": "^4.4.3"
   }
 }

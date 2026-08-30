@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
 const { protect } = require('../middleware/authMiddleware');
+const { proGate } = require('../middleware/proGate');
 
 let ai = null;
 if (process.env.GEMINI_API_KEY) {
@@ -13,7 +14,7 @@ if (process.env.GEMINI_API_KEY) {
 // @route   POST /api/chatbot/msg
 // @desc    Send message to AI Financial Dost
 // @access  Protected
-router.post('/msg', protect, async (req, res) => {
+router.post('/msg', protect, proGate('chat_message'), async (req, res) => {
     const { message } = req.body;
     
     // Fallback Mock System if Key is missing

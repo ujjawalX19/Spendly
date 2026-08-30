@@ -60,7 +60,13 @@ export function useExpenses() {
   }, [fetchExpenses]);
 
   // ── Derived state ──
-  const totalSpent = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  // Only count expenses from the current month for budget tracking
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currentMonthExpenses = expenses.filter(
+    e => new Date(e.created_at) >= currentMonthStart
+  );
+  const totalSpent = currentMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
   // ── Chart data: last 7 days ──
   const chartData = (() => {

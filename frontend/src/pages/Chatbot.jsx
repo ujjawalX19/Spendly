@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, TrendingUp, ShieldCheck, Banknote } from 'lucide-react';
+import { Send, Bot, User, TrendingUp, ShieldCheck, Banknote, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePro } from '../contexts/ProContext';
+import { Link } from 'react-router-dom';
 
 // Pre-defined Action Chips based on keyword matching
 const CHIPS = [
@@ -27,6 +29,7 @@ const CHIPS = [
 
 export default function Chatbot() {
     const { session } = useAuth();
+    const { canUse, getRemaining } = usePro();
     const [messages, setMessages] = useState([
         { 
             id: 1, 
@@ -50,6 +53,13 @@ export default function Chatbot() {
         if (!input.trim()) return;
 
         const userMsg = { id: Date.now(), role: 'user', content: input, chips: [] };
+        if (!canUse('chat_message')) {
+            const limitMsg = { id: Date.now(), role: 'bot', content: "You've reached your free limit of 10 AI chat messages for today. Upgrade to Spendly Pro for unlimited access.", chips: [], isLimitAlert: true };
+            setMessages(prev => [...prev, userMsg, limitMsg]);
+            setInput('');
+            return;
+        }
+
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsLoading(true);
@@ -154,6 +164,20 @@ export default function Chatbot() {
                                         ))}
                                     </div>
                                 )}
+                                
+                                {/* Upgrade CTA if limit reached */}
+                                {msg.isLimitAlert && (
+                                    <Link to="/pro" className="inline-block mt-2">
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-sm rounded-xl"
+                                        >
+                                            <Sparkles className="w-4 h-4" />
+                                            Upgrade to Pro
+                                        </motion.button>
+                                    </Link>
+                                )}
                             </div>
                         </motion.div>
                     ))}
@@ -209,6 +233,11 @@ export default function Chatbot() {
                         <Send className="w-5 h-5" />
                     </button>
                 </form>
+                {getRemaining('chat_message') < 5 && getRemaining('chat_message') > 0 && (
+                    <p className="text-[10px] text-zinc-500 mt-2 text-center">
+                        {getRemaining('chat_message')} free messages remaining today
+                    </p>
+                )}
             </div>
         </div>
     );

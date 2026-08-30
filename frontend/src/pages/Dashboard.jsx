@@ -10,10 +10,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  LayoutGrid, Users, Bot, TrendingUp, Camera, ChevronRight,
+  TrendingUp, Camera, ChevronRight,
   Flame, Zap, ShoppingCart, Tv, ShoppingBag, AlertCircle,
-  Plus, X, Check, Wallet, BarChart2, Lightbulb,
-  CircleDollarSign
+  Plus, X, Check, Wallet, Lightbulb, CircleDollarSign
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -473,7 +472,6 @@ function AiTipCard({ expenses }) {
   const foodSpend = expenses.filter(e => e.category === 'Food')
     .reduce((s, e) => s + parseFloat(e.amount), 0);
   
-  // Custom logic for the highlighted string based on design
   const savings = Math.round(foodSpend * 0.3) || 460;
 
   return (
@@ -494,50 +492,109 @@ function AiTipCard({ expenses }) {
   );
 }
 
-// ─── BOTTOM NAV ───────────────────────────────────────────────
-function BottomNav() {
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard',    icon: LayoutGrid, to: '/dash'  },
-    { id: 'pool',      label: 'Group Pool',  icon: Users,      to: '/pool'  },
-    { id: 'bot',       label: 'Spendly AI',      icon: Bot,        to: '/bot'   },
-    { id: 'wealth',    label: 'Wealth',       icon: BarChart2,  to: '/wealth' },
-  ];
-  const active = 'dashboard';
+// ─── SAFE-TO-SPEND HERO ───────────────────────────────────
+function SafeToSpendCard({ safeData }) {
+  if (!safeData) return null;
+  const isNeg = safeData.isNegative;
 
   return (
-    <motion.nav
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 28 }}
-      className="md:hidden fixed bottom-0 inset-x-0 z-50
-                 bg-[#181818]/90 backdrop-blur-md border-t border-white/5
-                 flex items-center justify-around py-3 px-2 rounded-t-3xl"
+    <motion.div
+      variants={cardVariants}
+      className={`rounded-2xl p-5 relative overflow-hidden ${
+        isNeg ? 'bg-gradient-to-br from-red-950 to-[#141414]' : 'bg-gradient-to-br from-[#1a2e05] to-[#141414]'
+      }`}
     >
-      {tabs.map(tab => {
-        const Icon = tab.icon;
-        const isActive = tab.id === active;
-        return (
-          <Link key={tab.id} to={tab.to} className="flex-1">
-            <motion.div
-              whileTap={{ scale: 0.88 }}
-              className="flex flex-col items-center gap-1"
-            >
-              <div className={`px-4 py-1.5 rounded-full transition-all ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
-                <Icon
-                  className={`w-6 h-6 transition-colors ${isActive ? 'text-black' : 'text-[#71717a]'}`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-              </div>
-              <span className={`text-[11px] font-bold tracking-wide transition-colors ${
-                isActive ? 'text-[#a3e635]' : 'text-[#71717a]'
-              }`}>{tab.label}</span>
-            </motion.div>
-          </Link>
-        );
-      })}
-    </motion.nav>
+      <p className="text-xs font-bold uppercase tracking-wider text-[#a1a1aa] mb-1">
+        You can safely spend today
+      </p>
+      <div className="flex items-baseline gap-2">
+        <span className={`text-4xl font-black font-mono-finance tabular-nums ${
+          isNeg ? 'text-[#f43f5e]' : 'text-[#a3e635]'
+        }`}>
+          {'\u20b9'}{safeData.daily.toLocaleString('en-IN')}
+        </span>
+      </div>
+      <p className="text-xs text-[#a1a1aa] mt-2">
+        {isNeg
+          ? `Over budget by \u20b9${safeData.overBy.toLocaleString('en-IN')} this month`
+          : `\u20b9${safeData.remaining.toLocaleString('en-IN')} remaining · ${safeData.daysRemaining} days left`}
+      </p>
+      {safeData.upcomingBills > 0 && (
+        <p className="text-[10px] text-[#71717a] mt-1">
+          Upcoming bills: {'\u20b9'}{safeData.upcomingBills.toLocaleString('en-IN')}
+        </p>
+      )}
+    </motion.div>
   );
 }
+
+// ─── BURN RATE CARD ───────────────────────────────────────
+function BurnRateCard({ burnData }) {
+  if (!burnData || !burnData.willGoBroke) return null;
+
+  return (
+    <motion.div
+      variants={cardVariants}
+      className="rounded-2xl p-4 bg-[#141414] border border-red-500/15"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+          <AlertCircle className="w-5 h-5 text-[#f43f5e]" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[14px] font-bold text-[#f43f5e] leading-tight">
+            Broke by {burnData.brokeDate}
+          </p>
+          {burnData.cutSuggestion && (
+            <p className="text-xs text-[#a1a1aa] mt-1">
+              {burnData.cutSuggestion.message}
+            </p>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── PAISA SCORE WIDGET ───────────────────────────────────
+function PaisaScoreCard({ score }) {
+  if (!score) return null;
+  const pct = Math.round((score.total / 850) * 100);
+  const circumference = 2 * Math.PI * 32;
+  const strokeDash = (pct / 100) * circumference;
+
+  return (
+    <motion.div
+      variants={cardVariants}
+      className="rounded-2xl p-4 bg-[#141414] relative overflow-hidden flex items-center gap-4"
+    >
+      {/* Circular Progress */}
+      <div className="relative w-20 h-20 shrink-0">
+        <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
+          <circle cx="36" cy="36" r="32" fill="none" stroke="#27272a" strokeWidth="5" />
+          <circle cx="36" cy="36" r="32" fill="none" stroke="#a3e635" strokeWidth="5"
+            strokeLinecap="round" strokeDasharray={circumference}
+            strokeDashoffset={circumference - strokeDash}
+            className="transition-all duration-1000 ease-out" />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg font-black text-white">{score.total}</span>
+        </div>
+      </div>
+      <div>
+        <p className="text-sm font-bold text-white">Paisa Score</p>
+        <p className="text-xs text-[#a1a1aa] mt-0.5">Top {100 - score.percentile}% of users</p>
+        {score.change !== 0 && (
+          <p className={`text-xs font-bold mt-1 ${score.change > 0 ? 'text-[#a3e635]' : 'text-[#f43f5e]'}`}>
+            {score.change > 0 ? '+' : ''}{score.change} this week
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+
 
 // ─── UPI TOAST ────────────────────────────────────────────────
 function PaymentToast({ payment, onAdd, onDismiss }) {
@@ -592,14 +649,19 @@ function getGreeting() {
 // MAIN DASHBOARD
 // ═══════════════════════════════════════════════════════════════
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { expenses, loading, totalSpent, addExpense, addScannedExpense } = useExpenses();
 
   const [showAddModal, setShowAddModal]     = useState(false);
   const [addLoading, setAddLoading]         = useState(false);
   const [scanLoading, setScanLoading]       = useState(false);
   const [pendingPayment, setPendingPayment] = useState(null);
+  const [safeToSpend, setSafeToSpend]       = useState(null);
+  const [burnRate, setBurnRate]             = useState(null);
+  const [paisaScore, setPaisaScore]         = useState(null);
   const fileInputRef = useRef(null);
+
+  const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
 
   // ── UPI Notifications ──────────────────────────────────────
   const { isSupported, permissionGranted, requestPermission } = usePaymentNotifications({
@@ -614,6 +676,37 @@ export default function Dashboard() {
       return () => clearTimeout(t);
     }
   }, [isSupported, permissionGranted, requestPermission]);
+
+  // ── Fetch v1 feature data ──────────────────────────────────
+  useEffect(() => {
+    if (!session?.access_token) return;
+    const headers = { Authorization: `Bearer ${session.access_token}` };
+
+    // Fetch Safe-to-Spend
+    fetch(`${API_URL}/safe-to-spend`, { headers })
+      .then(r => r.json())
+      .then(d => { if (d.success) setSafeToSpend(d.safeToSpend); })
+      .catch(() => {});
+
+    // Fetch Burn Rate
+    fetch(`${API_URL}/burn-rate`, { headers })
+      .then(r => r.json())
+      .then(d => { if (d.success) setBurnRate(d.burnRate); })
+      .catch(() => {});
+
+    // Fetch Paisa Score
+    fetch(`${API_URL}/paisa-score`, { headers })
+      .then(r => r.json())
+      .then(d => { if (d.success) setPaisaScore(d.paisaScore); })
+      .catch(() => {});
+
+    // Record streak check-in for viewing safe-to-spend
+    fetch(`${API_URL}/streaks/check-in`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activity: 'check_safe_to_spend' }),
+    }).catch(() => {});
+  }, [session, API_URL]);
 
   // ── Derived Values ─────────────────────────────────────────
   const monthlyBudget = user?.monthly_budget || 5000;
@@ -695,7 +788,7 @@ export default function Dashboard() {
         <motion.header variants={fadeUp} className="flex items-center justify-between pt-2 pb-1">
           <div>
             <h1 className="text-3xl font-black text-white leading-tight tracking-tight">
-              Sup, {firstName}
+              {getGreeting()}, {firstName}
             </h1>
             <p className="text-[13px] text-[#a1a1aa] mt-1 font-bold uppercase tracking-wider">Financial Rizz Status</p>
           </div>
@@ -705,14 +798,23 @@ export default function Dashboard() {
         {/* NOTIFICATION PERMISSION BANNER */}
         <PermissionBanner />
 
+        {/* SAFE-TO-SPEND HERO */}
+        <SafeToSpendCard safeData={safeToSpend} />
+
         {/* BUDGET CARD */}
         <BudgetCard totalSpent={totalSpent} monthlyBudget={monthlyBudget} />
+
+        {/* BURN RATE ALERT */}
+        <BurnRateCard burnData={burnRate} />
 
         {/* BENTO GRID */}
         <div className="grid grid-cols-2 gap-3">
           <StreakCard streakDays={streakDays} />
           <ChillarCard totalChillar={totalChillar} todayRoundup={todayRoundup} />
         </div>
+
+        {/* PAISA SCORE */}
+        <PaisaScoreCard score={paisaScore} />
 
         {/* SCAN CTA */}
         <ScanBillCTA onScan={handleScanFile} loading={scanLoading} fileInputRef={fileInputRef} />
@@ -742,8 +844,7 @@ export default function Dashboard() {
         <Plus className="w-7 h-7" strokeWidth={3} />
       </motion.button>
 
-      {/* BOTTOM NAV */}
-      <BottomNav />
+
     </div>
   );
 }

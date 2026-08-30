@@ -7,9 +7,9 @@ export default function AuthLayout({ children, eyebrow = 'YOUR MONEY, IN FLOW' }
             <div className="pointer-events-none absolute -left-24 top-12 h-72 w-72 rounded-full bg-lime-400/10 blur-[100px]" />
             <div className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-emerald-500/10 blur-[110px]" />
 
-            <div className="relative mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0d100d]/95 shadow-2xl shadow-black/50 lg:grid-cols-[1.08fr_.92fr]">
-                <aside className="relative hidden overflow-hidden border-r border-white/10 bg-[#121713] p-10 lg:flex lg:flex-col">
-                    <div className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight">
+            <div className="relative mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0d100d]/95 shadow-2xl shadow-black/50 grid-cols-1 lg:grid-cols-[1.08fr_.92fr]">
+                <aside className="relative overflow-hidden border-b lg:border-b-0 lg:border-r border-white/10 bg-[#121713] p-6 lg:p-10 flex flex-col">
+                    <div className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight mb-8 lg:mb-0">
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400 text-black shadow-lg shadow-lime-400/20"><CircleDollarSign className="h-5 w-5" /></span>
                         Spendly
                     </div>

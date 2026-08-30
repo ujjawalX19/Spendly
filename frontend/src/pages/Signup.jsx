@@ -60,7 +60,6 @@ export default function Signup() {
         <AuthLayout eyebrow="START SMARTER">
             <section aria-labelledby="signup-title">
                 <div className="mb-8">
-                    <div className="mb-5 flex items-center gap-2 text-sm font-extrabold lg:hidden"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime-400 text-black"><Wallet className="h-4 w-4" /></span> Spendly</div>
                     <p className="text-xs font-bold tracking-[.18em] text-lime-300">START SMARTER</p>
                     <h1 id="signup-title" className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Make money feel easy.</h1>
                     <p className="mt-2 text-sm leading-6 text-zinc-400">Create your free account and take control in minutes.</p>

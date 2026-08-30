@@ -4,6 +4,7 @@ const { z } = require('zod');
 const { GoogleGenAI } = require('@google/genai');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const { proGate } = require('../middleware/proGate');
 
 let ai = null;
 if (process.env.GEMINI_API_KEY) {
@@ -112,7 +113,7 @@ router.get('/', protect, async (req, res) => {
 // @desc    Log a manual expense and update streak + chillar
 // @access  Protected
 // ---------------------------------------------------------------------------
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, proGate('add_expense'), async (req, res) => {
     // ── Zod Validation ──
     const parsed = expenseSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -162,7 +163,7 @@ router.post('/', protect, async (req, res) => {
 // @desc    Scan a receipt image via Gemini Vision API and log the expense
 // @access  Protected
 // ---------------------------------------------------------------------------
-router.post('/scan', protect, async (req, res) => {
+router.post('/scan', protect, proGate('receipt_scan'), async (req, res) => {
     const { imageBase64 } = req.body;
 
     if (!imageBase64) {

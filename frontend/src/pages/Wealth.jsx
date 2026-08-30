@@ -1,159 +1,254 @@
-import { useState } from 'react';
+/**
+ * Wealth.jsx — Spendly v1 (REWRITE)
+ * ─────────────────────────────────────────────────────────────
+ * Real data from user's expenses, actual investable surplus,
+ * SIP projections, goal-based plans with SEBI-compliant disclaimers.
+ * Replaces the old hardcoded version.
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
-  ArrowDownToLine,
-  ArrowUpRight,
-  Coins,
-  Gem,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Wallet,
+  TrendingUp, Wallet, Target, Sparkles, ArrowUpRight,
+  Calculator, Loader2, PiggyBank
 } from 'lucide-react';
 import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+  Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
+import { useAuth } from '../contexts/AuthContext';
+import InvestmentDisclaimer from '../components/InvestmentDisclaimer';
 
-const netWorth = 42500;
-const monthlyGrowth = 12.5;
-const roundUps = 3240;
-const autoInvestTrigger = 5000;
+const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const money = (v) => `₹${Math.round(v).toLocaleString('en-IN')}`;
 
-const goals = [
-  { name: 'New Laptop', target: 60000, saved: 15000, icon: Gem },
-  { name: 'Emergency Fund', target: 10000, saved: 8500, icon: Wallet },
-  { name: 'Goa Weekend', target: 18000, saved: 6300, icon: Sparkles },
-];
+// SIP future value: M × {[(1+r)^n - 1] / r} × (1+r)
+const sipFV = (monthly, years, annual = 0.12) => {
+  const r = annual / 12;
+  const n = years * 12;
+  return monthly * (((1 + r) ** n - 1) / r) * (1 + r);
+};
 
-const assets = [
-  { name: 'Mutual Funds', allocation: 60, value: 25500, color: 'bg-lime-400' },
-  { name: 'Stocks', allocation: 25, value: 10625, color: 'bg-sky-400' },
-  { name: 'Crypto', allocation: 15, value: 6375, color: 'bg-violet-400' },
-];
+const cardVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.96 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 280, damping: 22 } },
+};
 
-const portfolioHistory = [
-  { month: 'Mar', value: 28500 },
-  { month: 'Apr', value: 30100 },
-  { month: 'May', value: 29200 },
-  { month: 'Jun', value: 33500 },
-  { month: 'Jul', value: 37800 },
-  { month: 'Aug', value: 42500 },
-];
+function SipProjectionCard({ surplus }) {
+  const sipAmount = Math.max(100, Math.floor(surplus / 100) * 100);
+  const projections = [1, 3, 5].map(years => ({
+    years,
+    invested: sipAmount * years * 12,
+    value: Math.round(sipFV(sipAmount, years)),
+    returns: Math.round(sipFV(sipAmount, years) - sipAmount * years * 12),
+  }));
 
-const formatCurrency = (amount) => `₹${amount.toLocaleString('en-IN')}`;
-
-function Wealth() {
-  const [message, setMessage] = useState('');
-  const roundUpProgress = Math.min((roundUps / autoInvestTrigger) * 100, 100);
-
-  const handleAction = (action) => {
-    setMessage(action === 'invest'
-      ? 'Investment flow is ready for your next money move.'
-      : 'Withdrawal options will appear here when you need them.');
-  };
+  // Chart data for 5-year projection
+  const chartData = [];
+  for (let m = 0; m <= 60; m += 6) {
+    const years = m / 12;
+    chartData.push({
+      month: `${m}m`,
+      invested: sipAmount * m,
+      projected: Math.round(sipFV(sipAmount, years)),
+    });
+  }
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-6 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">Wealth dashboard</p>
-          <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">Make your money feel expensive.</h1>
-          <p className="text-zinc-400">Your savings, investments, and tiny wins — all in one place.</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <section className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-xl transition-all duration-300 hover:border-zinc-700 lg:col-span-3">
-            <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-lime-400/10 blur-3xl" />
-            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-zinc-400">
-                  <Wallet className="h-4 w-4 text-lime-400" />
-                  Total net worth
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-5xl font-extrabold tracking-tight text-white">{formatCurrency(netWorth)}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-lime-400/20 bg-lime-400/10 px-3 py-1.5 text-sm font-bold text-lime-400">
-                    <TrendingUp className="h-4 w-4" /> +{monthlyGrowth}% this month
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-zinc-400">That is {formatCurrency(4730)} more than last month. Nice one.</p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button onClick={() => handleAction('invest')} className="inline-flex items-center gap-2 rounded-xl bg-lime-400 px-5 py-3 font-bold text-black transition-colors hover:bg-lime-300">
-                  <ArrowUpRight className="h-4 w-4" /> Invest Now
-                </button>
-                <button onClick={() => handleAction('withdraw')} className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-950 px-5 py-3 font-bold text-zinc-200 transition-colors hover:border-zinc-600 hover:bg-zinc-800">
-                  <ArrowDownToLine className="h-4 w-4" /> Withdraw
-                </button>
-              </div>
-            </div>
-            {message && <p className="relative mt-4 text-sm text-lime-300" role="status">{message}</p>}
-          </section>
-
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-xl transition-all duration-300 hover:border-zinc-700">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold"><Coins className="h-5 w-5 text-lime-400" /> Spare Change Stash</div>
-              <span className="rounded-lg bg-lime-400/10 p-2 text-lime-400"><Sparkles className="h-4 w-4" /></span>
-            </div>
-            <p className="mt-6 text-4xl font-extrabold">{formatCurrency(roundUps)}</p>
-            <p className="mt-1 text-sm text-zinc-400">saved this month from round-ups</p>
-            <div className="mt-6 h-3 overflow-hidden rounded-full bg-zinc-800">
-              <div className="h-full rounded-full bg-lime-400 shadow-[0_0_10px_rgba(132,204,22,0.5)]" style={{ width: `${roundUpProgress}%` }} />
-            </div>
-            <p className="mt-3 text-sm text-zinc-400">{formatCurrency(roundUps)} / {formatCurrency(autoInvestTrigger)} to next auto-invest</p>
-          </section>
-
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-xl transition-all duration-300 hover:border-zinc-700">
-            <div className="flex items-center gap-2 font-bold"><Target className="h-5 w-5 text-lime-400" /> Asset Allocation</div>
-            <div className="mt-5 space-y-1">
-              {assets.map((asset) => (
-                <div key={asset.name} className="flex items-center justify-between border-b border-zinc-800/50 py-3 last:border-0">
-                  <div className="flex items-center gap-3"><span className={`h-2.5 w-2.5 rounded-full ${asset.color}`} /><span className="text-sm text-zinc-300">{asset.name}</span></div>
-                  <div className="text-right"><p className="text-sm font-bold">{asset.allocation}%</p><p className="text-xs text-zinc-500">{formatCurrency(asset.value)}</p></div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-xl transition-all duration-300 hover:border-zinc-700 lg:col-span-2">
-            <div className="flex items-center justify-between"><div><p className="flex items-center gap-2 font-bold"><TrendingUp className="h-5 w-5 text-lime-400" /> Portfolio performance</p><p className="mt-1 text-sm text-zinc-400">Your six-month money arc</p></div><span className="text-sm font-bold text-lime-400">+49.1%</span></div>
-            <div className="mt-5 h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={portfolioHistory} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                  <defs><linearGradient id="wealthFill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="#a3e635" stopOpacity={0.35} /><stop offset="95%" stopColor="#a3e635" stopOpacity={0} /></linearGradient></defs>
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} tickFormatter={(value) => `₹${value / 1000}k`} />
-                  <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value) => [formatCurrency(value), 'Net worth']} />
-                  <Area type="monotone" dataKey="value" stroke="#a3e635" strokeWidth={3} fill="url(#wealthFill)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-xl transition-all duration-300 hover:border-zinc-700 lg:col-span-2">
-            <div className="mb-5 flex items-center gap-2 font-bold"><Target className="h-5 w-5 text-lime-400" /> Financial Goals</div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {goals.map((goal) => {
-                const progress = Math.round((goal.saved / goal.target) * 100);
-                const Icon = goal.icon;
-                return <div key={goal.name} className="rounded-xl border border-zinc-800 bg-black/30 p-4"><div className="flex items-center justify-between"><span className="text-sm font-bold">{goal.name}</span><Icon className="h-4 w-4 text-zinc-400" /></div><p className="mt-4 text-xl font-extrabold">{formatCurrency(goal.saved)}</p><p className="mt-1 text-xs text-zinc-400">of {formatCurrency(goal.target)} target · {progress}%</p><div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-lime-400" style={{ width: `${progress}%` }} /></div></div>;
-              })}
-            </div>
-          </section>
-
-          <aside className="rounded-2xl border border-lime-400/20 bg-lime-400/5 p-6 backdrop-blur-xl transition-all duration-300 hover:border-lime-400/40">
-            <Sparkles className="h-6 w-6 text-lime-400" />
-            <h2 className="mt-4 text-lg font-bold">Level-up move</h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">You’re only {formatCurrency(autoInvestTrigger - roundUps)} away from an automatic investment. Your spare change is doing more work than it looks.</p>
-          </aside>
-        </div>
+    <motion.div variants={cardVariants} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6">
+      <div className="flex items-center gap-2 font-bold text-white mb-1">
+        <Calculator className="w-5 h-5 text-lime-400" />
+        SIP Growth Projection
       </div>
-    </div>
+      <p className="text-sm text-zinc-500 mb-5">
+        If you invest {money(sipAmount)}/month at ~12% historical average return
+      </p>
+
+      {/* Chart */}
+      <div className="h-44 mb-5">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="sipFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="5%" stopColor="#a3e635" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#a3e635" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11 }}
+              tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
+            <Tooltip
+              contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px' }}
+              labelStyle={{ color: '#a1a1aa' }}
+              formatter={(v) => [money(v), '']}
+            />
+            <Area type="monotone" dataKey="invested" stroke="#71717a" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Invested" />
+            <Area type="monotone" dataKey="projected" stroke="#a3e635" strokeWidth={2.5} fill="url(#sipFill)" name="Projected" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Projection table */}
+      <div className="space-y-2">
+        {projections.map(p => (
+          <div key={p.years} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+            <span className="text-sm text-zinc-400">{p.years} year{p.years > 1 ? 's' : ''}</span>
+            <div className="text-right">
+              <span className="text-sm font-bold text-white font-mono">{money(p.value)}</span>
+              <span className="text-xs text-lime-400 ml-2">(+{money(p.returns)})</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-zinc-600 mt-3">
+        Based on historical Nifty 50 CAGR of ~12%. Actual returns may vary.
+      </p>
+    </motion.div>
   );
 }
 
-export default Wealth;
+export default function Wealth() {
+  const { session, user } = useAuth();
+  const [safeToSpend, setSafeToSpend] = useState(null);
+  const [burnRate, setBurnRate] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    if (!session?.access_token) return;
+
+    try {
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+      const [stsRes, brRes] = await Promise.all([
+        fetch(`${API_URL}/safe-to-spend`, { headers }).then(r => r.json()),
+        fetch(`${API_URL}/burn-rate`, { headers }).then(r => r.json()),
+      ]);
+
+      if (stsRes.success) setSafeToSpend(stsRes.safeToSpend);
+      if (brRes.success) setBurnRate(brRes.burnRate);
+    } catch (err) {
+      console.error('Wealth data fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const monthlyBudget = user?.monthly_budget || 5000;
+  const totalChillar = parseFloat(user?.total_chillar || 0);
+  const investmentTarget = user?.investment_target || 0;
+  const surplus = safeToSpend ? safeToSpend.remaining : Math.max(0, monthlyBudget - (burnRate?.totalSpent || 0));
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-lime-400 animate-spin mx-auto mb-3" />
+          <p className="text-zinc-500 text-sm">Loading your wealth data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      className="min-h-screen bg-black p-4 md:p-6 text-white space-y-5 pb-28"
+      initial="hidden" animate="visible"
+      variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
+    >
+      {/* Header */}
+      <motion.div variants={cardVariants}>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">Wealth Dashboard</p>
+        <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl mt-1">Make your money feel expensive.</h1>
+        <p className="text-zinc-400 mt-1">Your savings, investments, and spending intelligence — all real data.</p>
+      </motion.div>
+
+      {/* Investable Surplus Hero */}
+      <motion.div variants={cardVariants}
+        className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-xl"
+      >
+        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-lime-400/10 blur-3xl" />
+        <div className="relative">
+          <div className="flex items-center gap-2 text-sm font-medium text-zinc-400 mb-3">
+            <Wallet className="h-4 w-4 text-lime-400" />
+            Investable Surplus This Month
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-5xl font-extrabold tracking-tight text-white">{money(surplus)}</span>
+            {surplus > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-lime-400/20 bg-lime-400/10 px-3 py-1.5 text-sm font-bold text-lime-400">
+                <TrendingUp className="h-4 w-4" /> Safe to invest
+              </span>
+            )}
+          </div>
+          <p className="mt-3 text-sm text-zinc-400">
+            Budget {money(monthlyBudget)} − Spent {money(burnRate?.totalSpent || 0)}
+            {investmentTarget > 0 && ` − Investment goal ${money(investmentTarget)}`}
+            {safeToSpend?.upcomingBills > 0 && ` − Bills ${money(safeToSpend.upcomingBills)}`}
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Chillar Savings */}
+        <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+            <PiggyBank className="w-4 h-4 text-lime-400" /> Round-up Savings
+          </div>
+          <p className="text-3xl font-extrabold">{money(totalChillar)}</p>
+          <p className="text-xs text-zinc-500 mt-1">Micro-savings from round-ups</p>
+        </motion.div>
+
+        {/* Investment Target */}
+        <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+            <Target className="w-4 h-4 text-sky-400" /> Monthly Target
+          </div>
+          <p className="text-3xl font-extrabold">
+            {investmentTarget > 0 ? money(investmentTarget) : '—'}
+          </p>
+          <p className="text-xs text-zinc-500 mt-1">
+            {investmentTarget > 0 ? 'Set aside for investing' : 'Set a target in Settings'}
+          </p>
+        </motion.div>
+      </div>
+
+      {/* SIP Projection */}
+      {surplus > 100 && <SipProjectionCard surplus={surplus} />}
+
+      {surplus <= 100 && (
+        <motion.div variants={cardVariants} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
+          <Sparkles className="w-6 h-6 text-amber-400 mb-3" />
+          <h2 className="text-lg font-bold text-white">Build your surplus first</h2>
+          <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
+            Your investable surplus is {money(surplus)} this month. Focus on reducing spending to
+            build a ₹500+ surplus before starting an SIP. Small steps add up!
+          </p>
+        </motion.div>
+      )}
+
+      {/* Quick Action */}
+      <motion.div variants={cardVariants}>
+        <a
+          href="/bot"
+          className="flex items-center justify-between rounded-2xl bg-lime-400 text-black p-4 font-bold hover:bg-lime-300 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-black">Get AI Investment Advice</p>
+              <p className="text-xs font-bold text-black/60">Personalized plan based on your actual spending</p>
+            </div>
+          </div>
+          <ArrowUpRight className="w-5 h-5" />
+        </a>
+      </motion.div>
+
+      {/* SEBI Disclaimer */}
+      <InvestmentDisclaimer />
+    </motion.div>
+  );
+}

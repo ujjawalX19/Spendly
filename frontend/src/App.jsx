@@ -2,7 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import { Capacitor } from '@capacitor/core';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProProvider } from './contexts/ProContext';
 import Sidebar from './components/Sidebar';
+import BottomNav from './components/BottomNav';
 
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -11,6 +13,12 @@ import Dashboard from './pages/Dashboard';
 import HostelPool from './pages/HostelPool';
 import Chatbot from './pages/Chatbot';
 import Wealth from './pages/Wealth';
+import Settings from './pages/Settings';
+import ProUpgrade from './pages/ProUpgrade';
+import SubscriptionGraveyard from './pages/SubscriptionGraveyard';
+import PdfImport from './pages/PdfImport';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 
 // ── Inline Protected Route (replaces old ProtectedRoute component) ──
@@ -54,7 +62,8 @@ function Layout({ children }) {
         {children}
       </main>
 
-      {/* Mobile bottom nav is rendered inside each page component (see Dashboard.jsx BottomNav) */}
+      {/* Mobile bottom nav — visible on ALL authenticated pages */}
+      <BottomNav />
     </div>
   );
 }
@@ -63,47 +72,73 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={
-              Capacitor.isNativePlatform() ? (
-                <ProtectedRoute>
-                    <Navigate to="/dash" replace />
-                </ProtectedRoute>
-              ) : (
-                <Landing />
-              )
-            } />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            
-            <Route path="/dash" element={
-                <ProtectedRoute>
-                    <Layout><Dashboard /></Layout>
-                </ProtectedRoute>
-            } />
-            <Route path="/pool" element={
-                <ProtectedRoute>
-                    <Layout><HostelPool /></Layout>
-                </ProtectedRoute>
-            } />
-            <Route path="/bot" element={
-                <ProtectedRoute>
-                    <Layout><Chatbot /></Layout>
-                </ProtectedRoute>
-            } />
-            <Route path="/wealth" element={
-                <ProtectedRoute>
-                    <Layout><Wealth /></Layout>
-                </ProtectedRoute>
-            } />
-            <Route path="/admin" element={
-                <ProtectedRoute>
-                    <Layout><AdminDashboard /></Layout>
-                </ProtectedRoute>
-            } />
-          </Routes>
-        </Router>
+        <ProProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={
+                Capacitor.isNativePlatform() ? (
+                  <ProtectedRoute>
+                      <Navigate to="/dash" replace />
+                  </ProtectedRoute>
+                ) : (
+                  <Landing />
+                )
+              } />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              
+              <Route path="/dash" element={
+                  <ProtectedRoute>
+                      <Layout><Dashboard /></Layout>
+                  </ProtectedRoute>
+              } />
+              <Route path="/pool" element={
+                  <ProtectedRoute>
+                      <Layout><HostelPool /></Layout>
+                  </ProtectedRoute>
+              } />
+              <Route path="/bot" element={
+                  <ProtectedRoute>
+                      <Layout><Chatbot /></Layout>
+                  </ProtectedRoute>
+              } />
+              <Route path="/wealth" element={
+                  <ProtectedRoute>
+                      <Layout><Wealth /></Layout>
+                  </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                  <ProtectedRoute>
+                      <Layout><Settings /></Layout>
+                  </ProtectedRoute>
+              } />
+              <Route path="/graveyard" element={
+                  <ProtectedRoute>
+                      <Layout><SubscriptionGraveyard /></Layout>
+                  </ProtectedRoute>
+              } />
+              <Route path="/import" element={
+                  <ProtectedRoute>
+                      <Layout><PdfImport /></Layout>
+                  </ProtectedRoute>
+              } />
+              <Route path="/pro" element={
+                  <ProtectedRoute>
+                      <ProUpgrade />
+                  </ProtectedRoute>
+              } />
+              
+              <Route path="/admin" element={
+                  <ProtectedRoute>
+                      <Layout><AdminDashboard /></Layout>
+                  </ProtectedRoute>
+              } />
+            </Routes>
+          </Router>
+        </ProProvider>
       </AuthProvider>
     </ThemeProvider>
   );
