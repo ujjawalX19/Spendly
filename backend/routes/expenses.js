@@ -218,11 +218,11 @@ router.post('/scan', protect, proGate('receipt_scan'), async (req, res) => {
             const cleanJsonStr = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
             receiptData = JSON.parse(cleanJsonStr);
         } catch (e) {
-            console.error('Failed to parse Gemini output as JSON:', replyText);
+            // Receipt AI output may contain personal financial information.
+            console.error('Failed to parse Gemini receipt output as JSON');
             return res.status(500).json({
                 success: false,
-                message: 'Failed to parse receipt correctly',
-                rawResponse: replyText
+                message: 'Failed to parse receipt correctly'
             });
         }
 
@@ -242,8 +242,7 @@ router.post('/scan', protect, proGate('receipt_scan'), async (req, res) => {
                 receipt_data: {
                     merchantName: receiptData.merchantName,
                     items: receiptData.items || [],
-                    scannedTotal: totalAmount,
-                    rawResponse: replyText
+                    scannedTotal: totalAmount
                 }
             })
             .select()

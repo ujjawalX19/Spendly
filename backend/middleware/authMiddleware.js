@@ -29,23 +29,25 @@ const protect = async (req, res, next) => {
         });
     }
 
-    const { data, error } = await supabase.auth.getUser(token);
+    try {
+        const { data, error } = await supabase.auth.getUser(token);
 
-    if (error || !data?.user) {
-        return res.status(401).json({
+        if (error || !data?.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Not authorized — invalid or expired token'
+            });
+        }
+
+        // Controllers use req.user.id for all user-scoped queries.
+        req.user = { id: data.user.id, email: data.user.email };
+        return next();
+    } catch {
+        return res.status(503).json({
             success: false,
-            message: 'Not authorized — invalid or expired token'
+            message: 'Authentication service is temporarily unavailable'
         });
     }
-
-    // Attach the Supabase user UUID and email to the request.
-    // Controllers use req.user.id as the UUID for all Supabase queries.
-    req.user = {
-        id: data.user.id,
-        email: data.user.email
-    };
-
-    next();
 };
 
 module.exports = { protect };

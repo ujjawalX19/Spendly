@@ -681,22 +681,26 @@ export default function Dashboard() {
   useEffect(() => {
     if (!session?.access_token) return;
     const headers = { Authorization: `Bearer ${session.access_token}` };
+    const parseResponse = (response) => {
+      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+      return response.json();
+    };
 
     // Fetch Safe-to-Spend
     fetch(`${API_URL}/safe-to-spend`, { headers })
-      .then(r => r.json())
+      .then(parseResponse)
       .then(d => { if (d.success) setSafeToSpend(d.safeToSpend); })
       .catch(() => {});
 
     // Fetch Burn Rate
     fetch(`${API_URL}/burn-rate`, { headers })
-      .then(r => r.json())
+      .then(parseResponse)
       .then(d => { if (d.success) setBurnRate(d.burnRate); })
       .catch(() => {});
 
     // Fetch Paisa Score
     fetch(`${API_URL}/paisa-score`, { headers })
-      .then(r => r.json())
+      .then(parseResponse)
       .then(d => { if (d.success) setPaisaScore(d.paisaScore); })
       .catch(() => {});
 

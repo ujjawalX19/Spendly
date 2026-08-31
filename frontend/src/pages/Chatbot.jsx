@@ -73,6 +73,7 @@ export default function Chatbot() {
                 },
                 body: JSON.stringify({ query: input, goal })
             });
+            if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
             const data = await res.json();
             
             const reply = data.reply || "Error: AI is broke right now.";

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
@@ -68,6 +69,13 @@ export function AuthProvider({ children }) {
     if (error) {
       return { success: false, message: error.message };
     }
+    if (data?.session) {
+      setSession(data.session);
+      if (data.user) {
+        const profile = await fetchProfile(data.user.id);
+        setUser(profile);
+      }
+    }
     return { success: true };
   };
 
@@ -93,6 +101,14 @@ export function AuthProvider({ children }) {
       };
     }
 
+    if (data?.session) {
+      setSession(data.session);
+      if (data.user) {
+        const profile = await fetchProfile(data.user.id);
+        setUser(profile);
+      }
+    }
+
     return { success: true };
   };
 
@@ -101,8 +117,8 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // Uses the active deployment origin (Vercel in production, localhost in development).
-        redirectTo: `${window.location.origin}/dash`,
+        // Uses the active deployment origin for web redirects.
+        redirectTo: Capacitor.isNativePlatform() ? 'spendly://login-callback' : `${window.location.origin}/dash`,
       },
     });
     if (error) {

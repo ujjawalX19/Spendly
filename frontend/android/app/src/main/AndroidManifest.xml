@@ -25,6 +25,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- This tells Android to open this app for links starting with spendly://login-callback -->
+                <data android:scheme="spendly" android:host="login-callback" />
+            </intent-filter>
+
         </activity>
 
         <!-- UPI Payment Notification Listener Service -->

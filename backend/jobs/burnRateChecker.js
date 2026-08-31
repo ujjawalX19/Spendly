@@ -21,7 +21,7 @@ function startBurnRateChecker() {
             // 1. Get all users with budgets
             const { data: profiles, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, full_name, monthly_budget, fcm_token');
+                .select('id, monthly_budget, fcm_token');
 
             if (profileError || !profiles) {
                 console.error('[BurnRateChecker] Failed to load profiles:', profileError);
@@ -93,10 +93,10 @@ function startBurnRateChecker() {
                         //     });
                         // }
 
-                        console.log(`[BurnRateChecker] PANIC — User ${profile.id}: ${message}`);
+                        console.log('[BurnRateChecker] Spending alert queued');
                     }
-                } catch (userErr) {
-                    console.error(`[BurnRateChecker] Error processing user ${profile.id}:`, userErr);
+                } catch {
+                    console.error('[BurnRateChecker] Error processing a profile');
                 }
             }
 

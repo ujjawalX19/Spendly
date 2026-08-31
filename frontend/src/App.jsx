@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProProvider } from './contexts/ProContext';
@@ -69,6 +71,19 @@ function Layout({ children }) {
 }
 
 function App() {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      CapApp.addListener('appUrlOpen', (event) => {
+        const url = event.url;
+        // Supabase automatically parses the session from the URL hash if it matches the current client
+        if (url.includes('spendly://')) {
+          // Force a router navigation to the dashboard or let Supabase's auth state listener handle it
+          window.location.href = url; // or use your React Router navigate function
+        }
+      });
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>

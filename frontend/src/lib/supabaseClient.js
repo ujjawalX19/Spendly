@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://fqzqfwjjiruntrulmdnd.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxenFmd2pqaXJ1bnRydWxtZG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNDE5NjgsImV4cCI6MjEwMDcxNzk2OH0.JY7ltjIHBNMv-NDFAXLuS8do8Te56fMinkKo7UMyR-s';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+}
 
 // IMPORTANT: Supabase JS v2 requires a *synchronous* storage interface.
 // @aparajita/capacitor-secure-storage is async-only (hardware Keystore/Keychain),

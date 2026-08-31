@@ -19,7 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import InvestmentDisclaimer from '../components/InvestmentDisclaimer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
-const money = (v) => `₹${Math.round(v).toLocaleString('en-IN')}`;
+const money = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
 
 // SIP future value: M × {[(1+r)^n - 1] / r} × (1+r)
 const sipFV = (monthly, years, annual = 0.12) => {
@@ -114,13 +114,20 @@ export default function Wealth() {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    if (!session?.access_token) return;
+    if (!session?.access_token) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const headers = { Authorization: `Bearer ${session.access_token}` };
+      const parseResponse = async (response) => {
+        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+        return response.json();
+      };
       const [stsRes, brRes] = await Promise.all([
-        fetch(`${API_URL}/safe-to-spend`, { headers }).then(r => r.json()),
-        fetch(`${API_URL}/burn-rate`, { headers }).then(r => r.json()),
+        fetch(`${API_URL}/safe-to-spend`, { headers }).then(parseResponse),
+        fetch(`${API_URL}/burn-rate`, { headers }).then(parseResponse),
       ]);
 
       if (stsRes.success) setSafeToSpend(stsRes.safeToSpend);
@@ -137,7 +144,7 @@ export default function Wealth() {
   const monthlyBudget = user?.monthly_budget || 5000;
   const totalChillar = parseFloat(user?.total_chillar || 0);
   const investmentTarget = user?.investment_target || 0;
-  const surplus = safeToSpend ? safeToSpend.remaining : Math.max(0, monthlyBudget - (burnRate?.totalSpent || 0));
+  const surplus = Math.max(0, Number(safeToSpend?.remaining ?? monthlyBudget - (burnRate?.totalSpent || 0)) || 0);
 
   if (loading) {
     return (

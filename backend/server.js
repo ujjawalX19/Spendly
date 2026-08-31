@@ -12,17 +12,22 @@ const app = express();
 app.use(helmet());
 
 // --- CORS ---
-// In production, restrict to known origins. Capacitor apps send no Origin header
-// so null must be allowed. In dev, allow everything.
+// Restrict browser origins in every environment. Native Capacitor requests may
+// have no Origin header, while its supported web origins are explicit below.
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['*'];
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
+    : [
+        'https://spendly-iota.vercel.app',
+        'http://localhost',
+        'http://localhost:5173',
+        'https://localhost',
+    ];
 
 app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (Capacitor, curl, server-to-server)
         if (!origin) return callback(null, true);
-        if (ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
+        if (ALLOWED_ORIGINS.includes(origin) || origin.startsWith('spendly://')) {
             return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
@@ -81,7 +86,8 @@ app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const isProduction = process.env.NODE_ENV === 'production';
 
-    console.error('Unhandled Error:', err);
+    // Never serialize request data, tokens, or provider responses into logs.
+    console.error(`Unhandled ${statusCode} error: ${err.name || 'Error'}`);
 
     res.status(statusCode).json({
         success: false,

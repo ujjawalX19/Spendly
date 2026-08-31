@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, LockKeyhole, Mail, Wallet } from 'lucide-react';
@@ -10,8 +10,14 @@ export default function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const { login, loginWithGoogle } = useAuth();
+    const { login, loginWithGoogle, session } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (session) {
+            navigate('/dash');
+        }
+    }, [session, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -19,9 +25,7 @@ export default function Login() {
         setLoading(true);
         const res = await login(email, password);
         setLoading(false);
-        if (res.success) {
-            navigate('/dash');
-        } else {
+        if (!res.success) {
             // Supabase returns "Invalid login credentials" for both wrong
             // passwords AND unconfirmed emails — add a helpful hint.
             const msg = res.message || 'Login failed';

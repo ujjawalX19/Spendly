@@ -50,7 +50,7 @@ function ZombieCard({ sub, index }) {
         </div>
         <div className="text-right">
           <p className="text-lg font-black text-white font-mono tabular-nums">
-            ₹{sub.monthlyAmount.toLocaleString('en-IN')}
+            ₹{Number(sub.monthlyAmount || 0).toLocaleString('en-IN')}
           </p>
           <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">/month</p>
         </div>
@@ -66,8 +66,8 @@ function ZombieCard({ sub, index }) {
       )}
 
       <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
-        <span>Total spent: ₹{sub.totalSpent.toLocaleString('en-IN')}</span>
-        <span>Last: {new Date(sub.lastPayment).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+        <span>Total spent: ₹{Number(sub.totalSpent || 0).toLocaleString('en-IN')}</span>
+        <span>Last: {sub.lastPayment ? new Date(sub.lastPayment).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Unknown'}</span>
       </div>
     </motion.div>
   );
@@ -124,13 +124,17 @@ export default function SubscriptionGraveyard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!session?.access_token) return;
+    if (!session?.access_token) {
+      setLoading(false);
+      return;
+    }
 
     const fetchSubscriptions = async () => {
       try {
         const res = await fetch(`${API_URL}/subscriptions/detect`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
+        if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
         const json = await res.json();
         if (json.success) setData(json);
         else setError(json.message);
@@ -186,7 +190,7 @@ export default function SubscriptionGraveyard() {
           </div>
         )}
 
-        {data && data.subscriptions.length === 0 ? (
+        {data && (data.subscriptions || []).length === 0 ? (
           <motion.div variants={cardVariants} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-10 text-center">
             <div className="text-4xl mb-3">🎉</div>
             <p className="text-lg font-bold text-white">You're clean!</p>
@@ -202,7 +206,7 @@ export default function SubscriptionGraveyard() {
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-3">
               <motion.div variants={cardVariants} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 text-center">
-                <p className="text-2xl font-black text-white">{data.subscriptions.length}</p>
+                <p className="text-2xl font-black text-white">{(data.subscriptions || []).length}</p>
                 <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mt-1">Detected</p>
               </motion.div>
               <motion.div variants={cardVariants} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 text-center">
@@ -218,9 +222,9 @@ export default function SubscriptionGraveyard() {
             {/* Subscription list */}
             <div className="space-y-3">
               <p className="text-xs uppercase font-bold text-zinc-500 tracking-wider px-1">
-                Total: ₹{data.totalMonthlySubscriptions.toLocaleString('en-IN')}/month
+                Total: ₹{Number(data.totalMonthlySubscriptions || 0).toLocaleString('en-IN')}/month
               </p>
-              {data.subscriptions.map((sub, idx) => (
+              {(data.subscriptions || []).map((sub, idx) => (
                 <ZombieCard key={sub.normalizedName} sub={sub} index={idx} />
               ))}
             </div>

@@ -9,10 +9,12 @@ import { motion } from 'framer-motion';
 import { Check, Sparkles, Zap, FileText, Skull, Lock, Loader2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePro } from '../contexts/ProContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ProUpgrade() {
   const navigate = useNavigate();
   const { isPro, refreshProStatus } = usePro();
+  const { session } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const handlePurchase = async () => {
@@ -23,10 +25,10 @@ export default function ProUpgrade() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
-      const token = JSON.parse(localStorage.getItem('sb-yqswcddybnoyvtvqjshm-auth-token'))?.access_token;
+      const token = session?.access_token;
       
       if (token) {
-        await fetch(`${API_URL}/pro/activate`, {
+        const response = await fetch(`${API_URL}/pro/activate`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -34,6 +36,9 @@ export default function ProUpgrade() {
           },
           body: JSON.stringify({ productId: 'spendly_pro_monthly' })
         });
+        if (!response.ok) throw new Error(`Activation failed with status ${response.status}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Activation failed');
         await refreshProStatus();
         alert('🎉 Spendly Pro Activated!');
         navigate('/dash');

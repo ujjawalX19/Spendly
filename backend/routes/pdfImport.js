@@ -42,6 +42,11 @@ router.post('/', protect, proGate('pdf_import'), upload.single('pdf'), async (re
             return res.status(400).json({ success: false, message: 'No PDF file uploaded' });
         }
 
+        // MIME type is client-controlled; verify the file signature before parsing.
+        if (req.file.buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+            return res.status(400).json({ success: false, message: 'Invalid PDF file' });
+        }
+
         if (!ai) {
             return res.status(500).json({ success: false, message: 'AI service not configured' });
         }
@@ -114,7 +119,8 @@ ${rawText.substring(0, 15000)}`; // Limit to ~15K chars for API limits
             const cleanJson = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
             parsed = JSON.parse(cleanJson);
         } catch (e) {
-            console.error('Failed to parse Gemini PDF output:', replyText.substring(0, 500));
+            // AI output can contain statement data; never write it to server logs.
+            console.error('Failed to parse Gemini PDF output');
             return res.status(500).json({
                 success: false,
                 message: 'Failed to parse bank statement. Try a different format.',

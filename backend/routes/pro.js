@@ -81,77 +81,30 @@ router.get('/status', protect, async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // @route   POST /api/pro/activate
-// @desc    Activate Pro subscription (called after purchase verification)
+// @desc    Reserved for verified server-to-server purchase events
 // @access  Protected
 //
-// In production, this should verify the Google Play Billing receipt
-// via RevenueCat webhook or server-side validation.
-// For v1 MVP, we trust the client-side purchase confirmation.
+// Never trust a product ID or purchase token submitted directly by a client.
+// Enable this route only after a verified RevenueCat webhook or Google Play
+// Developer API validation is implemented server-side.
 // ---------------------------------------------------------------------------
 router.post('/activate', protect, async (req, res) => {
-    const { productId, purchaseToken, platform } = req.body;
-
-    // TODO: Verify purchase with RevenueCat or Google Play Developer API
-    // For now, trust the purchase (RevenueCat handles validation in production)
-
-    try {
-        const expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + 1); // 1 month subscription
-
-        await supabase
-            .from('profiles')
-            .update({
-                is_pro: true,
-                pro_expires_at: expiresAt.toISOString(),
-            })
-            .eq('id', req.user.id);
-
-        res.json({
-            success: true,
-            message: 'Pro activated! Welcome to Spendly Pro 🎉',
-            expiresAt: expiresAt.toISOString(),
-        });
-    } catch (error) {
-        console.error('Pro Activation Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to activate Pro' });
-    }
+    return res.status(503).json({
+        success: false,
+        message: 'Purchases are not available until payment verification is configured.'
+    });
 });
 
 // ---------------------------------------------------------------------------
 // @route   POST /api/pro/add-freezes
-// @desc    Add streak freezes after in-app purchase
+// @desc    Reserved for verified server-to-server purchase events
 // @access  Protected
 // ---------------------------------------------------------------------------
 router.post('/add-freezes', protect, async (req, res) => {
-    const { count } = req.body; // 1 for single, 5 for pack
-
-    if (!count || ![1, 5].includes(count)) {
-        return res.status(400).json({ success: false, message: 'count must be 1 or 5' });
-    }
-
-    try {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('streak_freezes_remaining')
-            .eq('id', req.user.id)
-            .single();
-
-        const current = profile?.streak_freezes_remaining || 0;
-
-        await supabase
-            .from('profiles')
-            .update({ streak_freezes_remaining: current + count })
-            .eq('id', req.user.id);
-
-        res.json({
-            success: true,
-            message: `${count} streak freeze${count > 1 ? 's' : ''} added!`,
-            freezesRemaining: current + count,
-        });
-    } catch (error) {
-        console.error('Add Freezes Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to add freezes' });
-    }
+    return res.status(503).json({
+        success: false,
+        message: 'Purchases are not available until payment verification is configured.'
+    });
 });
 
 module.exports = router;

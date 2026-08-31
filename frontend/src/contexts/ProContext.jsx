@@ -32,6 +32,7 @@ export function ProProvider({ children }) {
       const res = await fetch(`${API_URL}/pro/status`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
       const data = await res.json();
       if (data.success) {
         setProStatus(data.pro);

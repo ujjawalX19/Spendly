@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, LockKeyhole, Mail, MailCheck, UserRound, Wallet } from 'lucide-react';
@@ -11,16 +11,21 @@ export default function Signup() {
     const [error, setError] = useState('');
     const [confirmationSent, setConfirmationSent] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const { signup } = useAuth();
+    const { signup, session } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (session) {
+            navigate('/dash');
+        }
+    }, [session, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         const res = await signup(name, email, password);
-        if (res.success) {
-            navigate('/dash');
-        } else if (res.needsConfirmation) {
+        // Do not navigate immediately; wait for session useEffect to trigger
+        if (res.needsConfirmation) {
             // Email confirmation required — show the success message
             setConfirmationSent(true);
         } else {

@@ -49,6 +49,9 @@ export default function PdfImport() {
         },
         body: formData,
       });
+      if (!res.ok) {
+        throw new Error(`Upload failed with status ${res.status}`);
+      }
       const data = await res.json();
 
       if (data.success) {
@@ -166,8 +169,8 @@ export default function PdfImport() {
             <div className="space-y-2 text-sm text-zinc-300">
               <div className="flex justify-between"><span>Bank:</span> <span className="font-bold text-white">{result.bankName}</span></div>
               <div className="flex justify-between"><span>Transactions:</span> <span className="font-bold text-white">{result.imported}</span></div>
-              <div className="flex justify-between"><span>Total Amount:</span> <span className="font-mono text-white">₹{result.totalAmount.toLocaleString('en-IN')}</span></div>
-              <div className="flex justify-between"><span>Round-up Chillar:</span> <span className="font-mono text-lime-400">+₹{result.totalChillar.toLocaleString('en-IN')}</span></div>
+              <div className="flex justify-between"><span>Total Amount:</span> <span className="font-mono text-white">₹{Number(result.totalAmount || 0).toLocaleString('en-IN')}</span></div>
+              <div className="flex justify-between"><span>Round-up Chillar:</span> <span className="font-mono text-lime-400">+₹{Number(result.totalChillar || 0).toLocaleString('en-IN')}</span></div>
             </div>
           </motion.div>
         )}

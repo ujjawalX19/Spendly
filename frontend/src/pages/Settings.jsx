@@ -226,7 +226,7 @@ export default function Settings() {
 
   const handleSaveBudget = async (newBudget) => {
     try {
-      await fetch(`${API_URL}/account/budget`, {
+      const response = await fetch(`${API_URL}/account/budget`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -234,6 +234,7 @@ export default function Settings() {
         },
         body: JSON.stringify({ monthly_budget: newBudget }),
       });
+      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
       if (updateProfile) {
         await updateProfile({ monthly_budget: newBudget });
       }
@@ -244,7 +245,7 @@ export default function Settings() {
 
   const handleSaveTarget = async (newTarget) => {
     try {
-      await fetch(`${API_URL}/account/investment-target`, {
+      const response = await fetch(`${API_URL}/account/investment-target`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -252,6 +253,7 @@ export default function Settings() {
         },
         body: JSON.stringify({ investment_target: newTarget }),
       });
+      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
       if (updateProfile) {
         await updateProfile({ investment_target: newTarget });
       }
@@ -262,7 +264,7 @@ export default function Settings() {
 
   const handleDeleteAccount = async () => {
     try {
-      await fetch(`${API_URL}/account`, {
+      const response = await fetch(`${API_URL}/account`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -270,6 +272,7 @@ export default function Settings() {
         },
         body: JSON.stringify({ confirmation: 'DELETE_MY_ACCOUNT' }),
       });
+      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
       await logout();
     } catch (err) {
       console.error('Failed to delete account:', err);
