@@ -5,25 +5,30 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { Link } from 'react-router-dom';
 
-// Pre-defined Action Chips based on keyword matching
 const CHIPS = [
     {
-        keyword: 'Mutual Funds',
-        label: 'Explore Mutual Funds',
+        keyword: 'Zerodha',
+        label: 'Open Zerodha',
         icon: <TrendingUp className="w-4 h-4" />,
-        link: 'https://zerodha.com/fundhouse'
+        link: 'https://zerodha.com/?ref=SPENDLY'
+    },
+    {
+        keyword: 'Groww',
+        label: 'Try Groww',
+        icon: <TrendingUp className="w-4 h-4" />,
+        link: 'https://groww.in/refer/SPENDLY'
+    },
+    {
+        keyword: 'Kuvera',
+        label: 'Explore Kuvera',
+        icon: <TrendingUp className="w-4 h-4" />,
+        link: 'https://kuvera.in/refer/SPENDLY'
     },
     {
         keyword: 'Gold',
         label: 'Buy Digital Gold',
         icon: <ShieldCheck className="w-4 h-4" />,
         link: 'https://paytm.com/digital-gold'
-    },
-    {
-        keyword: 'FD',
-        label: 'High-Yield FDs',
-        icon: <Banknote className="w-4 h-4" />,
-        link: 'https://www.stablemoney.in/'
     }
 ];
 

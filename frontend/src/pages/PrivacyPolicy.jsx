@@ -35,7 +35,7 @@ export default function PrivacyPolicy() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">3. How We Use Your Data</h2>
           <ul className="list-disc pl-5 space-y-1 text-zinc-400">
-            <li>Calculate your Safe-to-Spend, Burn Rate, and Paisa Score</li>
+            <li>Calculate your Safe-to-Spend, Burn Rate, and Spend Score</li>
             <li>Detect recurring subscriptions and spending patterns</li>
             <li>Generate personalized financial education insights via AI</li>
             <li>Send push notifications (only if you opt in)</li>
@@ -73,7 +73,7 @@ export default function PrivacyPolicy() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">7. Account Deletion</h2>
           <p>
-            You can permanently delete your account and all associated data at any time from <strong className="text-zinc-200">Settings → Delete Account</strong>. This action is irreversible and removes all your expenses, streak data, Paisa Score history, group memberships, and profile information.
+            You can permanently delete your account and all associated data at any time from <strong className="text-zinc-200">Settings → Delete Account</strong>. This action is irreversible and removes all your expenses, streak data, Spend Score history, group memberships, and profile information.
           </p>
         </section>
 

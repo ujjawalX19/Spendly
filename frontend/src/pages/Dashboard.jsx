@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import {
   TrendingUp, Camera, ChevronRight,
   Flame, Zap, ShoppingCart, Tv, ShoppingBag, AlertCircle,
-  Plus, X, Check, Wallet, Lightbulb, CircleDollarSign
+  Plus, X, Check, Wallet, Lightbulb, CircleDollarSign, CheckCircle
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -556,7 +556,7 @@ function BurnRateCard({ burnData }) {
   );
 }
 
-// ─── PAISA SCORE WIDGET ───────────────────────────────────
+// ─── SPEND SCORE WIDGET ───────────────────────────────────
 function PaisaScoreCard({ score }) {
   if (!score) return null;
   const pct = Math.round((score.total / 850) * 100);
@@ -582,7 +582,7 @@ function PaisaScoreCard({ score }) {
         </div>
       </div>
       <div>
-        <p className="text-sm font-bold text-white">Paisa Score</p>
+        <p className="text-sm font-bold text-white">Spend Score</p>
         <p className="text-xs text-[#a1a1aa] mt-0.5">Top {100 - score.percentile}% of users</p>
         {score.change !== 0 && (
           <p className={`text-xs font-bold mt-1 ${score.change > 0 ? 'text-[#a3e635]' : 'text-[#f43f5e]'}`}>
@@ -659,6 +659,7 @@ export default function Dashboard() {
   const [safeToSpend, setSafeToSpend]       = useState(null);
   const [burnRate, setBurnRate]             = useState(null);
   const [paisaScore, setPaisaScore]         = useState(null);
+  const [scanToast, setScanToast]           = useState(null); // { type: 'success'|'error', message: string }
   const fileInputRef = useRef(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
@@ -729,6 +730,13 @@ export default function Dashboard() {
     finally { setAddLoading(false); }
   };
 
+  // Auto-dismiss scan toast after 3 seconds
+  useEffect(() => {
+    if (!scanToast) return;
+    const t = setTimeout(() => setScanToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [scanToast]);
+
   const handleScanFile = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -737,9 +745,15 @@ export default function Dashboard() {
     reader.readAsDataURL(file);
     reader.onload = async () => {
       try {
-        await addScannedExpense({ scannedTotal: 0, merchantName: 'Receipt Scan', imageBase64: reader.result });
+        const result = await addScannedExpense({ scannedTotal: 0, merchantName: 'Receipt Scan', imageBase64: reader.result });
+        if (result?.success) {
+          setScanToast({ type: 'success', message: 'Bill scanned and added!' });
+        } else {
+          setScanToast({ type: 'error', message: result?.message || 'Failed to scan bill.' });
+        }
       } catch (err) {
         console.error('Scan failed:', err);
+        setScanToast({ type: 'error', message: 'Scan failed. Please try again.' });
       } finally {
         setScanLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -767,6 +781,40 @@ export default function Dashboard() {
             onAdd={handleLogUpiPayment}
             onDismiss={() => setPendingPayment(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Scan Toast */}
+      <AnimatePresence>
+        {scanToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -60, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -40, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+            className={`fixed top-4 inset-x-4 z-[300] max-w-sm mx-auto
+                       rounded-2xl p-4 shadow-xl backdrop-blur-xl border ${
+                         scanToast.type === 'success'
+                           ? 'bg-zinc-900 border-lime-500/30 shadow-[0_0_30px_rgba(57,255,20,0.15)]'
+                           : 'bg-zinc-900 border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)]'
+                       }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                scanToast.type === 'success' ? 'bg-lime-500/15' : 'bg-red-500/15'
+              }`}>
+                {scanToast.type === 'success'
+                  ? <CheckCircle className="w-5 h-5 text-lime-400" />
+                  : <AlertCircle className="w-5 h-5 text-red-400" />}
+              </div>
+              <p className={`text-sm font-bold ${
+                scanToast.type === 'success' ? 'text-lime-400' : 'text-red-400'
+              }`}>{scanToast.message}</p>
+              <button onClick={() => setScanToast(null)} className="ml-auto text-zinc-600 hover:text-zinc-400 p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -817,7 +865,7 @@ export default function Dashboard() {
           <ChillarCard totalChillar={totalChillar} todayRoundup={todayRoundup} />
         </div>
 
-        {/* PAISA SCORE */}
+        {/* SPEND SCORE */}
         <PaisaScoreCard score={paisaScore} />
 
         {/* SCAN CTA */}

@@ -188,7 +188,7 @@ function DeleteAccountModal({ onClose, onDelete }) {
         <p className="text-sm text-zinc-400 mb-2">This will permanently delete:</p>
         <ul className="text-xs text-zinc-500 space-y-1 mb-4 list-disc pl-4">
           <li>All your expenses and transaction history</li>
-          <li>Your Paisa Score and streak data</li>
+          <li>Your Spend Score and streak data</li>
           <li>Group memberships and settlements</li>
           <li>Your Spendly account and profile</li>
         </ul>
