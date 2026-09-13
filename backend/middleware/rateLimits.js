@@ -65,7 +65,39 @@ function make({ name, windowMs, limit, message, keyGenerator, ...rest }) {
     });
 }
 
-const byIp = (req) => ipKeyGenerator(req.ip || '');
+const IPV4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+const IPV6 = /^[0-9a-f:]+$/i;
+
+/**
+ * Header carrying the real client address, set by the edge in front of the app.
+ *
+ * Verified in production on 2026-09-13: behind Render + Cloudflare, req.ip with
+ * TRUST_PROXY=1 was Render's internal address (10.x) for every request, so all
+ * clients shared one IP bucket. Cloudflare sets CF-Connecting-IP and overwrites
+ * any client-supplied value, and the Render origin is only reachable through
+ * Cloudflare, so the header is trustworthy there.
+ *
+ * CLIENT_IP_HEADER overrides the choice; set it to "none" to use req.ip.
+ */
+function clientIpHeaderName() {
+    const configured = process.env.CLIENT_IP_HEADER;
+    if (configured) return configured.toLowerCase() === 'none' ? null : configured.toLowerCase();
+    return process.env.RENDER ? 'cf-connecting-ip' : null;
+}
+
+/** @returns {{ip: string, source: string}} */
+function resolveClientIp(req) {
+    const header = clientIpHeaderName();
+    if (header) {
+        const value = String(req.headers[header] || '').trim();
+        if (value && !value.includes(',') && (IPV4.test(value) || IPV6.test(value))) {
+            return { ip: value, source: header };
+        }
+    }
+    return { ip: req.ip || '', source: 'req.ip' };
+}
+
+const byIp = (req) => ipKeyGenerator(resolveClientIp(req).ip);
 const byUser = (req) => (req.user?.id ? `user:${req.user.id}` : `ip:${byIp(req)}`);
 
 const MINUTE = 60 * 1000;
@@ -171,4 +203,5 @@ module.exports = {
     exportLimiter,
     resetRateLimits,
     parseTrustProxy,
+    resolveClientIp,
 };

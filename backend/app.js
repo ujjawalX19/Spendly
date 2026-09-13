@@ -8,7 +8,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const fs = require('fs');
 const path = require('path');
-const { ipLimiter, authFailureLimiter, parseTrustProxy } = require('./middleware/rateLimits');
+const { ipLimiter, authFailureLimiter, parseTrustProxy, resolveClientIp } = require('./middleware/rateLimits');
 
 function createApp() {
     const app = express();
@@ -59,7 +59,8 @@ function createApp() {
         // reveals the requester's own IP back to them, plus proxy hop count.
         if (req.query.diag === 'proxy') {
             const xff = String(req.headers['x-forwarded-for'] || '');
-            body.proxy = { ipSeen: req.ip, xffHops: xff ? xff.split(',').length : 0, trustProxy: app.get('trust proxy') === undefined ? null : String(app.get('trust proxy')) };
+            const resolved = resolveClientIp(req);
+            body.proxy = { ipSeen: req.ip, clientIp: resolved.ip, clientIpSource: resolved.source, xffHops: xff ? xff.split(',').length : 0, cfConnectingIpPresent: Boolean(req.headers['cf-connecting-ip']), trueClientIpPresent: Boolean(req.headers['true-client-ip']), trustProxy: app.get('trust proxy') === undefined ? null : String(app.get('trust proxy')) };
         }
         res.json(body);
     });

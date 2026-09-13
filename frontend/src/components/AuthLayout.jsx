@@ -48,14 +48,14 @@ export default function AuthLayout({ children }) {
       <div className="relative mx-auto grid min-h-screen max-w-6xl grid-cols-1 lg:grid-cols-2">
         {/* Brand */}
         <motion.aside
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ y: 16 }}
+          animate={{ y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="flex flex-col items-center justify-center px-6 pt-14 pb-6 text-center lg:pb-14"
         >
           <motion.div
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 160, damping: 18 }}
             className="drop-shadow-[0_18px_40px_rgba(163,230,53,0.18)]"
           >
@@ -80,8 +80,8 @@ export default function AuthLayout({ children }) {
         {/* Form */}
         <section className="flex items-start justify-center px-5 pb-10 lg:items-center lg:py-12">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 24 }}
+            animate={{ y: 0 }}
             transition={{ delay: 0.25, duration: 0.55, ease: 'easeOut' }}
             className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0B1220]/70 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8"
           >

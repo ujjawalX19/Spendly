@@ -20,9 +20,9 @@ export default function SpendlyLogo({ size = 40, tile = true, animated = false, 
 
   const draw = (delay) => (animate
     ? {
-      initial: { pathLength: 0, opacity: 0 },
-      animate: { pathLength: 1, opacity: 1 },
-      transition: { pathLength: { duration: 1.1, delay, ease: [0.65, 0, 0.35, 1] }, opacity: { duration: 0.2, delay } },
+      initial: { pathLength: 0.001 },
+      animate: { pathLength: 1 },
+      transition: { pathLength: { duration: 1.1, delay, ease: [0.65, 0, 0.35, 1] } },
     }
     : {});
 
@@ -60,8 +60,8 @@ export default function SpendlyLogo({ size = 40, tile = true, animated = false, 
           stroke="#7BEA2F"
           strokeWidth="116"
           filter={`url(#${id}-glow)`}
-          initial={animate ? { opacity: 0 } : false}
-          animate={animate ? { opacity: [0, 0.35, 0.18, 0.35] } : { opacity: 0.3 }}
+          initial={animate ? { opacity: 0.3 } : false}
+          animate={animate ? { opacity: [0.3, 0.38, 0.2, 0.38] } : { opacity: 0.3 }}
           transition={animate ? { duration: 3.2, delay: 1.1, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' } : undefined}
         >
           <path d={STROKE_UP} />

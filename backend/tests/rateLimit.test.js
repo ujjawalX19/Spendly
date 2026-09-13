@@ -57,6 +57,33 @@ test('rate-limit responses carry standard headers', async () => {
     assert.ok(res.headers.get('ratelimit-policy'), 'RateLimit-Policy header present');
 });
 
+test('client IP comes from the edge header only where that header is trustworthy', () => {
+    const { resolveClientIp } = require('../middleware/rateLimits');
+    const req = (headers, ip = '10.29.121.232') => ({ headers, ip });
+    const saved = { RENDER: process.env.RENDER, CLIENT_IP_HEADER: process.env.CLIENT_IP_HEADER };
+    try {
+        delete process.env.RENDER;
+        delete process.env.CLIENT_IP_HEADER;
+        // Not on Render: a client-supplied header must be ignored.
+        assert.deepEqual(resolveClientIp(req({ 'cf-connecting-ip': '1.2.3.4' })), { ip: '10.29.121.232', source: 'req.ip' });
+
+        process.env.RENDER = 'true';
+        assert.deepEqual(resolveClientIp(req({ 'cf-connecting-ip': '203.145.142.86' })), { ip: '203.145.142.86', source: 'cf-connecting-ip' });
+        assert.equal(resolveClientIp(req({ 'cf-connecting-ip': '2402:3a80:1::7' })).ip, '2402:3a80:1::7');
+        // Malformed or list values fall back rather than trusting junk.
+        assert.equal(resolveClientIp(req({ 'cf-connecting-ip': '1.2.3.4, 5.6.7.8' })).source, 'req.ip');
+        assert.equal(resolveClientIp(req({ 'cf-connecting-ip': '<script>' })).source, 'req.ip');
+        assert.equal(resolveClientIp(req({})).source, 'req.ip');
+
+        process.env.CLIENT_IP_HEADER = 'none';
+        assert.equal(resolveClientIp(req({ 'cf-connecting-ip': '203.145.142.86' })).source, 'req.ip');
+        process.env.CLIENT_IP_HEADER = 'X-Real-IP';
+        assert.equal(resolveClientIp(req({ 'x-real-ip': '198.51.100.9' })).ip, '198.51.100.9');
+    } finally {
+        for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    }
+});
+
 test('TRUST_PROXY parsing never silently trusts everything', () => {
     assert.equal(parseTrustProxy('1'), 1);
     assert.equal(parseTrustProxy('2'), 2);
