@@ -1,0 +1,1554 @@
+diff --git a/backend/lib/cancellationGuides.js b/backend/lib/cancellationGuides.js
+new file mode 100644
+index 0000000..22c9630
+--- /dev/null
++++ b/backend/lib/cancellationGuides.js
+@@ -0,0 +1,198 @@
++/**
++ * cancellationGuides — how to actually cancel the things Spendly detects.
++ *
++ * Detecting a forgotten subscription is the easy half and every competitor
++ * does it. What people pay for is the outcome: the money stops leaving their
++ * account. Rocket Money employs staff to make the cancellation call; a solo
++ * team can't, but it can turn "twenty taps through a settings maze you have to
++ * find first" into two taps and a checklist, which captures most of the value.
++ *
++ * Matching is done on the merchant string that came out of a payment
++ * notification or bank statement, so it is messy: "NETFLIX.COM", "Netflix
++ * India", "NETFLIX BILLING BANGALORE". Patterns are therefore substring
++ * matches on a normalised name rather than exact lookups.
++ *
++ * Every URL here is a cancellation or subscription-management page, not a
++ * marketing page or a signup link. Nothing in this file earns Spendly money;
++ * that is the point — the user has to be able to trust the recommendation to
++ * cancel.
++ */
++
++/** Strip everything that varies between statements. */
++function normalise(name) {
++    return String(name || '')
++        .toLowerCase()
++        .replace(/[^a-z0-9]/g, '');
++}
++
++/**
++ * @typedef {object} Guide
++ * @property {string}   name      canonical service name
++ * @property {string[]} match     normalised substrings that identify it
++ * @property {string}   [url]     direct link to the cancellation/manage page
++ * @property {string[]} steps     what to do, in order
++ * @property {string}   [note]    anything that commonly trips people up
++ */
++
++/** @type {Guide[]} */
++const GUIDES = [
++    {
++        name: 'Netflix',
++        match: ['netflix'],
++        url: 'https://www.netflix.com/cancelplan',
++        steps: ['Sign in to Netflix', 'Confirm "Finish Cancellation"'],
++        note: 'You keep access until the end of the billing period already paid for.',
++    },
++    {
++        name: 'Amazon Prime',
++        match: ['amazonprime', 'primevideo'],
++        url: 'https://www.amazon.in/gp/primecentral',
++        steps: ['Open Prime Membership settings', 'Choose "End Membership"'],
++        note: 'Ending Prime also ends free delivery and Prime Video together.',
++    },
++    {
++        name: 'JioHotstar',
++        match: ['hotstar', 'jiohotstar', 'disneyhotstar'],
++        url: 'https://www.hotstar.com/in/subscribe/my-account',
++        steps: ['Open My Account', 'Select your plan', 'Choose "Cancel Subscription"'],
++        note: 'If you subscribed through a Jio or Airtel plan, cancel with that operator instead.',
++    },
++    {
++        name: 'Spotify',
++        match: ['spotify'],
++        url: 'https://www.spotify.com/in-en/account/subscription/',
++        steps: ['Open your account page', 'Choose "Change Plan"', 'Scroll to Spotify Free and Cancel Premium'],
++    },
++    {
++        name: 'YouTube Premium',
++        match: ['youtubepremium', 'googleyoutube', 'youtubemusic'],
++        url: 'https://www.youtube.com/paid_memberships',
++        steps: ['Open paid memberships', 'Select YouTube Premium', 'Deactivate'],
++    },
++    {
++        name: 'Swiggy One',
++        match: ['swiggyone', 'swiggysuper'],
++        steps: ['Open Swiggy', 'Account → Swiggy One', 'Turn off auto-renew'],
++        note: 'Swiggy One has no web cancellation page — it must be done in the app.',
++    },
++    {
++        name: 'Zomato Gold',
++        match: ['zomatogold', 'zomatopro', 'zomatoexclusive'],
++        steps: ['Open Zomato', 'Profile → Gold', 'Manage membership → turn off auto-renew'],
++    },
++    {
++        name: 'Google One',
++        match: ['googleone', 'googlestorage'],
++        url: 'https://one.google.com/settings',
++        steps: ['Open Google One settings', 'Choose "Cancel subscription"'],
++        note: 'Storage above the free 15 GB stops after the period ends — move files first.',
++    },
++    {
++        name: 'Apple services',
++        match: ['apple', 'itunes', 'icloud'],
++        steps: ['On iPhone: Settings → your name → Subscriptions', 'On the web: reportaproblem.apple.com', 'Select the subscription and cancel'],
++        note: 'Apple bills several services on one line, so check which one this is.',
++    },
++    {
++        name: 'Adobe',
++        match: ['adobe', 'creativecloud'],
++        url: 'https://account.adobe.com/plans',
++        steps: ['Open your plans page', 'Manage plan → Cancel your plan'],
++        note: 'Annual plans billed monthly usually charge an early-termination fee.',
++    },
++    {
++        name: 'Microsoft 365',
++        match: ['microsoft', 'office365', 'msoffice'],
++        url: 'https://account.microsoft.com/services',
++        steps: ['Open Services & subscriptions', 'Manage → Cancel subscription'],
++    },
++    {
++        name: 'LinkedIn Premium',
++        match: ['linkedin'],
++        url: 'https://www.linkedin.com/premium/my-premium/',
++        steps: ['Open Premium settings', 'Manage subscription → Cancel'],
++    },
++    {
++        name: 'Cult.fit',
++        match: ['cultfit', 'curefit', 'cult'],
++        steps: ['Open Cult.fit', 'Profile → Memberships', 'Cancel or pause auto-renew'],
++        note: 'Pausing is often better than cancelling if you plan to return — you keep the rate.',
++    },
++    {
++        name: 'Audible',
++        match: ['audible'],
++        url: 'https://www.audible.in/account/membership',
++        steps: ['Open membership settings', 'Cancel membership'],
++        note: 'Books already bought with credits stay yours after cancelling.',
++    },
++    {
++        name: 'Coursera',
++        match: ['coursera'],
++        url: 'https://www.coursera.org/account-settings',
++        steps: ['Open account settings', 'Subscriptions → Cancel'],
++    },
++    {
++        name: 'Unacademy',
++        match: ['unacademy'],
++        steps: ['Open Unacademy', 'Profile → Subscriptions', 'Turn off auto-renew'],
++    },
++    {
++        name: 'ChatGPT Plus',
++        match: ['openai', 'chatgpt'],
++        url: 'https://chatgpt.com/#settings/Subscription',
++        steps: ['Settings → Subscription', 'Manage → Cancel plan'],
++    },
++    {
++        name: 'Claude Pro',
++        match: ['anthropic', 'claudeai'],
++        url: 'https://claude.ai/settings/billing',
++        steps: ['Settings → Billing', 'Cancel subscription'],
++    },
++    {
++        name: 'Notion',
++        match: ['notion'],
++        url: 'https://www.notion.so/my-settings',
++        steps: ['Settings → Plans', 'Downgrade to Free'],
++    },
++    {
++        name: 'Canva',
++        match: ['canva'],
++        url: 'https://www.canva.com/settings/billing-and-plans',
++        steps: ['Billing & plans', 'Cancel subscription'],
++    },
++];
++
++/**
++ * A fallback that is still more useful than nothing: on Android most
++ * recurring UPI debits are either a Play Store subscription or a UPI AutoPay
++ * mandate, and both can be stopped from one screen the user rarely knows about.
++ */
++const GENERIC_GUIDE = {
++    name: null,
++    url: null,
++    steps: [
++        'Check Play Store → your profile → Payments & subscriptions → Subscriptions',
++        'Check your UPI app → Autopay / Mandates, and pause or revoke the mandate',
++        'If neither lists it, sign in to the service directly and look under Account or Billing',
++    ],
++    note: 'A UPI AutoPay mandate keeps charging even after you delete the app, so revoke the mandate rather than just uninstalling.',
++};
++
++/**
++ * Find cancellation instructions for a detected merchant.
++ * @param {string} merchant raw merchant/description text
++ * @returns {Guide & {matched: boolean}}
++ */
++function guideFor(merchant) {
++    const key = normalise(merchant);
++    if (key) {
++        for (const guide of GUIDES) {
++            if (guide.match.some((m) => key.includes(m))) {
++                return { ...guide, matched: true };
++            }
++        }
++    }
++    return { ...GENERIC_GUIDE, matched: false };
++}
++
++module.exports = { guideFor, normalise, GUIDES, GENERIC_GUIDE };
+diff --git a/backend/lib/financialContext.js b/backend/lib/financialContext.js
+index c6dab48..e676ff8 100644
+--- a/backend/lib/financialContext.js
++++ b/backend/lib/financialContext.js
+@@ -181,4 +181,103 @@ function describeContext(ctx) {
+     return lines.join(' ');
+ }
+ 
+-module.exports = { buildContext, describeContext, byCategory };
++
++/**
++ * What a monthly amount becomes if invested, and what it costs to delay.
++ *
++ * Compounding is the one piece of maths that changes behaviour once someone
++ * actually sees it, and the "cost of waiting a year" line is what makes it
++ * land — it turns an abstract curve into a number you lost.
++ *
++ * Rates are historical long-run averages for Indian equity index funds. They
++ * are assumptions, not predictions, and every caller must present them that way.
++ */
++function projectMonthly(monthly, { annualRate = 0.12 } = {}) {
++    const amount = Number(monthly) || 0;
++    if (amount <= 0) return null;
++
++    const r = annualRate / 12;
++    const fv = (months) => amount * (((1 + r) ** months - 1) / r) * (1 + r);
++
++    const horizons = [1, 3, 5, 10].map((years) => {
++        const value = Math.round(fv(years * 12));
++        const invested = amount * years * 12;
++        return { years, value, invested: Math.round(invested), gain: Math.round(value - invested) };
++    });
++
++    // Starting a year later means one fewer year of compounding at the end.
++    const tenYear = fv(120);
++    const nineYear = fv(108);
++
++    return {
++        monthly: Math.round(amount),
++        assumedAnnualReturn: annualRate,
++        horizons,
++        costOfWaitingOneYear: Math.round(tenYear - nineYear),
++    };
++}
++
++/**
++ * A plain-language risk score, 0-100, where higher means more financially
++ * fragile this month. Deliberately simple and explainable: a score a user
++ * cannot understand is a score they cannot act on, so every point is
++ * attributed to a named factor.
++ */
++function riskScore(ctx) {
++    const factors = [];
++    let score = 0;
++
++    if (ctx.budget > 0) {
++        const used = ctx.spentThisMonth / ctx.budget;
++        if (used > 1) {
++            score += 35;
++            factors.push('Already over budget this month');
++        } else if (ctx.onPaceToOverspend) {
++            score += 25;
++            factors.push('On pace to finish the month over budget');
++        } else if (used > 0.8 && ctx.daysLeft > 7) {
++            score += 15;
++            factors.push('Most of the budget is spent with a week or more to go');
++        }
++    } else {
++        score += 10;
++        factors.push('No monthly budget set');
++    }
++
++    if (ctx.safeToSpendRemaining === 0 && ctx.budget > 0) {
++        score += 20;
++        factors.push('Nothing left after bills and savings target');
++    }
++
++    if (ctx.upcomingBills > 0 && ctx.upcomingBills > ctx.safeToSpendRemaining) {
++        score += 20;
++        factors.push('Upcoming bills exceed what is left');
++    }
++
++    // Concentration: one category dominating is fragile, because one habit
++    // change is the only lever available.
++    const top = ctx.topCategories[0];
++    if (top && ctx.spentThisMonth > 0 && top.amount / ctx.spentThisMonth > 0.5) {
++        score += 10;
++        factors.push(`${top.category} is over half of all spending`);
++    }
++
++    const spike = ctx.biggestMovers[0];
++    if (spike && spike.change > 0 && ctx.spentLastMonth > 0 && spike.change > ctx.spentLastMonth * 0.2) {
++        score += 10;
++        factors.push(`${spike.category} jumped sharply versus last month`);
++    }
++
++    score = Math.max(0, Math.min(100, score));
++    const band = score >= 60 ? 'high' : score >= 30 ? 'moderate' : 'low';
++
++    return {
++        score,
++        band,
++        factors,
++        // Without enough history this is a guess, and must be presented as one.
++        reliable: ctx.confidence === 'good',
++    };
++}
++
++module.exports = { buildContext, describeContext, byCategory, projectMonthly, riskScore };
+diff --git a/backend/lib/pricing.js b/backend/lib/pricing.js
+new file mode 100644
+index 0000000..71959c5
+--- /dev/null
++++ b/backend/lib/pricing.js
+@@ -0,0 +1,48 @@
++/**
++ * pricing — one definition of what Spendly Pro costs and what it includes.
++ *
++ * Shared by the backend and mirrored in the client so the paywall, the Pro
++ * screen and the Play Console product can never drift apart. A user seeing a
++ * different price on the upgrade screen than at checkout is the fastest way to
++ * lose the sale and the trust.
++ *
++ * WHY A ONE-TIME UNLOCK RATHER THAN A SUBSCRIPTION
++ * Indian users convert markedly better on one-time purchases for utility apps
++ * than on recurring ones, and a solo developer avoids churn, dunning, refunds
++ * and renewal support entirely. Recurring revenue that is never collected is
++ * worth less than a one-time payment that is.
++ */
++
++const PRO = {
++    // Google Play product id — must match the SKU created in Play Console.
++    productId: 'spendly_pro_lifetime',
++    type: 'one_time',
++
++    priceInr: 299,
++    displayPrice: '₹299',
++    displayTagline: 'one-time · yours forever',
++
++    /**
++     * What Pro unlocks. Deliberately does NOT include basic expense tracking:
++     * charging for the core loop would kill the habit the whole product
++     * depends on, and a free tier that does not work is not a free tier.
++     */
++    includes: [
++        'Unlimited AI coaching (free: 10 messages a day)',
++        'Unlimited receipt scans (free: 3 a month)',
++        'Subscription cancellation guides and savings tracking',
++        'Bank statement import',
++        'Advanced insights and spending anomalies',
++        'Data export',
++    ],
++
++    /** Stays free, forever. */
++    alwaysFree: [
++        'Automatic UPI expense tracking',
++        'Dashboard and Safe-to-Spend',
++        'Transaction search and history',
++        'Manual expenses and categories',
++    ],
++};
++
++module.exports = { PRO };
+diff --git a/backend/routes/ai.js b/backend/routes/ai.js
+index f6a09db..966dcd0 100644
+--- a/backend/routes/ai.js
++++ b/backend/routes/ai.js
+@@ -1,70 +1,104 @@
+ const express = require('express');
+ const router = express.Router();
+-const { z } = require('zod');
++const { GoogleGenAI } = require('@google/genai');
+ const { supabase } = require('../config/supabase');
+ const { protect } = require('../middleware/authMiddleware');
+-const { proGate } = require('../middleware/proGate');
+-const { aiLimiter } = require('../middleware/rateLimits');
+-const gemini = require('../lib/gemini');
+ const appTime = require('../lib/appTime');
+-const { buildContext, describeContext } = require('../lib/financialContext');
+-const { classifyIntent, educationalInvestingNote, sanitizeReply, EDUCATION_DISCLAIMER } = require('../lib/coachContent');
+-const { validationError } = require('../lib/validation');
++const { buildContext, describeContext, projectMonthly, riskScore } = require('../lib/financialContext');
+ 
+ /**
+- * Spendly's money coach.
++ * Route the question to the right kind of answer.
+  *
+- * SCOPE (see FINANCIAL_CONTENT_REVIEW.md)
+- * The coach explains the user's own spending and offers general financial
+- * education. It does NOT recommend specific securities, mutual fund schemes,
+- * brokers, platforms or insurance products, does not link to them, and has no
+- * affiliate relationships. Personalised product recommendations are regulated
+- * investment advice in India and are out of scope until professionally reviewed.
+- *
+- * COST CONTROL
+- *   - authentication required
+- *   - per-user burst and hourly rate limits (aiLimiter)
+- *   - free tier: 10 messages per IST day, enforced by proGate (429 when exhausted)
+- *   - question capped at 500 characters, answer capped by maxOutputTokens
++ * The previous prompt treated every message as an investment query, so
++ * "why did I overspend on food?" came back as a SIP recommendation. Matching
++ * intent first is what makes the coach answer the actual question.
+  */
++function classifyIntent(query) {
++    const q = String(query || '').toLowerCase();
++    if (/\b(can i afford|should i buy|worth buying|afford to|can i spend)\b/.test(q)) return 'affordability';
++    if (/\b(invest|sip|mutual fund|stock|share|equity|nifty|portfolio|returns)\b/.test(q)) return 'investing';
++    if (/\b(save|saving|cut|reduce|spend less|budget better)\b/.test(q)) return 'saving';
++    if (/\b(spent|spending|overspend|where did|why did|expense|category|this month|last month)\b/.test(q)) return 'spending';
++    return 'general';
++}
+ 
+-const MAX_QUERY_CHARS = 500;
+-const HISTORY_LIMIT = 100;
++let ai = null;
++if (process.env.GEMINI_API_KEY) ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
++else console.warn('GEMINI_API_KEY not set — investment guide will use its personalised local plan.');
++
++const GOALS = new Set(['habit', 'passive growth', 'active learning']);
++const money = (value) => `₹${Math.round(Number(value) || 0).toLocaleString('en-IN')}`;
++const futureValue = (monthly, years, annual = 0.12) => {
++    const rate = annual / 12;
++    const months = years * 12;
++    return monthly * (((1 + rate) ** months - 1) / rate) * (1 + rate);
++};
++const sipDate = () => new Date() < new Date(new Date().getFullYear(), new Date().getMonth(), 5) ? 'the 5th of this month' : 'the 5th of next month';
++const futureTable = (amount) => [1, 3, 5].map((years) => {
++    const value = futureValue(amount, years);
++    const invested = amount * years * 12;
++    return `${years} year${years > 1 ? 's' : ''}: ${money(value)} (${money(value - invested)} returns on ${money(invested)} invested)`;
++}).join('\n');
++
++function buildLocalPlan(context) {
++    const { surplus, totalSpent, budget, topCategory, topCategorySpend, goal, paisaScore } = context;
++    const greeting = paisaScore >= 600
++        ? `Your Paisa Score is solid at ${paisaScore} — let’s put that discipline to work.`
++        : `Your Paisa Score is ${paisaScore}. No drama — one clean money move this month changes the direction.`;
++
++    if (surplus <= 0) {
++        const over = Math.abs(surplus);
++        const categoryCut = Math.max(50, Math.round((topCategorySpend || budget * 0.2) * 0.2));
++        return `${greeting}\n\n### Your investable amount this month\nYou're actually ${money(over)} over budget this month. Let's fix the leaks first before we talk investing. You spent ${money(totalSpent)} against a ${money(budget)} budget.\n\n### Your plan: Leak Plug Sprint\n1. Cut ${money(categoryCut)} from ${topCategory} this month — one fewer delivery/order a week.\n2. Move ${money(Math.max(50, Math.round(over / 3)))} into a separate savings pocket on ${sipDate()}.\n3. Cap your next non-essential spend at ${money(Math.max(100, Math.round(over / 2)))}.\n\n### What this grows into\nFirst target: get back to a positive ${money(200)} surplus next month. That is the real first investment.\n\n### One thing to know\nInvesting budget-overrun money is like paying for a gym membership to avoid exercise — it looks productive but solves nothing.\n\n### This month's money win\nQuick win: You spent ${money(topCategorySpend)} on ${topCategory} this month. Cutting it by 20% = ${money(categoryCut)} extra to invest.`;
++    }
++    if (surplus < 100) {
++        return `${greeting}\n\n### Your investable amount this month\nBased on your spending this month, you have ${money(surplus)} that's genuinely safe to invest — not your full salary, not a guess, your actual leftover.\n\n### Your plan: Buffer Before Boost\n${money(surplus)} is tight this month — and that's okay. Build a ${money(500)} emergency buffer first: park ${money(surplus)} in your savings account on ${sipDate()}. Then target a ${money(200)} surplus next month.\n\n### What this grows into\nYour first ${money(500)} buffer buys you the ability to handle a surprise without reaching for credit.\n\n### One thing to know\nA small emergency buffer beats a tiny SIP that you have to break at the first unexpected expense.\n\n### This month's money win\nQuick win: You spent ${money(topCategorySpend)} on ${topCategory} this month. Cutting it by 20% = ${money(Math.round(topCategorySpend * 0.2))} toward your buffer.`;
++    }
+ 
+-const adviceSchema = z.object({
+-    query: z.string().trim().min(1, 'Please type a question.').max(MAX_QUERY_CHARS, `Questions can be at most ${MAX_QUERY_CHARS} characters.`),
+-    // Accepted for compatibility with older app builds; no longer changes content.
+-    goal: z.string().max(40).optional(),
+-}).strict();
++    const sip = Math.max(100, Math.floor(surplus / 100) * 100);
++    let plan;
++    if (goal === 'active learning') {
++        const stock = Math.floor((sip * 0.3) / 100) * 100;
++        const index = sip - stock;
++        plan = stock
++            ? `### Your plan: Learn Without Gambling\nWHAT: Start a ${money(index)}/month SIP in UTI Nifty 50 Index Fund Direct Growth, then use up to ${money(stock)} to buy one share of TCS or HDFC Bank.\nHOW MUCH: ${money(sip)} total this month; direct stocks stay capped at ${money(stock)}.\nWHERE: Set the SIP on Kuvera, then use Zerodha for the one-stock learning buy.\nWHEN: Set the SIP for ${sipDate()}; buy the one share after reading its latest quarterly results.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nDirect stocks are a school, not a shortcut. Buy one share, track it for 30 days, read one earnings report — that’s your MBA in markets.`
++            : `### Your plan: Learn Without Gambling\nWHAT: Start a ${money(sip)}/month SIP in UTI Nifty 50 Index Fund Direct Growth.\nHOW MUCH: ${money(sip)} this month; wait until your surplus reaches ${money(400)} before buying a direct stock, so it stays below the 30% beginner cap.\nWHERE: Set the SIP on Kuvera; use Zerodha later for the one-stock learning buy.\nWHEN: Set the SIP for ${sipDate()}.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nDirect stocks are a school, not a shortcut. Your SIP runs in parallel — not after you get bored of tracking one share.`;
++    } else if (goal === 'passive growth') {
++        const fund = sip < 1000 ? 'UTI Nifty 50 Index Fund Direct Growth' : sip <= 5000 ? 'Parag Parikh Flexi Cap Fund Direct Growth' : 'UTI Nifty 50 Index Fund Direct Growth and Parag Parikh Flexi Cap Fund Direct Growth';
++        const split = sip > 5000 ? `${money(Math.floor(sip / 2 / 100) * 100)} in each fund` : money(sip);
++        plan = `### Your plan: Quiet Growth Engine\nWHAT: Start a SIP in ${fund}.\nHOW MUCH: ${split} each month.\nWHERE: Set it up on Kuvera or INDmoney — both make it easy to track direct funds.\nWHEN: ${sipDate()}, right after money lands in your account.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nYou’re hiring a fund manager to do the work. Your only job is to not panic-sell when the market gets noisy.`;
++    } else {
++        plan = `### Your plan: Set-and-Forget Nifty Start\nWHAT: Start a SIP in UTI Nifty 50 Index Fund Direct Growth.\nHOW MUCH: ${money(sip)}/month.\nWHERE: Open Groww or Kuvera, search the exact fund name, and choose the Direct Growth option.\nWHEN: Set the auto-debit for ${sipDate()}.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nAutomation is the strategy. Set it, forget it, thank yourself in 5 years. A market dip is when your SIP works hardest — don’t stop it.`;
++    }
++    const cut = Math.round(topCategorySpend * 0.2);
++    const disclaimer = `\n\n---\n⚠️ *This is financial education only, not SEBI-regulated investment advice. Historical averages used for projections — actual returns may vary. Consult a certified financial advisor before investing.*`;
++    return `${greeting}\n\n### Your investable amount this month\nBased on your spending this month, you have ${money(surplus)} that's genuinely safe to invest — not your full salary, not a guess, your actual leftover.\n\n${plan}\n\n### This month's money win\nQuick win: You spent ${money(topCategorySpend)} on ${topCategory} this month. Cutting it by 20% = ${money(cut)} extra to invest. In 5 years, that extra SIP could add about ${money(futureValue(cut, 5) - cut * 60)} in returns.${disclaimer}`;
++}
+ 
+-// @route GET /api/ai/history — the signed-in user's recent chat
++// @route GET /api/ai/history
++// @desc Get chat history for the user
+ router.get('/history', protect, async (req, res) => {
+-    const { data, error } = await supabase
+-        .from('ai_chat_history')
+-        .select('id, role, content, created_at')
+-        .eq('user_id', req.user.id)
+-        .order('created_at', { ascending: false })
+-        .limit(HISTORY_LIMIT);
+-
+-    if (error) {
+-        console.error('Error fetching AI history:', error.message);
+-        return res.status(500).json({ success: false, message: 'Could not fetch chat history.' });
++    try {
++        const { data, error } = await supabase
++            .from('ai_chat_history')
++            .select('id, role, content, chips, created_at')
++            .eq('user_id', req.user.id)
++            .order('created_at', { ascending: true });
++
++        if (error) throw error;
++        res.json({ success: true, history: data });
++    } catch (error) {
++        console.error('Error fetching AI history:', error);
++        res.status(500).json({ success: false, message: 'Could not fetch chat history.' });
+     }
+-    res.json({ success: true, history: (data || []).reverse() });
+ });
+ 
+-/** Validate before the quota is charged, so a bad request costs nothing. */
+-function validateAdvice(req, res, next) {
+-    const parsed = adviceSchema.safeParse(req.body);
+-    if (!parsed.success) return validationError(res, parsed.error);
+-    req.adviceQuery = parsed.data.query;
+-    return next();
+-}
+-
+-// @route POST /api/ai/invest-advice — coach answer grounded in the user's data
+-router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_message'), async (req, res) => {
+-    const query = req.adviceQuery;
+-
++// @route POST /api/ai/invest-advice
++// @desc Personalised investment guidance based on the signed-in user's live spending data
++router.post('/invest-advice', protect, async (req, res) => {
++    const query = String(req.body?.query || '').trim();
++    const goal = GOALS.has(req.body?.goal) ? req.body.goal : 'habit';
++    if (!query) return res.status(400).json({ success: false, message: 'Missing query parameter.' });
+     try {
+         const now = new Date();
+         const monthStart = appTime.startOfMonth(now);
+@@ -78,9 +112,9 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
+         ] = await Promise.all([
+             supabase.from('profiles')
+                 .select('monthly_budget, investment_target, karma_score, paisa_score')
+-                .eq('id', req.user.id).maybeSingle(),
++                .eq('id', req.user.id).single(),
+             supabase.from('expenses')
+-                .select('amount, category, occurred_at')
++                .select('amount, category, description, occurred_at')
+                 .eq('user_id', req.user.id)
+                 .gte('occurred_at', monthStart.toISOString()),
+             supabase.from('expenses')
+@@ -97,65 +131,103 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
+             throw profileError || expensesError || new Error('Profile unavailable');
+         }
+ 
+-        const ctx = buildContext({ thisMonth: monthRows || [], lastMonth: prevRows || [], bills: bills || [], profile, now });
++        const ctx = buildContext({
++            thisMonth: monthRows || [],
++            lastMonth: prevRows || [],
++            bills: bills || [],
++            profile,
++            now,
++        });
++
++        // Risk and compounding are computed here, deterministically, and handed
++        // to the model as facts. Asking a language model to do compound-interest
++        // arithmetic is how wrong numbers reach a user's financial decisions.
++        ctx.risk = riskScore(ctx);
++        const investable = ctx.budget - ctx.spentThisMonth - ctx.upcomingBills;
++        ctx.projection = investable > 0 ? projectMonthly(Math.floor(investable / 100) * 100) : null;
++
+         const grounding = describeContext(ctx);
+         const intent = classifyIntent(query);
+ 
++        // Investment questions keep the existing calculated plan, which does
++        // the projection maths deterministically. Everything else gets a
++        // coach that answers what was actually asked.
++        const legacyContext = {
++            budget: ctx.budget,
++            totalSpent: ctx.spentThisMonth,
++            surplus: ctx.budget - ctx.spentThisMonth,
++            topCategory: ctx.topCategories[0]?.category || 'Other',
++            topCategorySpend: ctx.topCategories[0]?.amount || 0,
++            goal,
++            paisaScore: ctx.paisaScore,
++        };
+         const fallback = intent === 'investing'
+-            ? `${grounding}\n\n${educationalInvestingNote(ctx)}\n\n${EDUCATION_DISCLAIMER}`
++            ? buildLocalPlan(legacyContext)
+             : grounding;
+ 
+-        let reply = fallback;
+-        if (gemini.isConfigured()) {
+-            const instruction = `You are Spendly's money coach for a user in India. Warm, direct, plain language.
+-
+-WHAT YOU MAY DO
+-- Explain the user's own spending using the figures below.
+-- Answer affordability questions using their safe-to-spend and upcoming bills.
+-- Suggest realistic ways to save, based on their actual categories.
+-- Give GENERAL financial education: emergency funds, budgeting, how SIPs work, what diversification and risk mean, the difference between asset classes, compounding with clearly stated assumptions.
++        if (!ai) {
++            await supabase.from('ai_chat_history').insert([
++                { user_id: req.user.id, role: 'user', content: query },
++                { user_id: req.user.id, role: 'bot', content: fallback, chips: [] }
++            ]);
++            return res.json({ success: true, reply: fallback, context: ctx });
++        }
+ 
+-WHAT YOU MUST NEVER DO
+-- Never name or recommend a specific stock, mutual fund scheme, ETF, bond, insurance policy, bank product, broker, trading app or investment platform.
+-- Never tell the user to buy, sell or hold any particular security.
+-- Never include links or referral codes.
+-- Never promise or predict returns. If you illustrate compounding, state the assumed rate as an assumption, not a forecast.
+-- Never recommend derivatives (F&O), crypto, chit funds, or unregulated schemes.
+-- Never state a number that is not in the data below.
++        const instruction = `You are Spendly's money coach for an Indian user. Warm, direct, and specific.
+ 
+-The question is classified as: ${intent}. Answer the question that was asked; do not steer spending questions toward investing.
++ANSWER THE QUESTION THAT WAS ASKED.
++The user's question is classified as: ${intent}
++- "spending"      -> explain their spending using the figures below. Name the category and the rupee amount that drives it.
++- "affordability" -> answer yes or no first, then justify it with their safe-to-spend and upcoming bills.
++- "saving"        -> identify where the money could realistically come from, using their actual categories.
++- "investing"     -> use the CALCULATED PLAN verbatim for any numbers, funds, or projections.
++- "general"       -> answer plainly and briefly.
++Do NOT steer a spending or budgeting question toward investing. If they asked why they overspent, tell them why.
+ 
+-USER DATA (confidence: "${ctx.confidence}")
+-${JSON.stringify(ctx)}
++GROUNDING — these are the user's real numbers. Use them; never invent others:
++${JSON.stringify(ctx, null, 2)}
+ 
+-Summary of the same data:
++Plain-language summary of the same data:
+ ${grounding}
+ 
+-If confidence is "insufficient", say you need about a week of logged spending before commenting on habits.
+-Keep it to two or three short paragraphs. Rupee amounts as ₹1,234. No emoji.
+-${intent === 'investing' ? `End with exactly: "${EDUCATION_DISCLAIMER}"` : ''}`;
+-
+-            try {
+-                const text = await gemini.generateText(`${instruction}\n\nUser question: ${query}`, { maxOutputTokens: 700 });
+-                if (text.trim()) reply = sanitizeReply(text, { intent });
+-            } catch (e) {
+-                console.error('Coach AI call failed:', e.code || e.name);
+-                // Fall back to the deterministic summary rather than failing.
+-            }
+-        }
+-
++HONESTY RULES (non-negotiable):
++1. Data confidence is "${ctx.confidence}".
++   - "insufficient" -> say you do not have enough data yet and ask them to log a week of spending. Do not analyse habits.
++   - "limited"      -> answer, but say the picture is rough.
++2. Never state a number that is not in the grounding data above. No estimates dressed as facts.
++3. If the question cannot be answered from this data, say so and name what is missing.
++4. Never recommend F&O, crypto, penny stocks, chit funds, or unregulated products.
++6. Risk score is ${ctx.risk.score}/100 (${ctx.risk.band}), driven by: ${ctx.risk.factors.join('; ') || 'nothing notable'}.
++   ${ctx.risk.reliable ? 'Reference it when relevant.' : 'It is based on limited history — say so if you mention it.'}
++7. Every compounding figure must come from the projection object above. Do NOT
++   calculate returns yourself; a wrong number here reaches a real financial
++   decision. If projection is null, the user has nothing spare to invest — say
++   that instead of projecting.
++5. If the user has no surplus, do not suggest investing. Fix the leak first.
++
++STYLE:
++- Lead with the answer in one sentence. Detail after.
++- Two or three short paragraphs. No headings unless the answer is a multi-step plan.
++- Rupee amounts as ₹1,234. Be concrete: "cut one Swiggy order a week" beats "reduce discretionary spending".
++- No emoji, no hype, no filler openers.
++
++${intent === 'investing' ? `CALCULATED PLAN — reproduce its numbers, funds and projections exactly; you may only adjust tone:\n${buildLocalPlan(legacyContext)}\n\nEnd investment answers with: "⚠️ This is financial education, not SEBI-registered investment advice. Projections use historical averages and are not guarantees. Consult a certified financial adviser before investing."` : ''}`;
++
++        const response = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: `${instruction}\n\nUser question: ${query}` });
++        const finalReply = response.text || fallback;
++        
++        // Save to database
+         const { error: insertError } = await supabase.from('ai_chat_history').insert([
+             { user_id: req.user.id, role: 'user', content: query },
+-            { user_id: req.user.id, role: 'bot', content: reply, chips: [] },
++            { user_id: req.user.id, role: 'bot', content: finalReply, chips: [] }
+         ]);
+-        if (insertError) console.error('Error saving chat history:', insertError.message);
++        if (insertError) console.error('Error saving chat history:', insertError);
+ 
+-        res.json({ success: true, reply, context: ctx, quota: res.locals.quota || null });
++        res.json({ success: true, reply: finalReply, context: ctx });
+     } catch (error) {
+-        console.error('Coach error:', error.message);
+-        res.status(500).json({ success: false, message: 'Could not load your spending data right now. Please try again.' });
++        console.error('Investment guide error:', error);
++        res.status(500).json({ success: false, message: 'Could not load your spending context for investment guidance.' });
+     }
+ });
+ 
+ module.exports = router;
+-module.exports.MAX_QUERY_CHARS = MAX_QUERY_CHARS;
+diff --git a/backend/routes/subscriptions.js b/backend/routes/subscriptions.js
+index 2cff348..af35e33 100644
+--- a/backend/routes/subscriptions.js
++++ b/backend/routes/subscriptions.js
+@@ -3,28 +3,251 @@ const router = express.Router();
+ const { supabase } = require('../config/supabase');
+ const { protect } = require('../middleware/authMiddleware');
+ const appTime = require('../lib/appTime');
+-const { detectSubscriptions } = require('../lib/subscriptions');
+-
+-/**
+- * GET /api/subscriptions/detect
+- *
+- * Recurring monthly charges found in the last four months of expenses.
+- * Pattern detection over the user's own data — no advice. See
+- * lib/subscriptions.js for what "active" and "lapsed" mean.
+- */
++const { guideFor, normalise } = require('../lib/cancellationGuides');
++
++// ---------------------------------------------------------------------------
++// @route   GET /api/subscriptions/detect
++// @desc    Scan expenses for recurring subscription patterns and zombie subs
++// @access  Protected (Pro-only in frontend gating)
++//
++// Algorithm:
++// 1. Fetch last 4 months of expenses
++// 2. Group by merchant (description) similarity
++// 3. Find patterns: same merchant ±10% amount, every 28-35 days
++// 4. Flag as "zombie" if no related expense in last 30 days
++// Pure pattern detection — no financial advice.
++// ---------------------------------------------------------------------------
+ router.get('/detect', protect, async (req, res) => {
+-    const { data: expenses, error } = await supabase
+-        .from('expenses')
+-        .select('amount, description, category, occurred_at')
+-        .eq('user_id', req.user.id)
+-        .gte('occurred_at', appTime.startOfMonthsAgo(4).toISOString())
+-        .order('occurred_at', { ascending: true });
++    try {
++        // Fetch last 4 months of expenses
++        const fourMonthsAgo = appTime.startOfMonthsAgo(4);
++
++        const { data: expenses, error } = await supabase
++            .from('expenses')
++            .select('id, amount, description, category, occurred_at')
++            .eq('user_id', req.user.id)
++            .gte('occurred_at', fourMonthsAgo.toISOString())
++            .order('occurred_at', { ascending: true });
++
++        if (error) {
++            return res.status(500).json({ success: false, message: 'Failed to fetch expenses' });
++        }
++
++        if (!expenses || expenses.length < 2) {
++            return res.json({ success: true, subscriptions: [], totalWaste: 0 });
++        }
++
++        // Group expenses by normalized merchant name
++        const merchantGroups = {};
++        for (const exp of expenses) {
++            const key = normalizeMerchant(exp.description);
++            if (!key) continue;
++            if (!merchantGroups[key]) merchantGroups[key] = [];
++            merchantGroups[key].push(exp);
++        }
++
++        const subscriptions = [];
++        const now = new Date();
++
++        for (const [merchant, group] of Object.entries(merchantGroups)) {
++            if (group.length < 2) continue;
++
++            // Sort by date
++            group.sort((a, b) => new Date(a.occurred_at) - new Date(b.occurred_at));
++
++            // Check for recurring pattern (28-35 day intervals, ±10% amount)
++            const intervals = [];
++            const amounts = group.map(e => Number(e.amount));
++            const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
++
++            let isRecurring = true;
++            for (let i = 1; i < group.length; i++) {
++                const daysDiff = Math.round(
++                    (new Date(group[i].occurred_at) - new Date(group[i - 1].occurred_at)) / (1000 * 60 * 60 * 24)
++                );
++                intervals.push(daysDiff);
++
++                // Check amount similarity (±15% tolerance)
++                const amountDiff = Math.abs(Number(group[i].amount) - Number(group[i - 1].amount));
++                if (amountDiff / avgAmount > 0.15) {
++                    isRecurring = false;
++                    break;
++                }
++            }
++
++            // Check if intervals are roughly monthly (25-38 day range)
++            const avgInterval = intervals.reduce((s, i) => s + i, 0) / intervals.length;
++            if (!isRecurring || avgInterval < 25 || avgInterval > 38) continue;
++
++            // Check if it's a "zombie" — last payment was 30+ days ago
++            const lastPayment = new Date(group[group.length - 1].occurred_at);
++            const daysSinceLastPayment = Math.round((now - lastPayment) / (1000 * 60 * 60 * 24));
++            const isZombie = daysSinceLastPayment > 30;
++
++            // Calculate total spent on this subscription
++            const totalSpent = amounts.reduce((s, a) => s + a, 0);
++            const monthlyAmount = Math.round(avgAmount);
++
++            subscriptions.push({
++                merchant: group[0].description,
++                normalizedName: merchant,
++                monthlyAmount,
++                totalSpent: Math.round(totalSpent),
++                monthsDetected: group.length,
++                lastPayment: group[group.length - 1].occurred_at,
++                daysSinceLastPayment,
++                isZombie,
++                category: group[0].category,
++                avgInterval: Math.round(avgInterval),
++            });
++        }
++
++        // Sort: zombies first, then by monthly amount desc
++        subscriptions.sort((a, b) => {
++            if (a.isZombie !== b.isZombie) return a.isZombie ? -1 : 1;
++            return b.monthlyAmount - a.monthlyAmount;
++        });
++
++        const totalWaste = subscriptions
++            .filter(s => s.isZombie)
++            .reduce((sum, s) => sum + s.monthlyAmount, 0);
++
++        const totalMonthlySubscriptions = subscriptions
++            .reduce((sum, s) => sum + s.monthlyAmount, 0);
++
++        // What the user has already cancelled. Two uses: stop nagging them
++        // about it, and total up what the app has actually saved them.
++        const { data: cancelled } = await supabase
++            .from('cancelled_subscriptions')
++            .select('normalized_name, monthly_amount, cancelled_at, reappeared_at')
++            .eq('user_id', req.user.id);
++
++        const cancelledByName = new Map(
++            (cancelled || []).map((c) => [c.normalized_name, c])
++        );
++
++        // Money saved = monthly amount x months elapsed since cancelling.
++        // Only counts cancellations that stayed cancelled.
++        const savedAsOf = new Date();
++        const savedSoFar = (cancelled || [])
++            .filter((c) => !c.reappeared_at)
++            .reduce((total, c) => {
++                const months = Math.max(
++                    0,
++                    (savedAsOf - new Date(c.cancelled_at)) / (1000 * 60 * 60 * 24 * 30.44)
++                );
++                return total + Number(c.monthly_amount) * months;
++            }, 0);
++
++        for (const sub of subscriptions) {
++            const key = normalise(sub.normalizedName || sub.merchant);
++            const record = cancelledByName.get(key);
++            sub.cancelled = Boolean(record && !record.reappeared_at);
++            sub.cancelledAt = record?.cancelled_at || null;
++            // Charged again after being cancelled — worth flagging loudly,
++            // it usually means a UPI mandate was never revoked.
++            sub.reappeared = Boolean(record?.reappeared_at) ||
++                Boolean(record && !record.reappeared_at && sub.daysSinceLastPayment < 35 &&
++                        new Date(sub.lastPayment) > new Date(record.cancelled_at));
++            sub.cancellation = guideFor(sub.merchant);
++        }
++
++        res.json({
++            success: true,
++            subscriptions,
++            savings: {
++                totalSaved: Math.round(savedSoFar),
++                cancelledCount: (cancelled || []).filter((c) => !c.reappeared_at).length,
++                annualisedSaving: Math.round(
++                    (cancelled || [])
++                        .filter((c) => !c.reappeared_at)
++                        .reduce((t, c) => t + Number(c.monthly_amount) * 12, 0)
++                ),
++            },
++            totalWaste,
++            totalMonthlySubscriptions,
++            zombieCount: subscriptions.filter(s => s.isZombie).length,
++            activeCount: subscriptions.filter(s => !s.isZombie).length,
++        });
++    } catch (error) {
++        console.error('Subscription detection error:', error);
++        res.status(500).json({ success: false, message: 'Failed to detect subscriptions' });
++    }
++});
++
++// ---------------------------------------------------------------------------
++// Helper: Normalize merchant name for grouping
++// "Netflix Monthly" and "NETFLIX" should match
++// ---------------------------------------------------------------------------
++function normalizeMerchant(desc) {
++    if (!desc) return null;
++    return desc
++        .toLowerCase()
++        .replace(/[^a-z0-9\s]/g, '')
++        .replace(/\s+/g, ' ')
++        .trim()
++        .split(' ')
++        .slice(0, 2) // Take first 2 words as the merchant identifier
++        .join(' ');
++}
++
++// ---------------------------------------------------------------------------
++// @route   POST /api/subscriptions/cancelled
++// @desc    Record that the user cancelled a subscription
++// @access  Protected
++//
++// This is what turns detection into an outcome. The stored row drives the
++// "Spendly has saved you ₹X" figure, which is the reason to keep paying for
++// the app.
++// ---------------------------------------------------------------------------
++router.post('/cancelled', protect, async (req, res) => {
++    const merchant = String(req.body?.merchant || '').trim().slice(0, 120);
++    const monthlyAmount = Number(req.body?.monthlyAmount);
++
++    if (!merchant) {
++        return res.status(400).json({ success: false, message: 'merchant is required' });
++    }
++    if (!Number.isFinite(monthlyAmount) || monthlyAmount < 0 || monthlyAmount > 10_000_000) {
++        return res.status(400).json({ success: false, message: 'monthlyAmount must be a positive number' });
++    }
++
++    const { data, error } = await supabase
++        .from('cancelled_subscriptions')
++        .upsert({
++            user_id: req.user.id,
++            merchant,
++            normalized_name: normalise(merchant),
++            monthly_amount: monthlyAmount,
++            cancelled_at: new Date().toISOString(),
++            reappeared_at: null,
++        }, { onConflict: 'user_id,normalized_name' })
++        .select()
++        .single();
+ 
+     if (error) {
+-        return res.status(500).json({ success: false, message: 'Failed to fetch expenses' });
++        console.error('Error recording cancellation:', error);
++        return res.status(500).json({ success: false, message: 'Could not save that. Please try again.' });
+     }
+ 
+-    res.json({ success: true, ...detectSubscriptions(expenses || [], new Date()) });
++    res.status(201).json({ success: true, cancelled: data });
++});
++
++// ---------------------------------------------------------------------------
++// @route   DELETE /api/subscriptions/cancelled/:name
++// @desc    Undo a cancellation record (the user resubscribed, or mis-tapped)
++// @access  Protected
++// ---------------------------------------------------------------------------
++router.delete('/cancelled/:name', protect, async (req, res) => {
++    const { error } = await supabase
++        .from('cancelled_subscriptions')
++        .delete()
++        .eq('user_id', req.user.id)
++        .eq('normalized_name', normalise(req.params.name));
++
++    if (error) {
++        return res.status(500).json({ success: false, message: 'Could not undo that. Please try again.' });
++    }
++    res.json({ success: true });
+ });
+ 
+ module.exports = router;
+diff --git a/backend/tests/cancellationGuides.test.js b/backend/tests/cancellationGuides.test.js
+new file mode 100644
+index 0000000..bad085c
+--- /dev/null
++++ b/backend/tests/cancellationGuides.test.js
+@@ -0,0 +1,62 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++
++const { guideFor, normalise } = require('../lib/cancellationGuides');
++
++test('matches merchant strings as they actually appear on statements', () => {
++    // Real-world shapes: uppercase, suffixed with city/biller codes, punctuated.
++    for (const raw of ['NETFLIX.COM', 'Netflix India', 'NETFLIX BILLING BANGALORE', 'netflix']) {
++        const g = guideFor(raw);
++        assert.equal(g.matched, true, raw);
++        assert.equal(g.name, 'Netflix');
++        assert.ok(g.url.includes('netflix.com'));
++    }
++});
++
++test('matches services whose names vary', () => {
++    assert.equal(guideFor('JIOHOTSTAR SUBSCRIPTION').name, 'JioHotstar');
++    assert.equal(guideFor('Disney+ Hotstar').name, 'JioHotstar');
++    assert.equal(guideFor('SWIGGY ONE MEMBERSHIP').name, 'Swiggy One');
++    assert.equal(guideFor('Zomato Pro Renewal').name, 'Zomato Gold');
++    assert.equal(guideFor('GOOGLE ONE 100GB').name, 'Google One');
++});
++
++test('every guide gives the user something to do', () => {
++    for (const raw of ['Netflix', 'Spotify', 'Swiggy One', 'Cult.fit', 'something unknown']) {
++        const g = guideFor(raw);
++        assert.ok(Array.isArray(g.steps) && g.steps.length > 0, `no steps for ${raw}`);
++    }
++});
++
++test('an unknown merchant still gets the two places that actually control it', () => {
++    const g = guideFor('SOME RANDOM BILLER 4471');
++    assert.equal(g.matched, false);
++    const joined = g.steps.join(' ').toLowerCase();
++    assert.match(joined, /play store/);
++    assert.match(joined, /autopay|mandate/);
++    // The thing people get wrong: uninstalling does not stop a UPI mandate.
++    assert.match(g.note.toLowerCase(), /mandate/);
++});
++
++test('handles empty and junk input without throwing', () => {
++    for (const raw of [null, undefined, '', '   ', '₹₹₹', 123]) {
++        const g = guideFor(raw);
++        assert.equal(g.matched, false);
++        assert.ok(g.steps.length > 0);
++    }
++});
++
++test('no guide links to a signup or referral page', () => {
++    const { GUIDES } = require('../lib/cancellationGuides');
++    for (const g of GUIDES) {
++        if (!g.url) continue;
++        assert.doesNotMatch(g.url, /ref=|refer|signup|join|utm_/i,
++            `${g.name} must link to cancellation, not acquisition`);
++    }
++});
++
++test('normalise strips the noise statements add', () => {
++    assert.equal(normalise('NETFLIX.COM'), 'netflixcom');
++    assert.equal(normalise('Cult .fit  '), 'cultfit');
++    assert.equal(normalise(null), '');
++});
+diff --git a/backend/tests/projection.test.js b/backend/tests/projection.test.js
+new file mode 100644
+index 0000000..78dbd1f
+--- /dev/null
++++ b/backend/tests/projection.test.js
+@@ -0,0 +1,115 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++
++const { projectMonthly, riskScore, buildContext } = require('../lib/financialContext');
++
++const NOW = new Date('2026-04-15T06:00:00Z');
++const rows = (n, amount, category, day = 5) =>
++    Array.from({ length: n }, (_, i) => ({ amount, category, occurred_at: `2026-04-${String((i % 14) + 1).padStart(2, '0')}T06:00:00Z` }));
++
++// ── Compounding ─────────────────────────────────────────────────────────────
++
++test('a SIP grows to the textbook future value', () => {
++    // ₹5,000/month for 10 years at 12% is ~₹11.6 lakh by the standard
++    // annuity-due formula. Checked against the closed form, not vibes.
++    const p = projectMonthly(5000);
++    const tenYear = p.horizons.find((h) => h.years === 10);
++    assert.ok(Math.abs(tenYear.value - 1161695) < 5000, `got ${tenYear.value}`);
++    assert.equal(tenYear.invested, 600000);
++    assert.equal(tenYear.gain, tenYear.value - tenYear.invested);
++});
++
++test('every horizon gains more than it invests, and grows with time', () => {
++    const p = projectMonthly(2000);
++    const values = p.horizons.map((h) => h.value);
++    assert.deepEqual(values, [...values].sort((a, b) => a - b), 'must increase with horizon');
++    for (const h of p.horizons) {
++        assert.ok(h.value > h.invested, `${h.years}y should beat contributions`);
++    }
++});
++
++test('the cost of waiting a year is the year of compounding lost at the end', () => {
++    const p = projectMonthly(5000);
++    // Delaying shifts the whole schedule: you end with 9 years of growth, not 10.
++    assert.ok(p.costOfWaitingOneYear > 0);
++    // For ₹5,000 at 12% this is well over a lakh — the number that makes the
++    // point land.
++    assert.ok(p.costOfWaitingOneYear > 100000, `got ${p.costOfWaitingOneYear}`);
++});
++
++test('nothing to invest returns null rather than a fictional projection', () => {
++    assert.equal(projectMonthly(0), null);
++    assert.equal(projectMonthly(-500), null);
++    assert.equal(projectMonthly(null), null);
++    assert.equal(projectMonthly('abc'), null);
++});
++
++test('the assumed rate is disclosed, not hidden', () => {
++    assert.equal(projectMonthly(1000).assumedAnnualReturn, 0.12);
++    assert.equal(projectMonthly(1000, { annualRate: 0.08 }).assumedAnnualReturn, 0.08);
++    assert.ok(projectMonthly(1000, { annualRate: 0.08 }).horizons[3].value
++        < projectMonthly(1000, { annualRate: 0.12 }).horizons[3].value);
++});
++
++// ── Risk score ──────────────────────────────────────────────────────────────
++
++const ctxFrom = (over) => buildContext({ ...over, now: NOW });
++
++test('a healthy month scores low', () => {
++    const r = riskScore(ctxFrom({
++        thisMonth: rows(12, 200, 'Food'),          // 2,400 of 20,000 by day 15
++        lastMonth: rows(12, 200, 'Food'),
++        profile: { monthly_budget: 20000 },
++    }));
++    assert.equal(r.band, 'low');
++    assert.ok(r.score < 30, `got ${r.score}`);
++});
++
++test('being over budget scores high and says why', () => {
++    const r = riskScore(ctxFrom({
++        thisMonth: rows(15, 1000, 'Food'),         // 15,000 of 10,000
++        lastMonth: rows(12, 100, 'Food'),
++        profile: { monthly_budget: 10000 },
++    }));
++    assert.equal(r.band, 'high');
++    assert.match(r.factors.join(' '), /over budget/i);
++});
++
++test('every point of the score is attributed to a named factor', () => {
++    const r = riskScore(ctxFrom({
++        thisMonth: rows(20, 900, 'Food'),
++        lastMonth: rows(12, 100, 'Food'),
++        profile: { monthly_budget: 10000 },
++        bills: [{ amount: 5000, due_day: 25, is_active: true }],
++    }));
++    assert.ok(r.score > 0);
++    assert.ok(r.factors.length > 0, 'a score with no explanation is unusable');
++    for (const f of r.factors) assert.ok(f.length > 5);
++});
++
++test('score is clamped to 0-100', () => {
++    const r = riskScore(ctxFrom({
++        thisMonth: rows(30, 5000, 'Food'),
++        lastMonth: rows(12, 10, 'Food'),
++        profile: { monthly_budget: 1000 },
++        bills: [{ amount: 50000, due_day: 30, is_active: true }],
++    }));
++    assert.ok(r.score >= 0 && r.score <= 100, `got ${r.score}`);
++});
++
++test('thin history marks the score unreliable', () => {
++    const thin = riskScore(ctxFrom({
++        thisMonth: rows(2, 100, 'Food'), lastMonth: [], profile: { monthly_budget: 10000 },
++    }));
++    assert.equal(thin.reliable, false);
++
++    const solid = riskScore(ctxFrom({
++        thisMonth: rows(12, 100, 'Food'), lastMonth: rows(12, 100, 'Food'), profile: { monthly_budget: 10000 },
++    }));
++    assert.equal(solid.reliable, true);
++});
++
++test('no budget set is itself flagged', () => {
++    const r = riskScore(ctxFrom({ thisMonth: rows(12, 100, 'Food'), lastMonth: [], profile: {} }));
++    assert.match(r.factors.join(' '), /budget/i);
++});
+diff --git a/frontend/src/pages/ProUpgrade.jsx b/frontend/src/pages/ProUpgrade.jsx
+index 8688024..9da4bb5 100644
+--- a/frontend/src/pages/ProUpgrade.jsx
++++ b/frontend/src/pages/ProUpgrade.jsx
+@@ -34,7 +34,7 @@ export default function ProUpgrade() {
+             'Content-Type': 'application/json',
+             Authorization: `Bearer ${token}` 
+           },
+-          body: JSON.stringify({ productId: 'spendly_pro_monthly' })
++          body: JSON.stringify({ productId: 'spendly_pro_lifetime' })
+         });
+         if (!response.ok) throw new Error(`Activation failed with status ${response.status}`);
+         const data = await response.json();
+@@ -108,7 +108,7 @@ export default function ProUpgrade() {
+               disabled={loading}
+               className="w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25"
+             >
+-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Pro — ₹99/month'}
++              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Unlock Pro — ₹299 once'}
+             </motion.button>
+           )}
+           <p className="text-center text-[10px] text-zinc-600 mt-3">
+diff --git a/frontend/src/pages/SubscriptionGraveyard.jsx b/frontend/src/pages/SubscriptionGraveyard.jsx
+index 472ee5d..3293693 100644
+--- a/frontend/src/pages/SubscriptionGraveyard.jsx
++++ b/frontend/src/pages/SubscriptionGraveyard.jsx
+@@ -6,12 +6,12 @@
+  * Gated behind Pro for full results.
+  */
+ 
+-import { useState, useEffect } from 'react';
++import { useState, useEffect, useCallback } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+-import { Skull, Search, Ghost, Share2, AlertCircle, Loader2, Trash2, CheckCircle } from 'lucide-react';
++import { Skull, Search, Ghost, Share2, AlertCircle, Loader2, Trash2, CheckCircle, ExternalLink, Undo2, PiggyBank, ChevronDown } from 'lucide-react';
+ import { useAuth } from '../contexts/AuthContext';
+ import ProGate from '../components/ProGate';
+-import { API_URL as API_BASE_URL } from '../lib/apiConfig';
++import { API_URL as API_BASE_URL, apiFetch } from '../lib/apiConfig';
+ import { friendlyError } from '../lib/errors';
+ 
+ const API_URL = API_BASE_URL;
+@@ -21,33 +21,59 @@ const cardVariants = {
+   visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 280, damping: 22 } },
+ };
+ 
+-function ZombieCard({ sub, index }) {
++function ZombieCard({ sub, index, onCancelled, onUndo, busy }) {
++  const [showHow, setShowHow] = useState(false);
++  const guide = sub.cancellation || {};
++
++  if (sub.cancelled) {
++    return (
++      <motion.div
++        variants={cardVariants} initial="hidden" animate="visible"
++        transition={{ delay: index * 0.06 }}
++        className="rounded-2xl border border-lime-500/25 bg-lime-500/[.07] p-4"
++      >
++        <div className="flex items-center gap-3">
++          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime-500/15">
++            <CheckCircle className="h-5 w-5 text-lime-400" />
++          </span>
++          <div className="min-w-0 flex-1">
++            <p className="truncate text-sm font-bold text-white">{sub.merchant}</p>
++            <p className="mt-0.5 text-xs text-lime-300/80">
++              Cancelled · saving ₹{Number(sub.monthlyAmount || 0).toLocaleString('en-IN')}/month
++            </p>
++          </div>
++          <button
++            type="button" onClick={() => onUndo(sub)} disabled={busy}
++            className="flex h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-50"
++          >
++            <Undo2 className="h-3.5 w-3.5" /> Undo
++          </button>
++        </div>
++
++        {sub.reappeared && (
++          <p className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-2.5 text-xs text-amber-200">
++            This charged again after you cancelled. That usually means a UPI AutoPay mandate is still
++            active — revoke it in your UPI app under Autopay / Mandates.
++          </p>
++        )}
++      </motion.div>
++    );
++  }
++
+   return (
+     <motion.div
+-      variants={cardVariants}
+-      initial="hidden"
+-      animate="visible"
+-      transition={{ delay: index * 0.08 }}
+-      className={`rounded-2xl p-5 border ${
+-        sub.isZombie
+-          ? 'bg-red-500/5 border-red-500/20'
+-          : 'bg-zinc-900 border-zinc-800'
+-      }`}
++      variants={cardVariants} initial="hidden" animate="visible"
++      transition={{ delay: index * 0.06 }}
++      className={`rounded-2xl p-5 border ${sub.isZombie ? 'bg-red-500/5 border-red-500/20' : 'bg-zinc-900 border-zinc-800'}`}
+     >
+       <div className="flex items-start justify-between">
+         <div className="flex items-center gap-3">
+-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+-            sub.isZombie ? 'bg-red-500/15' : 'bg-zinc-800'
+-          }`}>
+-            {sub.isZombie
+-              ? <Ghost className="w-6 h-6 text-red-400" />
+-              : <CheckCircle className="w-6 h-6 text-lime-400" />}
++          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${sub.isZombie ? 'bg-red-500/15' : 'bg-zinc-800'}`}>
++            {sub.isZombie ? <Ghost className="w-6 h-6 text-red-400" /> : <CheckCircle className="w-6 h-6 text-lime-400" />}
+           </div>
+           <div>
+             <p className="text-[15px] font-bold text-white">{sub.merchant}</p>
+-            <p className="text-xs text-zinc-500 mt-0.5">
+-              {sub.category} · Every ~{sub.avgInterval} days
+-            </p>
++            <p className="text-xs text-zinc-500 mt-0.5">{sub.category} · Every ~{sub.avgInterval} days</p>
+           </div>
+         </div>
+         <div className="text-right">
+@@ -67,6 +93,68 @@ function ZombieCard({ sub, index }) {
+         </div>
+       )}
+ 
++      {/* What this actually costs you if you leave it running. */}
++      <p className="mt-3 text-xs text-zinc-400">
++        Left running, this is{' '}
++        <span className="font-bold text-white">
++          ₹{Number((sub.monthlyAmount || 0) * 12).toLocaleString('en-IN')}
++        </span>{' '}
++        a year.
++      </p>
++
++      <div className="mt-4 flex flex-wrap gap-2">
++        {guide.url ? (
++          <a
++            href={guide.url} target="_blank" rel="noopener noreferrer"
++            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.08] px-4 text-xs font-bold text-white hover:bg-white/[.12]"
++          >
++            Open cancel page <ExternalLink className="h-3.5 w-3.5" />
++          </a>
++        ) : (
++          <button
++            type="button" onClick={() => setShowHow((v) => !v)}
++            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.08] px-4 text-xs font-bold text-white hover:bg-white/[.12]"
++          >
++            How to cancel <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showHow ? 'rotate-180' : ''}`} />
++          </button>
++        )}
++        <button
++          type="button" onClick={() => onCancelled(sub)} disabled={busy}
++          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-lime-400 px-4 text-xs font-black text-black disabled:opacity-60"
++        >
++          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
++          I cancelled it
++        </button>
++      </div>
++
++      {guide.url && (
++        <button
++          type="button" onClick={() => setShowHow((v) => !v)}
++          className="mt-2 flex items-center gap-1 text-[11px] font-bold text-zinc-500 hover:text-zinc-300"
++        >
++          Steps <ChevronDown className={`h-3 w-3 transition-transform ${showHow ? 'rotate-180' : ''}`} />
++        </button>
++      )}
++
++      <AnimatePresence initial={false}>
++        {showHow && (
++          <motion.div
++            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
++            className="overflow-hidden"
++          >
++            <ol className="mt-3 space-y-1.5 rounded-xl bg-black/30 p-3">
++              {(guide.steps || []).map((step, i) => (
++                <li key={i} className="flex gap-2 text-xs leading-relaxed text-zinc-300">
++                  <span className="font-bold text-lime-400">{i + 1}.</span>
++                  <span>{step}</span>
++                </li>
++              ))}
++            </ol>
++            {guide.note && <p className="mt-2 px-1 text-[11px] leading-4 text-amber-300/80">{guide.note}</p>}
++          </motion.div>
++        )}
++      </AnimatePresence>
++
+       <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
+         <span>Total spent: ₹{Number(sub.totalSpent || 0).toLocaleString('en-IN')}</span>
+         <span>Last: {sub.lastPayment ? new Date(sub.lastPayment).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Unknown'}</span>
+@@ -75,6 +163,32 @@ function ZombieCard({ sub, index }) {
+   );
+ }
+ 
++/** The number that justifies the subscription. */
++function SavingsBanner({ savings }) {
++  if (!savings || savings.cancelledCount === 0) return null;
++  return (
++    <motion.div
++      variants={cardVariants} initial="hidden" animate="visible"
++      className="rounded-2xl border border-lime-500/25 bg-gradient-to-r from-lime-500/15 to-emerald-500/10 p-5"
++    >
++      <div className="flex items-center gap-3">
++        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-lime-400/20">
++          <PiggyBank className="h-6 w-6 text-lime-300" />
++        </span>
++        <div>
++          <p className="text-2xl font-black text-white">
++            ₹{Number(savings.totalSaved || 0).toLocaleString('en-IN')}
++          </p>
++          <p className="text-xs text-lime-200/80">
++            saved so far · {savings.cancelledCount} cancelled ·
++            ₹{Number(savings.annualisedSaving || 0).toLocaleString('en-IN')}/year avoided
++          </p>
++        </div>
++      </div>
++    </motion.div>
++  );
++}
++
+ function ShareCard({ totalWaste, zombieCount }) {
+   const handleShare = async () => {
+     const text = `🔍 Spendly just found ₹${totalWaste.toLocaleString('en-IN')} in ${zombieCount} zombie subscription${zombieCount !== 1 ? 's' : ''} I forgot about!\n\nHow much are you wasting? Find out → https://spendly.app`;
+@@ -124,32 +238,86 @@ export default function SubscriptionGraveyard() {
+   const [data, setData] = useState(null);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState(null);
++  const [busyName, setBusyName] = useState(null);
+ 
+-  useEffect(() => {
++  const authHeader = () => ({
++    'Content-Type': 'application/json',
++    Authorization: `Bearer ${session?.access_token}`,
++  });
++
++  /**
++   * Record a cancellation. Updates the row locally first so the card flips
++   * immediately — waiting on a round trip makes the app feel broken on a
++   * slow connection, and the worst case is a refresh showing the truth.
++   */
++  const markCancelled = async (sub) => {
++    setBusyName(sub.normalizedName);
++    const previous = data;
++    setData((d) => ({
++      ...d,
++      subscriptions: d.subscriptions.map((x) =>
++        x.normalizedName === sub.normalizedName ? { ...x, cancelled: true } : x
++      ),
++    }));
++
++    try {
++      const res = await apiFetch(`${API_URL}/subscriptions/cancelled`, {
++        method: 'POST',
++        headers: authHeader(),
++        body: JSON.stringify({ merchant: sub.merchant, monthlyAmount: sub.monthlyAmount }),
++      });
++      if (!res.ok) throw Object.assign(new Error('failed'), { status: res.status });
++      await fetchData();
++    } catch (err) {
++      setData(previous);
++      setError(friendlyError(err, "We couldn't save that. Please try again."));
++    } finally {
++      setBusyName(null);
++    }
++  };
++
++  const undoCancelled = async (sub) => {
++    setBusyName(sub.normalizedName);
++    try {
++      const res = await apiFetch(`${API_URL}/subscriptions/cancelled/${encodeURIComponent(sub.merchant)}`, {
++        method: 'DELETE',
++        headers: authHeader(),
++      });
++      if (!res.ok) throw Object.assign(new Error('failed'), { status: res.status });
++      await fetchData();
++    } catch (err) {
++      setError(friendlyError(err, "We couldn't undo that. Please try again."));
++    } finally {
++      setBusyName(null);
++    }
++  };
++
++  const fetchData = useCallback(async () => {
+     if (!session?.access_token) {
+       setLoading(false);
+       return;
+     }
+-
+-    const fetchSubscriptions = async () => {
+-      try {
+-        const res = await fetch(`${API_URL}/subscriptions/detect`, {
+-          headers: { Authorization: `Bearer ${session.access_token}` },
+-        });
+-        if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+-        const json = await res.json();
+-        if (json.success) setData(json);
+-        else setError(json.message);
+-      } catch (err) {
+-        setError(friendlyError(err, "We couldn't scan for subscriptions right now. Please try again."));
+-      } finally {
+-        setLoading(false);
++    try {
++      const res = await apiFetch(`${API_URL}/subscriptions/detect`, {
++        headers: { Authorization: `Bearer ${session.access_token}` },
++      });
++      if (!res.ok) throw Object.assign(new Error('failed'), { status: res.status });
++      const json = await res.json();
++      if (json.success) {
++        setData(json);
++        setError(null);
++      } else {
++        setError(json.message);
+       }
+-    };
+-
+-    fetchSubscriptions();
++    } catch (err) {
++      setError(friendlyError(err, "We couldn't scan for subscriptions right now. Please try again."));
++    } finally {
++      setLoading(false);
++    }
+   }, [session]);
+ 
++  useEffect(() => { fetchData(); }, [fetchData]);
++
+   if (loading) {
+     return (
+       <div className="min-h-[60vh] flex items-center justify-center">
+@@ -221,13 +389,22 @@ export default function SubscriptionGraveyard() {
+               </motion.div>
+             </div>
+ 
++            <SavingsBanner savings={data.savings} />
++
+             {/* Subscription list */}
+             <div className="space-y-3">
+               <p className="text-xs uppercase font-bold text-zinc-500 tracking-wider px-1">
+                 Total: ₹{Number(data.totalMonthlySubscriptions || 0).toLocaleString('en-IN')}/month
+               </p>
+               {(data.subscriptions || []).map((sub, idx) => (
+-                <ZombieCard key={sub.normalizedName} sub={sub} index={idx} />
++                <ZombieCard
++                  key={sub.normalizedName}
++                  sub={sub}
++                  index={idx}
++                  busy={busyName === sub.normalizedName}
++                  onCancelled={markCancelled}
++                  onUndo={undoCancelled}
++                />
+               ))}
+             </div>
+           </>
+diff --git a/supabase/v1_1_launch_hardening.sql b/supabase/v1_1_launch_hardening.sql
+index 5f47ca0..2df5798 100644
+--- a/supabase/v1_1_launch_hardening.sql
++++ b/supabase/v1_1_launch_hardening.sql
+@@ -127,3 +127,51 @@ alter table if exists public.ai_chat_history   enable row level security;
+ --     Expected: full_name, investment_target, monthly_budget
+ --     Anything else — especially is_pro or role — is a privilege-escalation bug.
+ -- ═══════════════════════════════════════════════════════════════════════════
++
++
++-- ═══════════════════════════════════════════════════════════════════════════
++-- v1.2 — Cancelled subscriptions ledger
++--
++-- Detecting a forgotten subscription is only half the feature; the value the
++-- user pays for is the money actually stopping. Recording what they cancelled
++-- lets Spendly show "we have saved you ₹X this year", which is the number that
++-- justifies the subscription and the one people screenshot.
++-- ═══════════════════════════════════════════════════════════════════════════
++
++create table if not exists public.cancelled_subscriptions (
++  id                uuid primary key default gen_random_uuid(),
++  user_id           uuid not null references public.profiles(id) on delete cascade,
++  merchant          text not null,
++  normalized_name   text not null,
++  monthly_amount    numeric(10,2) not null check (monthly_amount >= 0),
++  cancelled_at      timestamptz not null default now(),
++  -- Set if the user tells us the charge came back.
++  reappeared_at     timestamptz,
++  created_at        timestamptz not null default now(),
++  unique (user_id, normalized_name)
++);
++
++create index if not exists idx_cancelled_subs_user
++  on public.cancelled_subscriptions (user_id, cancelled_at desc);
++
++alter table public.cancelled_subscriptions enable row level security;
++
++drop policy if exists "Users can view own cancelled subscriptions" on public.cancelled_subscriptions;
++create policy "Users can view own cancelled subscriptions"
++  on public.cancelled_subscriptions for select
++  using (auth.uid() = user_id);
++
++drop policy if exists "Users can insert own cancelled subscriptions" on public.cancelled_subscriptions;
++create policy "Users can insert own cancelled subscriptions"
++  on public.cancelled_subscriptions for insert
++  with check (auth.uid() = user_id);
++
++drop policy if exists "Users can update own cancelled subscriptions" on public.cancelled_subscriptions;
++create policy "Users can update own cancelled subscriptions"
++  on public.cancelled_subscriptions for update
++  using (auth.uid() = user_id) with check (auth.uid() = user_id);
++
++drop policy if exists "Users can delete own cancelled subscriptions" on public.cancelled_subscriptions;
++create policy "Users can delete own cancelled subscriptions"
++  on public.cancelled_subscriptions for delete
++  using (auth.uid() = user_id);
