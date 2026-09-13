@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../contexts/AuthContext';
-import { apiUrl } from '../lib/apiConfig';
+import { apiUrl, apiFetch, authHeaders } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { lastNDays, localDateKey, startOfLocalMonth } from '../lib/dates';
 
@@ -41,15 +41,18 @@ export function useExpenses() {
     try {
       // The dashboard only needs this month and the last 7 days.
       const from = new Date(Math.min(startOfLocalMonth().getTime(), lastNDays(7)[0].start.getTime())).toISOString();
-      const response = await axios.get(API_URL, { headers: getHeaders(), params: { limit: 500, from } });
-      if (!response.data.success) throw new Error(response.data.message || 'Failed to fetch expenses');
-      setExpenses(response.data.expenses || []);
+      // apiFetch retries while the server wakes from a cold start.
+      const url = `${API_URL}?${new URLSearchParams({ limit: '500', from })}`;
+      const response = await apiFetch(url, { headers: authHeaders(session, { json: false }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw Object.assign(new Error(data.message || `HTTP ${response.status}`), { status: response.status, data });
+      setExpenses(data.expenses || []);
     } catch (err) {
       setError(friendlyError(err, "Couldn't load your expenses. Check your connection and try again."));
     } finally {
       setLoading(false);
     }
-  }, [session, getHeaders]);
+  }, [session]);
 
   useEffect(() => {
     fetchExpenses();

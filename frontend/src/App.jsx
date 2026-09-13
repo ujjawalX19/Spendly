@@ -21,6 +21,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const HostelPool = lazy(() => import('./pages/HostelPool'));
+const GroupDetail = lazy(() => import('./pages/GroupDetail'));
 const Chatbot = lazy(() => import('./pages/Chatbot'));
 const Wealth = lazy(() => import('./pages/Wealth'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -243,6 +244,7 @@ function App() {
                 <Route path="/dash" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
                 <Route path="/transactions" element={<ProtectedRoute><Layout><Transactions /></Layout></ProtectedRoute>} />
                 <Route path="/pool" element={<ProtectedRoute><Layout><HostelPool /></Layout></ProtectedRoute>} />
+                <Route path="/pool/:groupId" element={<ProtectedRoute><Layout><GroupDetail /></Layout></ProtectedRoute>} />
                 <Route path="/bot" element={<ProtectedRoute><Layout><Chatbot /></Layout></ProtectedRoute>} />
                 <Route path="/wealth" element={<ProtectedRoute><Layout><Wealth /></Layout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />

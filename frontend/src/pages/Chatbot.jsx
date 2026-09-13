@@ -10,15 +10,49 @@ import { friendlyError } from '../lib/errors';
 const MAX_CHARS = 500;
 
 const SUGGESTIONS = [
-    'Why did I spend more this month?',
-    'Can I afford a ₹3,000 purchase this week?',
-    'How does an emergency fund work?',
+    'Why did I overspend this month?',
+    'Give me a monthly summary',
+    'Can I afford ₹3,000 headphones?',
+    'How much can I spend per day?',
+    'How can I save more?',
+    'Any unusual spending?',
+    'Show my subscriptions',
+    'How long to save ₹50,000?',
 ];
+
+/**
+ * Render the coach's plain-text answer: "**Heading**" lines become section
+ * titles and "• " lines become a list. Everything else is text. No HTML from
+ * the server is ever injected.
+ */
+function AnswerText({ text }) {
+    const blocks = String(text || '').split(/\n{2,}/);
+    return (
+        <div className="space-y-2">
+            {blocks.map((block, i) => {
+                const lines = block.split('\n');
+                const heading = /^\*\*(.+)\*\*$/.exec(lines[0].trim());
+                const body = heading ? lines.slice(1) : lines;
+                const bullets = body.filter((l) => l.trim().startsWith('•'));
+                return (
+                    <div key={i}>
+                        {heading && <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[var(--color-neon-green)]">{heading[1]}</p>}
+                        {bullets.length === body.length && bullets.length > 0 ? (
+                            <ul className="space-y-0.5">{bullets.map((b, j) => <li key={j}>{b.replace(/^\s*•\s*/, '• ')}</li>)}</ul>
+                        ) : (
+                            <p className="whitespace-pre-wrap">{body.join('\n').replace(/\*\*/g, '')}</p>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
 
 const GREETING = {
     id: 'greeting',
     role: 'bot',
-    content: "Ask me about your spending — where it went, what you can afford, or how to save. I can also explain general money concepts. I don't recommend specific investments.",
+    content: "Ask me about your money: why spending changed, what you can afford, how much is safe to spend, recurring charges, or how long a goal will take. Every number comes from your own Spendly data. I don't recommend specific investments.",
 };
 
 /**
@@ -122,7 +156,7 @@ export default function Chatbot() {
                     <Bot className="w-6 h-6 text-[var(--color-neon-green)]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Money coach</h1>
+                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Spendly AI</h1>
                     <p className="text-sm text-[var(--color-text)]/70">
                         {remaining !== null ? `${remaining} free question${remaining === 1 ? '' : 's'} left today` : 'Answers based on your own spending'}
                     </p>
@@ -154,7 +188,7 @@ export default function Chatbot() {
                                             ? 'bg-red-500/10 border border-red-500/20 text-red-200 rounded-tl-none'
                                             : 'bg-zinc-900 border border-[var(--glass-border)] text-[var(--color-text)]/90 rounded-tl-none'
                                 }`}>
-                                    {msg.content}
+                                    {msg.role === 'bot' ? <AnswerText text={msg.content} /> : msg.content}
                                 </div>
                                 {msg.isLimitAlert && (
                                     <Link to="/pro" className="text-xs font-bold text-amber-300 underline">See what Spendly Pro will include</Link>
@@ -181,10 +215,10 @@ export default function Chatbot() {
 
             <div className="p-4 bg-black/40 backdrop-blur-md border-t border-[var(--glass-border)] rounded-b-2xl">
                 {messages.length <= 1 && (
-                    <div className="mb-3 flex flex-wrap gap-2">
+                    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
                         {SUGGESTIONS.map((s) => (
                             <button key={s} type="button" onClick={() => send(s)} disabled={isLoading || limitReached}
-                                className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-50">
+                                className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-50">
                                 {s}
                             </button>
                         ))}

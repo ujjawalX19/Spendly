@@ -263,8 +263,8 @@ export default function Features() {
           <FeatureCard
             icon={Users}
             iconColor="bg-purple-500/15 text-purple-400"
-            title="Group Splits (coming soon)"
-            description="Splitting shared expenses with friends is on the way."
+            title="Group Splits"
+            description="Split shared bills with an invite code, see who owes whom, and record settle-ups."
             className="lg:col-span-2"
             delay={0.2}
           >

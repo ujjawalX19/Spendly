@@ -51,35 +51,72 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * free-tier host, so it is worth handling properly rather than blaming the
  * network.
  *
- * Retries only on cold-start statuses and genuine network failures. A 401 or
- * a 400 is returned immediately: retrying a rejected request just wastes the
- * user's time.
+ * Retries only on cold-start statuses, timeouts and genuine network failures.
+ * A 401 or a 400 is returned immediately: retrying a rejected request just
+ * wastes the user's time.
+ *
+ * Only safe methods (GET/HEAD) are retried. Retrying a POST could record an
+ * expense or ask the AI twice.
+ *
+ * Each attempt has its own timeout, because a waking Render instance can hold
+ * a connection open instead of failing fast. Backoff 2s, 4s, 8s, 12s — with
+ * the timeouts this covers a typical 30–60 second cold start before giving up.
  *
  * @param {string} url
  * @param {RequestInit} options
- * @param {{retries?: number, onRetry?: (attempt: number) => void}} config
+ * @param {{retries?: number, timeoutMs?: number, onRetry?: (attempt: number) => void}} config
  */
-export async function apiFetch(url, options = {}, { retries = 3, onRetry } = {}) {
+export async function apiFetch(url, options = {}, { retries, timeoutMs = 25000, onRetry } = {}) {
+  const method = String(options.method || 'GET').toUpperCase();
+  const safe = method === 'GET' || method === 'HEAD';
+  const maxRetries = safe ? (retries ?? 4) : 0;
+  const delays = [2000, 4000, 8000, 12000];
   let lastError;
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
-      // 1s, 3s, 7s — enough to cover a typical cold start without leaving
-      // the user staring at a spinner forever.
-      await sleep([1000, 3000, 7000][attempt - 1] ?? 7000);
       onRetry?.(attempt);
+      await sleep(delays[attempt - 1] ?? 12000);
     }
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const onAbort = () => controller.abort();
+    options.signal?.addEventListener?.('abort', onAbort);
     try {
-      const response = await fetch(url, options);
+      const response = await fetch(url, { ...options, signal: controller.signal });
       if (response.ok || !COLD_START_STATUSES.has(response.status)) return response;
-
       lastError = Object.assign(new Error(`HTTP ${response.status}`), { status: response.status });
     } catch (err) {
-      // Network-level failure: no response at all.
-      lastError = err;
+      // The caller cancelled: stop, do not retry.
+      if (options.signal?.aborted) throw err;
+      // Timeout or network-level failure: no usable response.
+      lastError = err?.name === 'AbortError'
+        ? Object.assign(new Error('Request timed out'), { code: 'ECONNABORTED' })
+        : err;
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener?.('abort', onAbort);
     }
   }
 
   throw lastError ?? new Error('Request failed');
+}
+
+/**
+ * JSON request helper built on apiFetch: returns parsed JSON for 2xx, and
+ * throws an Error carrying `status` and the server body otherwise (the shape
+ * friendlyError() understands).
+ */
+export async function apiJson(path, { session, method = 'GET', body, onRetry } = {}) {
+  const response = await apiFetch(apiUrl(path), {
+    method,
+    headers: authHeaders(session, { json: body !== undefined }),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  }, { onRetry });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.success === false) {
+    throw Object.assign(new Error(data.message || `HTTP ${response.status}`), { status: response.status, data });
+  }
+  return data;
 }

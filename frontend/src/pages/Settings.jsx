@@ -399,7 +399,7 @@ export default function Settings() {
       <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">More</p>
         <SettingRow
-          icon={Users} label="Group Pool" value="Coming soon"
+          icon={Users} label="Group Pool" value="Split bills and settle up"
           color="text-sky-400" onClick={() => navigate('/pool')}
         />
         <SettingRow

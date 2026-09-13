@@ -37,6 +37,7 @@ function createApp() {
             if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
             return callback(null, false);
         },
+        exposedHeaders: ['X-Row-Count', 'Content-Disposition', 'RateLimit', 'RateLimit-Policy', 'Retry-After'],
     }));
 
     // Small default body limit. The receipt scan route raises its own limit

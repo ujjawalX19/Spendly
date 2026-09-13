@@ -1,300 +1,277 @@
 /**
- * Wealth.jsx — Spendly v1 (REWRITE)
- * ─────────────────────────────────────────────────────────────
- * What is left of this month's budget, round-ups and the user's own savings
- * target, from real data. The compounding chart is an illustration with a
- * user-chosen assumed rate — never a forecast and never tied to a product.
- * See FINANCIAL_CONTENT_REVIEW.md.
+ * Wealth — what the user's own data says about their money, and nothing more.
+ *
+ * Spendly does not know income, bank balances or investments, so this screen
+ * never shows portfolio values or performance. Everything is from
+ * GET /api/wealth; the only projection is labelled a hypothetical illustration
+ * with an assumed rate the user picks. See FINANCIAL_CONTENT_REVIEW.md.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-  TrendingUp, Wallet, Target, Sparkles, ArrowUpRight,
-  Calculator, Loader2, PiggyBank
-} from 'lucide-react';
-import {
-  Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
+import { Wallet, Target, PiggyBank, Calculator, Loader2, ArrowUpRight, Info, RefreshCw } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import InvestmentDisclaimer from '../components/InvestmentDisclaimer';
-import { API_URL as API_BASE_URL, apiFetch } from '../lib/apiConfig';
+import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 
-const API_URL = API_BASE_URL;
-const money = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
-
-// Future value of a fixed monthly contribution at a constant assumed rate:
-// M × {[(1+r)^n - 1] / r} × (1+r). Real returns are not constant and can be negative.
-const ASSUMED_RATES = [0.04, 0.06, 0.08, 0.1];
-const sipFV = (monthly, years, annual) => {
-  if (annual === 0) return monthly * years * 12;
-  const r = annual / 12;
-  const n = years * 12;
-  return monthly * (((1 + r) ** n - 1) / r) * (1 + r);
-};
+const inr = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
+const compactInr = (v) => (Math.abs(v) >= 100000 ? `₹${(v / 100000).toFixed(1)}L` : Math.abs(v) >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${Math.round(v)}`);
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.96 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 280, damping: 22 } },
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24 } },
 };
 
-function SipProjectionCard({ surplus }) {
-  const [rate, setRate] = useState(0.06);
-  const sipAmount = Math.max(100, Math.floor(surplus / 100) * 100);
-  const projections = [1, 3, 5].map(years => ({
-    years,
-    invested: sipAmount * years * 12,
-    value: Math.round(sipFV(sipAmount, years, rate)),
-    returns: Math.round(sipFV(sipAmount, years, rate) - sipAmount * years * 12),
-  }));
+const RATES = [0.04, 0.06, 0.08, 0.1];
+const HORIZONS = [1, 3, 5, 10];
 
-  // Chart data for 5-year projection
-  const chartData = [];
-  for (let m = 0; m <= 60; m += 6) {
-    const years = m / 12;
-    chartData.push({
-      month: `${m}m`,
-      invested: sipAmount * m,
-      projected: Math.round(sipFV(sipAmount, years, rate)),
-    });
+/** Future value of a fixed monthly contribution at a constant assumed annual rate. */
+function futureValue(monthly, years, annual) {
+  const n = years * 12;
+  if (annual === 0) return monthly * n;
+  const r = annual / 12;
+  return monthly * (((1 + r) ** n - 1) / r) * (1 + r);
+}
+
+function HistoryChart({ history, budget }) {
+  const data = history.map((h) => ({ label: h.label, spent: h.spent, inProgress: h.inProgress }));
+  const hasData = history.some((h) => h.transactions > 0);
+  if (!hasData) {
+    return <p className="py-10 text-center text-sm text-zinc-500">No expenses logged in the last six months yet.</p>;
   }
+  return (
+    <div className="h-52" role="img" aria-label="Monthly spending for the last six months">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 4, left: -12, bottom: 0 }}>
+          <CartesianGrid stroke="#27272a" vertical={false} />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#a1a1aa', fontSize: 11 }} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11 }} tickFormatter={compactInr} width={52} />
+          <Tooltip
+            cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+            contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 12 }}
+            labelStyle={{ color: '#e4e4e7' }}
+            formatter={(v, _n, item) => [inr(v), item?.payload?.inProgress ? 'Spent so far' : 'Spent']}
+          />
+          {budget > 0 && <ReferenceLine y={budget} stroke="#A3E635" strokeDasharray="5 4" label={{ value: 'Budget', fill: '#A3E635', fontSize: 10, position: 'insideTopRight' }} />}
+          <Bar dataKey="spent" radius={[6, 6, 0, 0]} fill="#38bdf8" fillOpacity={0.85} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function Illustration({ illustration }) {
+  const [rate, setRate] = useState(0.06);
+  const [years, setYears] = useState(5);
+  const [monthly, setMonthly] = useState(String(illustration.monthlyAmount || 1000));
+  const amount = Math.max(0, Math.min(10000000, Number(monthly) || 0));
+
+  const series = useMemo(() => {
+    const points = [];
+    const step = Math.max(1, Math.round((years * 12) / 20));
+    for (let m = 0; m <= years * 12; m += step) {
+      points.push({ label: m % 12 === 0 ? `${m / 12}y` : `${m}m`, putIn: amount * m, value: Math.round(futureValue(amount, m / 12, rate)) });
+    }
+    return points;
+  }, [amount, rate, years]);
+
+  const final = futureValue(amount, years, rate);
+  const putIn = amount * years * 12;
+
+  const basis = illustration.basis === 'savings_target'
+    ? 'Starting from your monthly savings target.'
+    : illustration.basis === 'average_leftover'
+      ? 'Starting from what your average spending leaves under your budget.'
+      : 'Enter an amount to see how regular saving compounds.';
 
   return (
-    <motion.div variants={cardVariants} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-6">
-      <div className="flex items-center gap-2 font-bold text-white mb-1">
-        <Calculator className="w-5 h-5 text-lime-400" />
-        How regular saving compounds
+    <motion.section variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+      <div className="flex items-center gap-2 font-bold text-white">
+        <Calculator className="h-5 w-5 text-lime-400" /> How regular saving compounds
+        <span className="ml-auto rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">Hypothetical</span>
       </div>
-      <p className="text-sm text-zinc-500 mb-3">
-        An illustration: {money(sipAmount)} put aside every month, growing at a constant assumed rate.
-      </p>
-      <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-zinc-400" role="radiogroup" aria-label="Assumed yearly growth rate">
-        Assumed rate:
-        {ASSUMED_RATES.map((r) => (
-          <button key={r} type="button" role="radio" aria-checked={rate === r} onClick={() => setRate(r)}
-            className={`rounded-lg border px-2.5 py-1 font-bold ${rate === r ? 'border-lime-400 bg-lime-400 text-black' : 'border-zinc-700 bg-zinc-800 text-zinc-300'}`}>
-            {Math.round(r * 100)}%
-          </button>
-        ))}
+      <p className="mt-1 text-xs text-zinc-500">{basis}</p>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <label className="text-xs text-zinc-400">
+          Monthly amount
+          <span className="relative mt-1 block">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">₹</span>
+            <input type="number" inputMode="numeric" min="0" step="100" value={monthly} onChange={(e) => setMonthly(e.target.value)}
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-800 py-2 pl-7 pr-2 font-mono text-zinc-100 outline-none focus:border-lime-500/60" />
+          </span>
+        </label>
+        <div className="text-xs text-zinc-400" role="radiogroup" aria-label="Assumed yearly rate">
+          Assumed yearly rate
+          <div className="mt-1 flex gap-1.5">
+            {RATES.map((r) => (
+              <button key={r} type="button" role="radio" aria-checked={rate === r} onClick={() => setRate(r)}
+                className={`flex-1 rounded-lg border py-2 font-bold ${rate === r ? 'border-lime-400 bg-lime-400 text-black' : 'border-zinc-700 bg-zinc-800 text-zinc-300'}`}>{Math.round(r * 100)}%</button>
+            ))}
+          </div>
+        </div>
+        <div className="text-xs text-zinc-400" role="radiogroup" aria-label="Time range">
+          Time range
+          <div className="mt-1 flex gap-1.5">
+            {HORIZONS.map((y) => (
+              <button key={y} type="button" role="radio" aria-checked={years === y} onClick={() => setYears(y)}
+                className={`flex-1 rounded-lg border py-2 font-bold ${years === y ? 'border-sky-400 bg-sky-400 text-black' : 'border-zinc-700 bg-zinc-800 text-zinc-300'}`}>{y}y</button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Chart */}
-      <div className="h-44 mb-5">
+      <div className="mt-4 h-44" role="img" aria-label="Illustration of saved amount growing at the assumed rate">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+          <AreaChart data={series} margin={{ top: 6, right: 4, left: -12, bottom: 0 }}>
             <defs>
-              <linearGradient id="sipFill" x1="0" x2="0" y1="0" y2="1">
+              <linearGradient id="illus" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="5%" stopColor="#a3e635" stopOpacity={0.3} />
                 <stop offset="95%" stopColor="#a3e635" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11 }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11 }}
-              tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
-            <Tooltip
-              contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px' }}
-              labelStyle={{ color: '#a1a1aa' }}
-              formatter={(v) => [money(v), '']}
-            />
-            <Area type="monotone" dataKey="invested" stroke="#71717a" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Invested" />
-            <Area type="monotone" dataKey="projected" stroke="#a3e635" strokeWidth={2.5} fill="url(#sipFill)" name="Projected" />
+            <CartesianGrid stroke="#27272a" vertical={false} />
+            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11 }} tickFormatter={compactInr} width={52} />
+            <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 12 }} formatter={(v, name) => [inr(v), name === 'value' ? 'Illustrated value' : 'Put in']} />
+            <Area type="monotone" dataKey="putIn" stroke="#71717a" strokeDasharray="4 4" fill="none" />
+            <Area type="monotone" dataKey="value" stroke="#a3e635" strokeWidth={2.5} fill="url(#illus)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Projection table */}
-      <div className="space-y-2">
-        {projections.map(p => (
-          <div key={p.years} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
-            <span className="text-sm text-zinc-400">{p.years} year{p.years > 1 ? 's' : ''}</span>
-            <div className="text-right">
-              <span className="text-sm font-bold text-white font-mono">{money(p.value)}</span>
-              <span className="text-xs text-zinc-500 ml-2">({money(p.invested)} put in)</span>
-            </div>
-          </div>
-        ))}
+      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-xl bg-zinc-950 p-3"><p className="text-xs text-zinc-500">Put in over {years} year{years === 1 ? '' : 's'}</p><p className="font-mono font-bold text-white">{inr(putIn)}</p></div>
+        <div className="rounded-xl bg-zinc-950 p-3"><p className="text-xs text-zinc-500">At a constant {Math.round(rate * 100)}% a year</p><p className="font-mono font-bold text-lime-300">{inr(final)}</p></div>
       </div>
-
-      <p className="text-[10px] text-zinc-600 mt-3">
-        Illustration only, not a forecast or a recommendation. Real investments do not grow at a constant rate, can lose value, and involve costs and taxes not shown here.
+      <p className="mt-3 flex items-start gap-1.5 text-[11px] text-zinc-500">
+        <Info className="mt-px h-3 w-3 shrink-0" />
+        Illustration only, not a forecast or recommendation. Real investments do not grow at a constant rate, can lose value, and have costs and taxes not shown.
       </p>
-    </motion.div>
+    </motion.section>
   );
 }
 
 export default function Wealth() {
-  const { session, user } = useAuth();
-  const [safeToSpend, setSafeToSpend] = useState(null);
-  const [burnRate, setBurnRate] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
+  const { session } = useAuth();
+  const [wealth, setWealth] = useState(null);
+  const [error, setError] = useState('');
   const [waking, setWaking] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    if (!session?.access_token) {
-      setLoading(false);
-      return;
-    }
-
+  const load = useCallback(async () => {
+    if (!session?.access_token) return;
+    setLoading(true);
+    setError('');
     try {
-      const headers = { Authorization: `Bearer ${session.access_token}` };
-      const parseResponse = async (response) => {
-        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
-        return response.json();
-      };
-      // The API sleeps on Render's free tier; the first request of the day
-      // gets a 502 while it wakes. Retry rather than blaming the network.
-      const onRetry = () => setWaking(true);
-      const [stsRes, brRes] = await Promise.all([
-        apiFetch(`${API_URL}/safe-to-spend`, { headers }, { onRetry }).then(parseResponse),
-        apiFetch(`${API_URL}/burn-rate`, { headers }, { onRetry }).then(parseResponse),
-      ]);
-      setWaking(false);
-
-      if (stsRes.success) setSafeToSpend(stsRes.safeToSpend);
-      if (brRes.success) setBurnRate(brRes.burnRate);
+      const data = await apiJson('/wealth', { session, onRetry: () => setWaking(true) });
+      setWealth(data.wealth);
     } catch (err) {
-      console.error('Wealth data fetch error:', err);
-      setLoadError(friendlyError(err, "We couldn't load your wealth figures. Check your connection and try again."));
+      setError(friendlyError(err, "We couldn't load your wealth figures."));
     } finally {
+      setWaking(false);
       setLoading(false);
     }
   }, [session]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { load(); }, [load]);
 
-  const monthlyBudget = user?.monthly_budget || 5000;
-  const totalChillar = parseFloat(user?.total_chillar || 0);
-  const investmentTarget = user?.investment_target || 0;
-  const surplus = Math.max(0, Number(safeToSpend?.remaining ?? monthlyBudget - (burnRate?.totalSpent || 0)) || 0);
-
-  if (loading) {
+  if (loading && !wealth) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center" role="status">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-lime-400 animate-spin mx-auto mb-3" />
-          <p className="text-zinc-500 text-sm">
-            {waking ? 'Waking the server up — this can take a moment…' : 'Loading your wealth data...'}
-          </p>
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-lime-400" />
+          <p className="text-sm text-zinc-500">{waking ? 'Waking the server up, this can take up to a minute…' : 'Loading your figures…'}</p>
         </div>
       </div>
     );
   }
 
-  // Showing zeros after a failed load would read as "you have no money
-  // tracked", which is a lie. Say what actually happened instead.
-  if (loadError) {
+  if (!wealth) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center p-6">
+      <div className="flex min-h-[60vh] items-center justify-center p-6">
         <div className="max-w-sm rounded-2xl border border-red-500/25 bg-red-500/10 p-5 text-center">
-          <p role="alert" className="text-sm text-red-100">{loadError}</p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-4 rounded-xl bg-red-500/20 px-4 py-2.5 text-xs font-bold text-red-100"
-          >
-            Try again
+          <p role="alert" className="text-sm text-red-100">{error || "We couldn't load your wealth figures."}</p>
+          <button type="button" onClick={load} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-500/20 px-4 py-2.5 text-xs font-bold text-red-100">
+            <RefreshCw className="h-3.5 w-3.5" /> Try again
           </button>
         </div>
       </div>
     );
   }
 
-  return (
-    <motion.div
-      className="min-h-screen bg-black p-4 md:p-6 text-white space-y-5 pb-28"
-      initial="hidden" animate="visible"
-      variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
-    >
-      {/* Header */}
-      <motion.div variants={cardVariants}>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">Wealth Dashboard</p>
-        <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl mt-1">Make your money feel expensive.</h1>
-        <p className="text-zinc-400 mt-1">What's left this month, your round-ups and your savings target, from your own data.</p>
-      </motion.div>
+  const m = wealth.month;
+  const noBudget = !m.budget;
 
-      {/* Investable Surplus Hero */}
-      <motion.div variants={cardVariants}
-        className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-xl"
-      >
+  return (
+    <motion.div className="space-y-5 pb-28 text-white" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }}>
+      <motion.header variants={cardVariants}>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">Wealth</p>
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Where your money stands</h1>
+        <p className="mt-1 text-sm text-zinc-400">From the expenses and budget you've set in Spendly. Income, bank balances and investments aren't tracked.</p>
+      </motion.header>
+
+      {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
+
+      <motion.section variants={cardVariants} className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
         <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-lime-400/10 blur-3xl" />
         <div className="relative">
-          <div className="flex items-center gap-2 text-sm font-medium text-zinc-400 mb-3">
-            <Wallet className="h-4 w-4 text-lime-400" />
-            Left in this month's budget
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-5xl font-extrabold tracking-tight text-white">{money(surplus)}</span>
-          </div>
-          <p className="mt-3 text-sm text-zinc-400">
-            Budget {money(monthlyBudget)} − Spent {money(burnRate?.totalSpent || 0)}
-            {investmentTarget > 0 && ` − Savings target ${money(investmentTarget)}`}
-            {safeToSpend?.upcomingBills > 0 && ` − Bills ${money(safeToSpend.upcomingBills)}`}
-          </p>
+          <div className="mb-2 flex items-center gap-2 text-sm text-zinc-400"><Wallet className="h-4 w-4 text-lime-400" /> Left in this month's budget</div>
+          {noBudget ? (
+            <p className="text-sm text-zinc-300">Set a monthly budget in <Link to="/settings" className="text-lime-400 underline">Settings</Link> to see what's left.</p>
+          ) : (
+            <>
+              <p className="text-5xl font-extrabold tracking-tight">{inr(m.leftAfterCommitments)}</p>
+              {m.shortfall > 0 && <p className="mt-1 text-sm font-bold text-rose-400">Short by {inr(m.shortfall)} after bills and your savings target</p>}
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+                <div><dt className="text-xs text-zinc-500">Budget</dt><dd className="font-mono">{inr(m.budget)}</dd></div>
+                <div><dt className="text-xs text-zinc-500">Spent</dt><dd className="font-mono">{inr(m.spent)} <span className="text-xs text-zinc-500">({m.budgetUsedPercent}%)</span></dd></div>
+                <div><dt className="text-xs text-zinc-500">Bills still due</dt><dd className="font-mono">{inr(m.upcomingBills)}</dd></div>
+                <div><dt className="text-xs text-zinc-500">Savings target</dt><dd className="font-mono">{inr(m.savingsTarget)}</dd></div>
+              </dl>
+              <p className="mt-2 text-xs text-zinc-500">{m.daysLeft} day{m.daysLeft === 1 ? '' : 's'} left this month</p>
+            </>
+          )}
         </div>
-      </motion.div>
+      </motion.section>
 
-      {/* Stats Grid */}
+      <motion.section variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-bold">Spending, last 6 months</h2>
+          {wealth.averageMonthlySpend !== null && <span className="text-xs text-zinc-500">Avg {inr(wealth.averageMonthlySpend)}/month</span>}
+        </div>
+        <HistoryChart history={wealth.history} budget={m.budget} />
+        <p className="mt-2 text-[11px] text-zinc-500">The current month is still in progress. The budget line shows your current budget.</p>
+      </motion.section>
+
       <div className="grid grid-cols-2 gap-3">
-        {/* Chillar Savings */}
         <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-            <PiggyBank className="w-4 h-4 text-lime-400" /> Round-ups
-          </div>
-          <p className="text-3xl font-extrabold">{money(totalChillar)}</p>
-          <p className="text-xs text-zinc-500 mt-1">Spare change to the next ₹5, for you to set aside</p>
+          <div className="mb-3 flex items-center gap-2 text-sm font-bold"><PiggyBank className="h-4 w-4 text-lime-400" /> Round-ups</div>
+          <p className="text-3xl font-extrabold">₹{wealth.roundUps.total.toLocaleString('en-IN')}</p>
+          <p className="mt-1 text-xs text-zinc-500">+₹{wealth.roundUps.thisMonth.toLocaleString('en-IN')} this month. Spare change to set aside yourself; Spendly doesn't move money.</p>
         </motion.div>
-
-        {/* Investment Target */}
         <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-            <Target className="w-4 h-4 text-sky-400" /> Monthly Target
-          </div>
-          <p className="text-3xl font-extrabold">
-            {investmentTarget > 0 ? money(investmentTarget) : '—'}
-          </p>
-          <p className="text-xs text-zinc-500 mt-1">
-            {investmentTarget > 0 ? 'Your monthly savings target' : 'Set a target in Settings'}
-          </p>
+          <div className="mb-3 flex items-center gap-2 text-sm font-bold"><Target className="h-4 w-4 text-sky-400" /> Monthly target</div>
+          <p className="text-3xl font-extrabold">{m.savingsTarget ? inr(m.savingsTarget) : '—'}</p>
+          <p className="mt-1 text-xs text-zinc-500">{m.savingsTarget ? 'Set aside before Safe-to-Spend is calculated' : <Link to="/settings" className="underline">Set a target in Settings</Link>}</p>
         </motion.div>
       </div>
 
-      {/* SIP Projection */}
-      {surplus > 100 && <SipProjectionCard surplus={surplus} />}
+      <Illustration illustration={wealth.illustration} />
 
-      {surplus <= 100 && (
-        <motion.div variants={cardVariants} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
-          <Sparkles className="w-6 h-6 text-amber-400 mb-3" />
-          <h2 className="text-lg font-bold text-white">Not much left this month</h2>
-          <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
-            About {money(surplus)} of this month's budget is left after spending and bills. Many people build an
-            emergency fund before putting money into investments that can go down in value.
-          </p>
-        </motion.div>
-      )}
-
-      {/* Quick Action */}
       <motion.div variants={cardVariants}>
-        <Link
-          to="/bot"
-          className="flex items-center justify-between rounded-2xl bg-lime-400 text-black p-4 font-bold hover:bg-lime-300 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-black">Ask the money coach</p>
-              <p className="text-xs font-bold text-black/60">Questions about your spending and money basics</p>
-            </div>
+        <Link to="/bot" className="flex items-center justify-between rounded-2xl bg-lime-400 p-4 font-bold text-black">
+          <div>
+            <p className="text-sm font-black">Ask Spendly AI</p>
+            <p className="text-xs font-bold text-black/60">"How long to save ₹50,000?" · "Can I afford ₹3,000?"</p>
           </div>
-          <ArrowUpRight className="w-5 h-5" />
+          <ArrowUpRight className="h-5 w-5" />
         </Link>
       </motion.div>
 
-      {/* Education disclaimer */}
       <InvestmentDisclaimer />
     </motion.div>
   );
