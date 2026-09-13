@@ -1,103 +1,160 @@
+import { Link } from 'react-router-dom';
+import { SUPPORTED_PAYMENT_APPS } from '../lib/supportedPaymentApps';
+import { SUPPORT_EMAIL, POLICY_LAST_UPDATED } from '../lib/legal';
+
 /**
- * PrivacyPolicy.jsx
- * ─────────────────────────────────────────────────────────────
- * Full privacy policy compliant with Google Play Store Data Safety
- * requirements. Must cover: data collection, AI processing,
- * third-party services, data deletion, children, and contact info.
+ * Privacy Policy.
+ *
+ * Every statement here must match the code. When a data flow changes, update
+ * this page and PRIVACY_DATA_INVENTORY.md in the same change. Do not add
+ * claims (encryption standards, AI training, certifications) that have not
+ * been verified.
  */
+
+function Section({ title, children }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-lg font-bold text-white">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-black text-white p-6 max-w-2xl mx-auto pb-28">
-      <h1 className="text-3xl font-black mb-2">Privacy Policy</h1>
-      <p className="text-zinc-400 mb-8">Last updated: August 2026</p>
+    <div className="min-h-screen bg-[#09090b] px-6 py-12 text-zinc-300">
+      <div className="mx-auto max-w-3xl">
+        <Link to="/" className="text-sm text-zinc-500 hover:text-zinc-300">← Spendly</Link>
+        <h1 className="mt-6 text-3xl font-black text-white">Privacy Policy</h1>
+        <p className="mt-2 text-sm text-zinc-500">Last updated: {POLICY_LAST_UPDATED}</p>
 
-      <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">1. Data We Collect</h2>
-          <p>Spendly collects the minimum data required to provide expense tracking services:</p>
-          <ul className="list-disc pl-5 mt-2 space-y-1 text-zinc-400">
-            <li><strong className="text-zinc-200">Account info:</strong> Email address and display name (via Supabase Auth or Google Sign-In).</li>
-            <li><strong className="text-zinc-200">Expense records:</strong> Amounts, categories, descriptions, and timestamps that you manually enter or import.</li>
-            <li><strong className="text-zinc-200">Receipt images:</strong> Photos you upload for AI scanning. Processed in memory, never stored permanently.</li>
-            <li><strong className="text-zinc-200">Device info:</strong> Push notification tokens (if you enable notifications). We do not collect device IDs, advertising IDs, or location data.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">2. PDF Processing & AI</h2>
+        <div className="mt-8 space-y-8 text-sm leading-7">
           <p>
-            When you upload a bank statement PDF, it is processed temporarily on our servers to extract transactions using Google Gemini AI.{' '}
-            <strong className="text-lime-400">The PDF file is immediately deleted after processing and is never stored on our servers.</strong>{' '}
-            We use Google Gemini AI for receipt scanning, transaction categorization, and financial insights. No personally identifiable financial data is used to train AI models.
+            This policy explains what information the Spendly Android app and web app collect, why, who processes it, how long
+            it is kept, and how to delete it. Spendly is an expense tracker. It does not move money, connect to your bank
+            account, or sell your data.
           </p>
-        </section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">3. How We Use Your Data</h2>
-          <ul className="list-disc pl-5 space-y-1 text-zinc-400">
-            <li>Calculate your Safe-to-Spend, Burn Rate, and Spend Score</li>
-            <li>Detect recurring subscriptions and spending patterns</li>
-            <li>Generate personalized financial education insights via AI</li>
-            <li>Send push notifications (only if you opt in)</li>
-            <li>Manage your Spendly Pro subscription</li>
-          </ul>
-        </section>
+          <Section title="1. Information you give us">
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong className="text-zinc-100">Account:</strong> your email address and name. If you sign in with Google, we receive your name and email address from Google. Passwords are handled by our authentication provider and are never visible to us.</li>
+              <li><strong className="text-zinc-100">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, payment notification, or statement import).</li>
+              <li><strong className="text-zinc-100">Budget settings:</strong> monthly budget, savings target, and recurring bills you add.</li>
+              <li><strong className="text-zinc-100">Coach conversations:</strong> the questions you ask the money coach and its answers.</li>
+            </ul>
+          </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">4. Data Storage & Security</h2>
-          <p>
-            Your data is stored securely in Supabase (PostgreSQL) with Row-Level Security (RLS) enabled. Each user can only access their own data. All connections use TLS encryption. We follow industry-standard security practices to protect your information.
-          </p>
-        </section>
+          <Section title="2. Information created while you use Spendly">
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Round-up totals, logging streaks, weekly Paisa Score history and statement-import history (bank name, number of transactions, statement period).</li>
+              <li>Usage counters for free-plan limits (for example, coach questions asked today).</li>
+              <li>Basic server logs needed to run and secure the service, such as request time and error type. Logs do not contain expense amounts, descriptions or notification text.</li>
+            </ul>
+            <p>We do not use advertising IDs, analytics or crash-reporting SDKs, or location data, and we do not show ads.</p>
+          </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">5. Third-Party Services</h2>
-          <p>Spendly uses the following third-party services:</p>
-          <ul className="list-disc pl-5 mt-2 space-y-1 text-zinc-400">
-            <li><strong className="text-zinc-200">Supabase:</strong> Authentication and database hosting</li>
-            <li><strong className="text-zinc-200">Google Gemini AI:</strong> Receipt scanning, transaction categorization, and financial education content</li>
-            <li><strong className="text-zinc-200">Google Play Billing:</strong> Subscription management for Spendly Pro</li>
-            <li><strong className="text-zinc-200">Render:</strong> Backend API hosting</li>
-          </ul>
-          <p className="mt-2">We do not use analytics SDKs, advertising networks, or social media trackers.</p>
-        </section>
+          <Section title="3. Payment notifications (Android, optional)">
+            <p>
+              If you turn on Android <strong className="text-zinc-100">Notification Access</strong> for Spendly, the app can
+              detect payments from these supported apps only:
+            </p>
+            <p className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs leading-6 text-zinc-400">
+              {SUPPORTED_PAYMENT_APPS.map((a) => a.name).join(', ')}.
+            </p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Notifications from every other app (for example WhatsApp, SMS/messages, email and social apps) are ignored and not read.</li>
+              <li>A supported notification is analysed on your phone. If it describes a completed payment, Spendly keeps only the amount, payee name, app name, time and payment type in a private queue on your device for up to 7 days. The notification text itself is not saved or uploaded.</li>
+              <li>Nothing is sent to our servers unless you tap <em>Add expense</em>. Only then are the amount, payee name and time saved to your account as an expense.</li>
+              <li>Spendly does not request SMS permission and does not read SMS.</li>
+              <li>You can turn Notification Access off at any time in Android settings.</li>
+            </ul>
+          </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">6. Data Sharing</h2>
-          <p>
-            <strong className="text-lime-400">We do not sell, rent, or trade your personal data to any third party.</strong>{' '}
-            Your financial data is private. We only share data with the third-party services listed above, solely for the purpose of providing Spendly's features.
-          </p>
-        </section>
+          <Section title="4. AI features and Google Gemini">
+            <p>Some features send content to Google's Gemini API, operated by Google LLC, to generate a result:</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong className="text-zinc-100">Receipt scan:</strong> the receipt photo you choose. We save the merchant name, item list and total; we do not store the photo.</li>
+              <li><strong className="text-zinc-100">Money coach:</strong> your question and a summary of your spending figures (for example monthly totals by category, budget and upcoming bills). Your name and email are not included.</li>
+              <li><strong className="text-zinc-100">Spending tip:</strong> when you are projected to exceed your budget, your budget, amount spent and top spending category.</li>
+              <li><strong className="text-zinc-100">Bank statement import</strong> (when available): the text of the PDF you upload. The file is processed in memory and not stored; the extracted transactions are saved.</li>
+            </ul>
+            <p>
+              Google processes this content under the{' '}
+              <a className="text-lime-400 underline" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini API Terms of Service</a>,
+              which describe how long Google may retain it and how Google may use it. AI output can be wrong. Please check amounts before relying on them.
+            </p>
+          </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">7. Account Deletion</h2>
-          <p>
-            You can permanently delete your account and all associated data at any time from <strong className="text-zinc-200">Settings → Delete Account</strong>. This action is irreversible and removes all your expenses, streak data, Spend Score history, group memberships, and profile information.
-          </p>
-        </section>
+          <Section title="5. How we use information">
+            <ul className="list-disc space-y-1 pl-5">
+              <li>To provide the app: show your spending, budget, forecasts and score, and answer your questions.</li>
+              <li>To enforce free-plan limits and prevent abuse (for example rate limiting).</li>
+              <li>To keep the service secure and fix problems.</li>
+            </ul>
+            <p>We do not sell or rent personal data, and we do not use your financial data for advertising.</p>
+          </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">8. Children's Privacy</h2>
-          <p>
-            Spendly is not directed at children under 13. We do not knowingly collect personal information from children. If you are a parent or guardian and believe your child has provided us with personal data, please contact us and we will delete it promptly.
-          </p>
-        </section>
+          <Section title="6. Service providers">
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong className="text-zinc-100">Supabase:</strong> authentication and database hosting.</li>
+              <li><strong className="text-zinc-100">Render:</strong> hosting for the Spendly API server.</li>
+              <li><strong className="text-zinc-100">Vercel:</strong> hosting for the Spendly website.</li>
+              <li><strong className="text-zinc-100">Google:</strong> Google Sign-In (if you choose it) and the Gemini API (section 4).</li>
+            </ul>
+            <p>These providers process data on our behalf and may store it on servers outside India.</p>
+            <p>Spendly does not currently offer in-app purchases or subscriptions, and does not send push notifications.</p>
+          </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">9. Changes to This Policy</h2>
-          <p>
-            We may update this privacy policy from time to time. We will notify you of any material changes through the app. Continued use of Spendly after changes constitutes acceptance of the updated policy.
-          </p>
-        </section>
+          <Section title="7. Security">
+            <p>
+              Data is sent over encrypted HTTPS connections. Database access rules allow each account to read only its own
+              records, and all changes go through our server. The Android app excludes your sign-in session from device backups.
+              No system is perfectly secure; if we become aware of a breach affecting your data we will notify you as required by law.
+            </p>
+          </Section>
 
-        <section>
-          <h2 className="text-lg font-bold text-white mb-2">10. Contact Us</h2>
-          <p>
-            If you have any questions about this privacy policy or your data, reach out to us at:{' '}
-            <a href="mailto:support@spendly.app" className="text-lime-400 underline">support@spendly.app</a>
-          </p>
-        </section>
+          <Section title="8. Stored on your device">
+            <p>
+              The app stores your sign-in session, whether you have completed onboarding, your choice about notification access,
+              and the pending payment queue described in section 3. Signing out removes the session and these app preferences from the device.
+            </p>
+          </Section>
+
+          <Section title="9. Retention">
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Account and expense data: kept until you delete it or delete your account.</li>
+              <li>Pending payment detections on your device: until you add or dismiss them, and at most 7 days.</li>
+              <li>Server logs: kept for a limited period for security and debugging.</li>
+              <li>Database backups kept by our hosting provider may contain deleted data until they expire on their normal schedule.</li>
+            </ul>
+          </Section>
+
+          <Section title="10. Your choices and rights">
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong className="text-zinc-100">Access and portability:</strong> export your expenses as a CSV file from Settings.</li>
+              <li><strong className="text-zinc-100">Correction:</strong> edit or delete any expense in the app.</li>
+              <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">spendly account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score and streak history, import history and coach conversations, and the group pools you created.</li>
+              <li><strong className="text-zinc-100">Withdraw consent:</strong> turn off Notification Access in Android settings, or stop using AI features.</li>
+            </ul>
+            <p>To exercise any right or raise a grievance, email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
+          </Section>
+
+          <Section title="11. Children">
+            <p>Spendly is intended for people aged 18 and over. We do not knowingly collect data from children. If you believe a child has created an account, contact us and we will delete it.</p>
+          </Section>
+
+          <Section title="12. Not financial advice">
+            <p>Spendly provides expense tracking and general financial education. It does not recommend any security, fund, broker or platform and is not a SEBI-registered investment adviser.</p>
+          </Section>
+
+          <Section title="13. Changes">
+            <p>If we change this policy we will update the date above and, for significant changes, tell you in the app before they take effect.</p>
+          </Section>
+
+          <Section title="14. Contact">
+            <p><a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
+          </Section>
+        </div>
       </div>
     </div>
   );

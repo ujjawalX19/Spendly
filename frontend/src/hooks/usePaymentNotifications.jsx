@@ -1,119 +1,78 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { UpiNotification } from '../plugins/UpiNotification';
 
 /**
- * Fingerprints of transactions already shown to the user.
+ * usePaymentNotifications — payments detected from supported UPI/bank app
+ * notifications, waiting for the user to confirm or dismiss.
  *
- * The native listener suppresses duplicates within its own process, but it is
- * restarted independently of the WebView — on reboot, after a crash, or when
- * the user re-grants notification access. Keeping a short client-side history
- * means a payment already recorded does not reappear after a restart.
+ * WHY A QUEUE
+ * Payments mostly happen while Spendly is closed. The Android listener service
+ * therefore stores each detection (amount, payee, app, time, kind — never the
+ * raw notification text) in a small app-private queue, and this hook reads that
+ * queue whenever the app is opened or resumed. Previously a detection was only
+ * delivered as a live event, so anything that happened while the dashboard was
+ * not on screen was silently lost, and a second payment overwrote the first.
  *
- * Deliberately small and best-effort: losing it costs at most one duplicate
- * prompt, which the user can dismiss.
+ * A detection leaves the queue only when the user logs it or dismisses it.
+ *
+ * NOT YET VERIFIED ON A DEVICE: background delivery depends on the OS keeping
+ * the notification listener bound (battery optimisation on some manufacturers
+ * can stop it). See DEVICE_TEST_CHECKLIST.md.
  */
-const SEEN_KEY = 'spendly.seenPayments.v1';
-const SEEN_LIMIT = 100;
 
-function loadSeen() {
+// Fingerprints the user already acted on, in case removing an item from the
+// native queue fails and it would otherwise reappear.
+const RESOLVED_KEY = 'spendly.seenPayments.v1';
+const RESOLVED_LIMIT = 200;
+
+function loadResolved() {
   try {
-    const raw = window.localStorage.getItem(SEEN_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.slice(-SEEN_LIMIT) : [];
+    const parsed = JSON.parse(window.localStorage.getItem(RESOLVED_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.slice(-RESOLVED_LIMIT) : [];
   } catch {
-    // Private mode, cleared site data, or corrupt JSON — start fresh.
     return [];
   }
 }
 
-function persistSeen(list) {
+function saveResolved(list) {
   try {
-    window.localStorage.setItem(SEEN_KEY, JSON.stringify(list.slice(-SEEN_LIMIT)));
-  } catch {
-    // Storage unavailable or full; in-memory dedup still applies this session.
-  }
+    window.localStorage.setItem(RESOLVED_KEY, JSON.stringify(list.slice(-RESOLVED_LIMIT)));
+  } catch { /* storage unavailable */ }
 }
 
-export function usePaymentNotifications({ onPaymentDetected } = {}) {
-  const [isSupported, setIsSupported] = useState(false);
+function normalise(payload) {
+  const amount = Number(payload?.amount);
+  if (!payload || !Number.isFinite(amount) || amount <= 0 || !payload.fingerprint) return null;
+  return {
+    fingerprint: String(payload.fingerprint),
+    amount,
+    kind: payload.kind || 'EXPENSE',
+    merchant: payload.merchant || 'Unknown',
+    app: payload.app || '',
+    timestamp: Number(payload.timestamp) || Date.now(),
+    needsConfirmation: Boolean(payload.needsConfirmation),
+  };
+}
+
+export function usePaymentNotifications() {
+  const isSupported = Capacitor.getPlatform() === 'android';
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [permissionChecked, setPermissionChecked] = useState(!isSupported);
+  const [pending, setPending] = useState([]);
+  const resolvedRef = useRef(null);
+  if (resolvedRef.current === null) resolvedRef.current = loadResolved();
 
-  const seenRef = useRef(null);
-  if (seenRef.current === null) seenRef.current = loadSeen();
-
-  // Keep the latest callback in a ref so re-registering the native listener
-  // is not required every time the consumer re-renders.
-  const callbackRef = useRef(onPaymentDetected);
-  useEffect(() => { callbackRef.current = onPaymentDetected; }, [onPaymentDetected]);
-
-  // 1. Initial permission check
-  useEffect(() => {
-    if (Capacitor.getPlatform() !== 'android') {
-      setIsSupported(false);
-      return;
-    }
-    setIsSupported(true);
-
-    UpiNotification.checkPermission()
-      .then(({ granted }) => setPermissionGranted(Boolean(granted)))
-      .catch(() => setPermissionGranted(false));
+  const mergeIntoPending = useCallback((items) => {
+    const fresh = items.map(normalise).filter(Boolean)
+      .filter((p) => !resolvedRef.current.includes(p.fingerprint));
+    setPending((prev) => {
+      const byId = new Map(prev.map((p) => [p.fingerprint, p]));
+      for (const p of fresh) if (!byId.has(p.fingerprint)) byId.set(p.fingerprint, p);
+      return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp);
+    });
   }, []);
-
-  // 2. Listen for detected payments
-  useEffect(() => {
-    if (!isSupported || !permissionGranted) return undefined;
-
-    let listener = null;
-    let cancelled = false;
-
-    UpiNotification.addListener('paymentDetected', (payload) => {
-      if (!payload) return;
-
-      // The native side classifies; the UI must not assume every event is
-      // spending. FAILED and UNKNOWN never reach here at all.
-      const kind = payload.kind || 'EXPENSE';
-      const amount = Number(payload.amount);
-      if (!Number.isFinite(amount) || amount <= 0) return;
-
-      const fingerprint = payload.fingerprint;
-      if (fingerprint) {
-        if (seenRef.current.includes(fingerprint)) return;
-        seenRef.current = [...seenRef.current, fingerprint].slice(-SEEN_LIMIT);
-        persistSeen(seenRef.current);
-      }
-
-      callbackRef.current?.({
-        ...payload,
-        amount,
-        kind,
-        merchant: payload.merchant || 'Unknown',
-        needsConfirmation: Boolean(payload.needsConfirmation),
-      });
-    })
-      .then((l) => {
-        if (cancelled) { l.remove(); return; }
-        listener = l;
-      })
-      .catch(() => { /* listener unavailable; the app still works manually */ });
-
-    return () => {
-      cancelled = true;
-      listener?.remove();
-    };
-  }, [isSupported, permissionGranted]);
-
-  // 3. Send the user to the system settings screen
-  const requestPermission = useCallback(async () => {
-    if (!isSupported) return;
-    try {
-      await UpiNotification.requestNotificationPermission();
-      // Android takes the user out of the app to grant this, so the result is
-      // not known here. checkPermissionNow() is called when the app resumes.
-    } catch {
-      // Nothing useful to do; the banner stays visible.
-    }
-  }, [isSupported]);
 
   const checkPermissionNow = useCallback(async () => {
     if (!isSupported) return false;
@@ -122,9 +81,86 @@ export function usePaymentNotifications({ onPaymentDetected } = {}) {
       setPermissionGranted(Boolean(granted));
       return Boolean(granted);
     } catch {
+      setPermissionGranted(false);
       return false;
+    } finally {
+      setPermissionChecked(true);
     }
   }, [isSupported]);
 
-  return { isSupported, permissionGranted, requestPermission, checkPermissionNow };
+  const syncQueue = useCallback(async () => {
+    if (!isSupported) return;
+    try {
+      const { payments } = await UpiNotification.getPendingPayments();
+      mergeIntoPending(Array.isArray(payments) ? payments : []);
+    } catch {
+      // Older native build without the queue: live events still work.
+    }
+  }, [isSupported, mergeIntoPending]);
+
+  // Initial permission check and queue read.
+  useEffect(() => {
+    if (!isSupported) return;
+    checkPermissionNow();
+    syncQueue();
+  }, [isSupported, checkPermissionNow, syncQueue]);
+
+  // Re-check when the app returns to the foreground (e.g. back from Settings).
+  useEffect(() => {
+    if (!isSupported) return undefined;
+    let handle;
+    let cancelled = false;
+    CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        checkPermissionNow();
+        syncQueue();
+      }
+    }).then((h) => { if (cancelled) h.remove(); else handle = h; }).catch(() => {});
+    return () => {
+      cancelled = true;
+      handle?.remove();
+    };
+  }, [isSupported, checkPermissionNow, syncQueue]);
+
+  // Live events while the app is open.
+  useEffect(() => {
+    if (!isSupported || !permissionGranted) return undefined;
+    let handle;
+    let cancelled = false;
+    UpiNotification.addListener('paymentDetected', (payload) => mergeIntoPending([payload]))
+      .then((h) => { if (cancelled) h.remove(); else handle = h; })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      handle?.remove();
+    };
+  }, [isSupported, permissionGranted, mergeIntoPending]);
+
+  /** The user logged or dismissed this detection: remove it everywhere. */
+  const resolvePayment = useCallback(async (fingerprint) => {
+    resolvedRef.current = [...resolvedRef.current, fingerprint].slice(-RESOLVED_LIMIT);
+    saveResolved(resolvedRef.current);
+    setPending((prev) => prev.filter((p) => p.fingerprint !== fingerprint));
+    try {
+      await UpiNotification.removePendingPayment({ fingerprint });
+    } catch { /* the resolved list prevents it reappearing */ }
+  }, []);
+
+  /** Opens Android's Notification Access screen. Only ever call from a user tap. */
+  const openPermissionSettings = useCallback(async () => {
+    if (!isSupported) return;
+    try {
+      await UpiNotification.requestNotificationPermission();
+    } catch { /* nothing useful to do */ }
+  }, [isSupported]);
+
+  return {
+    isSupported,
+    permissionGranted,
+    permissionChecked,
+    pending,
+    resolvePayment,
+    openPermissionSettings,
+    checkPermissionNow,
+  };
 }

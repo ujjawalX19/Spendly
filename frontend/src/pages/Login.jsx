@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, LockKeyhole, Mail, Loader2, ChevronDown } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
+import { useOAuthBrowserReset } from '../hooks/useOAuthBrowserReset';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -14,6 +15,9 @@ export default function Login() {
     const [showEmailForm, setShowEmailForm] = useState(false);
     const { login, loginWithGoogle, session } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const accountDeleted = Boolean(location.state?.accountDeleted);
+    useOAuthBrowserReset(() => setGoogleLoading(false));
 
     useEffect(() => {
         if (session) {
@@ -47,7 +51,7 @@ export default function Login() {
             setError(res.message || 'Google login failed');
             setGoogleLoading(false);
         }
-        // On success, Supabase redirects to Google OAuth — no manual navigation needed
+        // On success the browser (web) or Custom Tab (Android) takes over.
     };
 
     return (
@@ -59,6 +63,12 @@ export default function Login() {
                     <h1 id="login-title" className="mt-3 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">Good to see you.</h1>
                     <p className="mt-2 text-sm leading-6 text-zinc-400">Sign in to pick up where your money left off.</p>
                 </div>
+
+                {accountDeleted && !error && (
+                    <div className="rounded-xl border border-lime-400/30 bg-lime-400/10 p-3 text-center text-sm text-lime-200" role="status">
+                        Your account and data have been deleted.
+                    </div>
+                )}
 
                 {/* Error alert */}
                 {error && (
@@ -124,7 +134,10 @@ export default function Login() {
                                 </div>
                             </div>
                             <div>
-                                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-zinc-300">Password</label>
+                                <div className="mb-2 flex items-center justify-between">
+                                    <label htmlFor="password" className="block text-sm font-semibold text-zinc-300">Password</label>
+                                    <Link to="/forgot-password" className="text-xs font-semibold text-lime-300 hover:underline">Forgot password?</Link>
+                                </div>
                                 <div className="relative">
                                     <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                                     <input

@@ -1,4 +1,4 @@
-import { ShieldCheck, Database, Lock } from 'lucide-react';
+import { ShieldCheck, Trash2, Lock } from 'lucide-react';
 
 export default function SecurityBanner() {
   return (
@@ -10,21 +10,21 @@ export default function SecurityBanner() {
         
         <div className="flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-emerald-400" />
-          <span>Bank-Grade Security</span>
+          <span>Each account can read only its own data</span>
         </div>
 
         <div className="hidden md:block w-1.5 h-1.5 rounded-full bg-zinc-800" />
 
         <div className="flex items-center gap-3">
-          <Database className="h-5 w-5 text-lime-400" />
-          <span>Powered by PostgreSQL</span>
+          <Trash2 className="h-5 w-5 text-lime-400" />
+          <span>Export or delete your data any time</span>
         </div>
 
         <div className="hidden md:block w-1.5 h-1.5 rounded-full bg-zinc-800" />
 
         <div className="flex items-center gap-3">
           <Lock className="w-5 h-5 text-emerald-400" />
-          <span>Data Fully Encrypted</span>
+          <span>HTTPS everywhere · no SMS access</span>
         </div>
 
       </div>

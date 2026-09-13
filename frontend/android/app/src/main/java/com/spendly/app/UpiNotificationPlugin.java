@@ -1,206 +1,139 @@
 package com.spendly.app;
 
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.core.app.NotificationManagerCompat;
+
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.List;
+
 /**
- * UpiNotificationPlugin
+ * UpiNotificationPlugin — bridge between the notification listener and the
+ * web layer.
  *
- * Capacitor plugin bridge that:
- *  1. Exposes requestNotificationPermission() to the React web layer
- *     — redirects user to Android Settings → Notification Access.
- *  2. Exposes checkPermission() to silently detect current permission state.
- *  3. Receives payment data from PaymentNotificationListener (static bridge)
- *     and fires a "paymentDetected" event to the JavaScript layer.
- *
- * Plugin name registered as "UpiNotification" — used in:
- *   import { registerPlugin } from '@capacitor/core';
- *   const UpiNotification = registerPlugin('UpiNotification');
+ *   checkPermission() / hasNotificationAccess()  -> { granted }
+ *   requestNotificationPermission() / openNotificationSettings()
+ *        Opens Android's Notification Access screen. The web layer must only
+ *        call this from an explicit user tap.
+ *   getPendingPayments()                          -> { payments: [...] }
+ *   removePendingPayment({ fingerprint })        -> { removed }
+ *   event "paymentDetected"                       live copy of a queued detection
  */
 @CapacitorPlugin(name = "UpiNotification")
 public class UpiNotificationPlugin extends Plugin {
 
     private static final String TAG = "UpiNotificationPlugin";
 
-    // Static reference to the active plugin instance so that
-    // PaymentNotificationListener (instantiated by Android, not Capacitor)
-    // can call notifyListeners without needing a plugin reference.
-    private static UpiNotificationPlugin instance;
+    // The live plugin instance, if the app is running. Notifications that
+    // arrive while it is null are still kept in PendingPaymentStore.
+    private static volatile UpiNotificationPlugin instance;
 
     @Override
     public void load() {
         super.load();
         instance = this;
-        Log.d(TAG, "UpiNotificationPlugin loaded and registered.");
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // Static bridge: called by PaymentNotificationListener
-    // ──────────────────────────────────────────────────────────────────────
+    @Override
+    protected void handleOnDestroy() {
+        if (instance == this) instance = null;
+        super.handleOnDestroy();
+    }
 
-    /**
-     * Called from PaymentNotificationListener when a UPI payment is detected.
-     * Fires a "paymentDetected" event to JavaScript listeners.
-     */
-    public static void notifyPayment(String appName, double amount,
-                                     String merchant, long timestamp,
-                                     String kind, boolean needsConfirmation,
-                                     String fingerprint) {
-        if (instance == null) {
-            Log.w(TAG, "Plugin instance not ready — payment event dropped.");
+    static void notifyPayment(PendingPaymentQueue.Entry entry) {
+        UpiNotificationPlugin plugin = instance;
+        if (plugin == null) return;
+        try {
+            plugin.notifyListeners("paymentDetected", toJs(entry));
+        } catch (Exception e) {
+            Log.w(TAG, "Could not deliver a live payment event");
+        }
+    }
+
+    private static JSObject toJs(PendingPaymentQueue.Entry e) {
+        JSObject o = new JSObject();
+        o.put("fingerprint", e.fingerprint);
+        o.put("kind", e.kind);
+        o.put("amount", e.amount);
+        o.put("merchant", e.merchant);
+        o.put("app", e.app);
+        o.put("timestamp", e.timestamp);
+        o.put("needsConfirmation", e.needsConfirmation);
+        return o;
+    }
+
+    @PluginMethod
+    public void getPendingPayments(PluginCall call) {
+        try {
+            List<PendingPaymentQueue.Entry> entries = PendingPaymentStore.list(getContext());
+            JSArray payments = new JSArray();
+            for (PendingPaymentQueue.Entry e : entries) payments.put(toJs(e));
+            JSObject result = new JSObject();
+            result.put("payments", payments);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Could not read pending payments");
+        }
+    }
+
+    @PluginMethod
+    public void removePendingPayment(PluginCall call) {
+        String fingerprint = call.getString("fingerprint");
+        if (fingerprint == null || fingerprint.isEmpty()) {
+            call.reject("fingerprint is required");
             return;
         }
-
-        try {
-            JSObject payload = new JSObject();
-            payload.put("app",       appName);
-            payload.put("amount",    amount);
-            payload.put("merchant",  merchant);
-            payload.put("timestamp", timestamp);
-            // EXPENSE | INCOME | REFUND — the JS layer must not assume spending.
-            payload.put("kind",      kind);
-            // When true the UI has to ask the user before saving anything.
-            payload.put("needsConfirmation", needsConfirmation);
-            // Stable key so the JS layer can suppress repeats across restarts.
-            payload.put("fingerprint", fingerprint);
-
-            instance.notifyListeners("paymentDetected", payload);
-            // The payload contains an amount and a payee name. Never log it.
-            Log.d(TAG, "paymentDetected event fired");
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error notifying JS layer: " + e.getMessage(), e);
-        }
+        JSObject result = new JSObject();
+        result.put("removed", PendingPaymentStore.remove(getContext(), fingerprint));
+        call.resolve(result);
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // Plugin Methods (callable from JavaScript)
-    // ──────────────────────────────────────────────────────────────────────
-
-    /**
-     * Opens Android Notification Access settings so the user can grant
-     * the required permission. Cannot be granted programmatically by design.
-     *
-     * Usage (JS):
-     *   await UpiNotification.requestNotificationPermission();
-     */
     @PluginMethod
     public void requestNotificationPermission(PluginCall call) {
-        try {
-            Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getContext().startActivity(intent);
-            call.resolve();
-        } catch (Exception e) {
-            Log.e(TAG, "Could not open notification settings: " + e.getMessage(), e);
-            call.reject("Could not open notification settings: " + e.getMessage());
-        }
+        openSettings(call);
     }
 
-    /**
-     * Silently checks if Notification Access is already granted for this app.
-     * Does NOT prompt the user.
-     *
-     * Usage (JS):
-     *   const { granted } = await UpiNotification.checkPermission();
-     *
-     * Returns: { granted: boolean }
-     */
-    @PluginMethod
-    public void checkPermission(PluginCall call) {
-        try {
-            boolean granted = isNotificationAccessGranted(getContext());
-
-            JSObject result = new JSObject();
-            result.put("granted", granted);
-            call.resolve(result);
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking permission: " + e.getMessage(), e);
-            call.reject("Error checking permission: " + e.getMessage());
-        }
-    }
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Explicit Permission API (clean names for the React permission hook)
-    // ──────────────────────────────────────────────────────────────────────
-
-    /**
-     * Checks if this app has Notification Listener access.
-     * This is a dedicated, cleanly-named method for the permission banner flow.
-     *
-     * Usage (JS):
-     *   const { granted } = await UpiNotification.hasNotificationAccess();
-     *
-     * Returns: { granted: boolean }
-     */
-    @PluginMethod
-    public void hasNotificationAccess(PluginCall call) {
-        try {
-            boolean granted = isNotificationAccessGranted(getContext());
-            JSObject result = new JSObject();
-            result.put("granted", granted);
-            call.resolve(result);
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking notification access: " + e.getMessage(), e);
-            call.reject("Error checking notification access: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Opens the Android Notification Listener Settings screen so the user
-     * can toggle the switch for this app.
-     *
-     * Usage (JS):
-     *   await UpiNotification.openNotificationSettings();
-     */
     @PluginMethod
     public void openNotificationSettings(PluginCall call) {
+        openSettings(call);
+    }
+
+    private void openSettings(PluginCall call) {
         try {
             Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(intent);
             call.resolve();
         } catch (Exception e) {
-            Log.e(TAG, "Could not open notification settings: " + e.getMessage(), e);
-            call.reject("Could not open notification settings: " + e.getMessage());
+            call.reject("Could not open notification settings");
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // Private helpers
-    // ──────────────────────────────────────────────────────────────────────
+    @PluginMethod
+    public void checkPermission(PluginCall call) {
+        resolveGranted(call);
+    }
 
-    /**
-     * Reads the "enabled_notification_listeners" secure setting to determine
-     * if this app's NotificationListenerService is enabled.
-     */
-    private boolean isNotificationAccessGranted(Context context) {
-        String enabledListeners = Settings.Secure.getString(
-            context.getContentResolver(),
-            "enabled_notification_listeners"
-        );
+    @PluginMethod
+    public void hasNotificationAccess(PluginCall call) {
+        resolveGranted(call);
+    }
 
-        if (TextUtils.isEmpty(enabledListeners)) return false;
-
-        // Check if our package name appears in the colon-separated list
-        String packageName = context.getPackageName();
-        String[] parts = enabledListeners.split(":");
-
-        for (String part : parts) {
-            if (part.contains(packageName)) return true;
-        }
-
-        return false;
+    private void resolveGranted(PluginCall call) {
+        JSObject result = new JSObject();
+        // Exact package match. The previous substring check on the secure
+        // setting could report access for a different app whose package name
+        // merely contained ours.
+        result.put("granted", NotificationManagerCompat.getEnabledListenerPackages(getContext())
+            .contains(getContext().getPackageName()));
+        call.resolve(result);
     }
 }

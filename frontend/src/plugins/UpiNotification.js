@@ -1,18 +1,17 @@
 import { registerPlugin } from '@capacitor/core';
 
 /**
- * UpiNotification Plugin
- * 
- * Bridging Android's NotificationListenerService to the React frontend.
- * 
- * Methods:
- * - requestNotificationPermission(): Opens Android Settings to grant access
- * - checkPermission(): Returns { granted: boolean } silently
- * - hasNotificationAccess(): Returns { granted: boolean } — clean alias for permission banner
- * - openNotificationSettings(): Opens Android Notification Listener Settings screen
- * 
- * Events:
- * - addListener('paymentDetected', (payload) => void)
- *   Payload: { app: string, amount: number, merchant: string, timestamp: number }
+ * UpiNotification — native bridge to the Android payment-notification listener
+ * (android/app/src/main/java/com/spendly/app/UpiNotificationPlugin.java).
+ *
+ *   checkPermission()                    -> { granted: boolean }
+ *   requestNotificationPermission()      opens Android Notification Access settings
+ *                                        (call only from an explicit user tap)
+ *   getPendingPayments()                 -> { payments: PendingPayment[] }
+ *   removePendingPayment({ fingerprint }) -> { removed: boolean }
+ *   addListener('paymentDetected', cb)   live copy of a newly queued detection
+ *
+ * PendingPayment: { fingerprint, kind: 'EXPENSE'|'INCOME'|'REFUND', amount,
+ *                   merchant, app, timestamp, needsConfirmation }
  */
 export const UpiNotification = registerPlugin('UpiNotification');

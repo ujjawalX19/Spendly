@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from '../lib/legal';
 /**
  * TermsOfService.jsx
  * ─────────────────────────────────────────────────────────────
@@ -7,7 +8,7 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-black text-white p-6 max-w-2xl mx-auto pb-28">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
-      <p className="text-zinc-400 mb-8">Last updated: August 2026</p>
+      <p className="text-zinc-400 mb-8">Last updated: 13 September 2026</p>
 
       <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
         <section>
@@ -22,7 +23,7 @@ export default function TermsOfService() {
           <p>
             Spendly provides financial education, expense tracking, and spending pattern recognition.{' '}
             <strong className="text-amber-400">We are not a SEBI-registered financial advisor, bank, NBFC, or any regulated financial entity.</strong>{' '}
-            Any investment projections shown are based on historical averages and do not guarantee future returns. Always consult a certified financial advisor before making investment decisions.
+            Any compounding illustrations use assumed rates chosen for illustration; they are not forecasts, and real investments can lose value. Spendly is not a SEBI-registered investment adviser and does not recommend any security, fund, broker or platform. Consider consulting a SEBI-registered investment adviser before making investment decisions.
           </p>
         </section>
 
@@ -34,16 +35,16 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">4. Spendly Pro Subscriptions</h2>
+          <h2 className="text-lg font-bold text-white mb-2">4. Spendly Pro</h2>
           <p>
-            Spendly Pro is an auto-renewing monthly subscription at ₹99/month, managed through Google Play Billing. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can cancel at any time through your Google Play account settings. Refunds are subject to Google Play's refund policy.
+            Spendly Pro is not yet available and cannot be purchased. No subscription or payment is taken through the app. If paid plans are introduced, their price, billing and cancellation terms will be shown before purchase and these terms will be updated.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">5. In-App Purchases</h2>
+          <h2 className="text-lg font-bold text-white mb-2">5. Free plan limits</h2>
           <p>
-            Streak Freezes and other consumable purchases are non-refundable once used. All purchases are processed through Google Play Billing and are subject to Google's purchase policies.
+            The free plan includes daily and monthly limits (for example on money-coach questions and receipt scans) and rate limits that protect the service. Limits are shown in the app and may change with notice.
           </p>
         </section>
 
@@ -76,7 +77,7 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">9. Account Termination</h2>
           <p>
-            We reserve the right to suspend or terminate accounts that violate these terms. You may delete your account at any time from Settings. Upon deletion, all your data is permanently removed and cannot be recovered.
+            We reserve the right to suspend or terminate accounts that violate these terms. You may delete your account at any time from Settings or by following the steps on the account deletion page. Deletion is permanent; see the Privacy Policy for what is removed and what backups may temporarily retain.
           </p>
         </section>
 
@@ -91,7 +92,7 @@ export default function TermsOfService() {
           <h2 className="text-lg font-bold text-white mb-2">11. Contact</h2>
           <p>
             For questions about these terms, contact us at:{' '}
-            <a href="mailto:support@spendly.app" className="text-lime-400 underline">support@spendly.app</a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-lime-400 underline">{SUPPORT_EMAIL}</a>
           </p>
         </section>
       </div>

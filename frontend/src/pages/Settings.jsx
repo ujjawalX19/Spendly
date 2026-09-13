@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
   ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
-  Users, Skull
+  Users, Repeat
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
@@ -206,11 +206,12 @@ function DeleteAccountModal({ onClose, onDelete }) {
         </div>
         <p className="text-sm text-zinc-400 mb-2">This will permanently delete:</p>
         <ul className="text-xs text-zinc-500 space-y-1 mb-4 list-disc pl-4">
-          <li>All your expenses and transaction history</li>
-          <li>Your Spend Score and streak data</li>
-          <li>Group memberships and settlements</li>
-          <li>Your Spendly account and profile</li>
+          <li>Your login, and you will be signed out on every device</li>
+          <li>All expenses, recurring bills and statement-import history</li>
+          <li>Your Paisa Score history, streaks and AI coach conversations</li>
+          <li>Group pools you created, and your membership of other pools</li>
         </ul>
+        <p className="text-xs text-zinc-500 mb-4">This cannot be undone. Export your expenses first if you want a copy.</p>
         <p className="text-sm text-zinc-400 mb-3">Type <span className="font-mono text-red-400 font-bold">DELETE</span> to confirm:</p>
         <input
           type="text" value={confirmation}
@@ -238,7 +239,7 @@ function DeleteAccountModal({ onClose, onDelete }) {
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, session, logout, updateProfile } = useAuth();
+  const { user, session, logout, applyServerProfile } = useAuth();
   const { isPro } = usePro();
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
@@ -253,7 +254,10 @@ export default function Settings() {
     setExportState('working');
     setExportError('');
     const result = await exportCsv();
-    if (result.success) {
+    if (result.cancelled) {
+      setExportState('idle');
+    } else if (result.success) {
+      setExportError(result.message || '');
       setExportState('done');
       setTimeout(() => setExportState('idle'), 4000);
     } else {
@@ -273,9 +277,8 @@ export default function Settings() {
         body: JSON.stringify({ monthly_budget: newBudget }),
       });
       if (!response.ok) throw await httpError(response);
-      if (updateProfile) {
-        await updateProfile({ monthly_budget: newBudget });
-      }
+      const data = await response.json();
+      applyServerProfile({ monthly_budget: data.monthly_budget });
       setBanner({ type: 'success', message: 'Budget updated.' });
     } catch (err) {
       console.error('Failed to update budget:', err);
@@ -294,9 +297,8 @@ export default function Settings() {
         body: JSON.stringify({ investment_target: newTarget }),
       });
       if (!response.ok) throw await httpError(response);
-      if (updateProfile) {
-        await updateProfile({ investment_target: newTarget });
-      }
+      const data = await response.json();
+      applyServerProfile({ investment_target: data.investment_target });
       setBanner({ type: 'success', message: 'Investment target updated.' });
     } catch (err) {
       console.error('Failed to update investment target:', err);
@@ -315,10 +317,19 @@ export default function Settings() {
         body: JSON.stringify({ confirmation: 'DELETE_MY_ACCOUNT' }),
       });
       if (!response.ok) throw await httpError(response);
+      // The server has deleted the login and revoked its sessions; clear this device too.
+      setShowDeleteModal(false);
       await logout();
+      navigate('/login', { replace: true, state: { accountDeleted: true } });
     } catch (err) {
-      console.error('Failed to delete account:', err);
-      setBanner({ type: 'error', message: friendlyError(err, "We couldn't delete your account. Please try again.") });
+      setShowDeleteModal(false);
+      if (err.data?.code === 'PARTIAL_DELETION') {
+        // Login already removed; do not leave the user in a half-signed-in app.
+        await logout();
+        navigate('/login', { replace: true, state: { accountDeleted: true } });
+        return;
+      }
+      setBanner({ type: 'error', message: friendlyError(err, "We couldn't delete your account. Nothing was removed. Please try again.") });
     }
   };
 
@@ -364,7 +375,7 @@ export default function Settings() {
           <Crown className={`w-6 h-6 ${isPro ? 'text-amber-400' : 'text-zinc-600'}`} />
           <div>
             <p className="text-sm font-bold text-white">{isPro ? 'Spendly Pro Active' : 'Free Plan'}</p>
-            <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'Upgrade for unlimited features'}</p>
+            <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'Spendly Pro is not available to buy yet'}</p>
           </div>
         </div>
       </motion.div>
@@ -388,11 +399,11 @@ export default function Settings() {
       <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">More</p>
         <SettingRow
-          icon={Users} label="Group Pool" value="Split expenses with friends"
+          icon={Users} label="Group Pool" value="Coming soon"
           color="text-sky-400" onClick={() => navigate('/pool')}
         />
         <SettingRow
-          icon={Skull} label="Subscriptions" value="Find what you forgot you pay for"
+          icon={Repeat} label="Recurring charges" value="Monthly payments found in your expenses"
           color="text-fuchsia-400" onClick={() => navigate('/graveyard')}
         />
         <SettingRow
@@ -405,11 +416,12 @@ export default function Settings() {
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Your Data</p>
         <SettingRow
           icon={exportState === 'working' ? Loader2 : Download}
-          label={exportState === 'done' ? 'Export downloaded' : 'Export my expenses'}
+          label={exportState === 'done' ? 'Export ready' : 'Export my expenses'}
           value={
             exportState === 'working' ? 'Preparing your file…'
               : exportState === 'error' ? exportError
-                : 'Download everything as a CSV'
+                : exportState === 'done' ? exportError || 'Your CSV file is ready'
+                  : 'Save or share everything as a CSV file'
           }
           color={exportState === 'error' ? 'text-red-400' : 'text-lime-400'}
           onClick={exportState === 'working' ? undefined : handleExport}
@@ -424,7 +436,7 @@ export default function Settings() {
 
       <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Account</p>
-        <SettingRow icon={LogOut} label="Log Out" onClick={logout} />
+        <SettingRow icon={LogOut} label="Log Out" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} />
         <SettingRow icon={Trash2} label="Delete Account" value="Permanently delete all data" danger onClick={() => setShowDeleteModal(true)} />
       </div>
 

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, LockKeyhole, Mail, MailCheck, UserRound, Loader2, ChevronDown } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
+import { useOAuthBrowserReset } from '../hooks/useOAuthBrowserReset';
 
 export default function Signup() {
     const [name, setName] = useState('');
@@ -16,6 +17,7 @@ export default function Signup() {
     const [showEmailForm, setShowEmailForm] = useState(false);
     const { signup, loginWithGoogle, session } = useAuth();
     const navigate = useNavigate();
+    useOAuthBrowserReset(() => setGoogleLoading(false));
 
     useEffect(() => {
         if (session) {
@@ -29,13 +31,12 @@ export default function Signup() {
         setLoading(true);
         const res = await signup(name, email, password);
         setLoading(false);
-        // Do not navigate immediately; wait for session useEffect to trigger
-        if (res.needsConfirmation) {
-            // Email confirmation required — show the success message
-            setConfirmationSent(true);
-        } else {
+        if (!res.success) {
             setError(res.message || 'Signup failed');
+        } else if (res.needsConfirmation) {
+            setConfirmationSent(true);
         }
+        // Otherwise a session now exists and the effect above navigates.
     };
 
     const handleGoogleLogin = async () => {
@@ -61,7 +62,7 @@ export default function Signup() {
                         <h2 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight">Check your inbox.</h2>
                         <p className="mt-3 text-sm leading-6 text-zinc-400">
                             We sent a confirmation link to <strong className="text-zinc-100">{email}</strong>.
-                            Click the link to activate your account, then come back and log in.
+                            Open the link on this device to activate your account.
                         </p>
                     </div>
                     <Link
@@ -172,10 +173,10 @@ export default function Signup() {
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         required
-                                        minLength={6}
+                                        minLength={8}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="At least 6 characters"
+                                        placeholder="At least 8 characters"
                                         className="h-12 w-full rounded-xl border border-white/10 bg-black/30 pl-11 pr-12 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
                                     />
                                     <button
@@ -200,6 +201,11 @@ export default function Signup() {
                         </form>
                     </>
                 )}
+
+                <p className="text-center text-xs leading-5 text-zinc-500">
+                    By continuing you agree to the <Link to="/terms" className="underline hover:text-zinc-300">Terms of Service</Link> and
+                    acknowledge the <Link to="/privacy" className="underline hover:text-zinc-300">Privacy Policy</Link>.
+                </p>
 
                 <p className="text-center text-sm text-zinc-400">
                     Already using Spendly? <Link to="/login" className="font-bold text-lime-300 hover:text-lime-200 hover:underline">Log in</Link>

@@ -1,90 +1,70 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Settings, X, Smartphone } from 'lucide-react';
 import { useState } from 'react';
-import { useNotificationPermission } from '../hooks/useNotificationPermission';
+import { motion } from 'framer-motion';
+import { BellRing, X } from 'lucide-react';
+import { SUPPORTED_APPS_SUMMARY } from '../lib/supportedPaymentApps';
+import { readNotificationPrompt, recordNotificationPromptDismissed } from '../lib/notificationPrompt';
+
+// After "Not now", show only a small reminder, and not before this long.
+const REMINDER_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
+
 
 /**
- * PermissionBanner
- * 
- * Renders a prominent alert banner on the Dashboard when the user
- * has NOT granted Notification Listener access to Spendly.
- * 
- * Features:
- *  - Auto-hides once access is granted (re-checks on app resume)
- *  - Dismissible (user can close it, but it reappears next session)
- *  - CTA button opens Android Notification Listener Settings directly
+ * NotificationAccessCard — an explanation of automatic UPI detection with an
+ * explicit choice. It NEVER opens Android settings by itself: settings open
+ * only when the user taps "Enable".
+ *
+ * "Not now" is remembered. The full card does not come back; after 14 days a
+ * single-line reminder may appear, and dismissing that is remembered too.
  */
-export default function PermissionBanner() {
-    const { isAndroid, hasAccess, loading, openSettings } = useNotificationPermission();
-    const [dismissed, setDismissed] = useState(false);
+export default function PermissionBanner({ isSupported, permissionGranted, permissionChecked, onEnable }) {
+  const [prompt, setPrompt] = useState(readNotificationPrompt);
 
-    // Don't render on web, while loading, if access is granted, or if dismissed
-    if (!isAndroid || loading || hasAccess || dismissed) return null;
+  if (!isSupported || !permissionChecked || permissionGranted) return null;
 
+  const dismiss = () => {
+    setPrompt(recordNotificationPromptDismissed({ reminderDismissed: Boolean(prompt) }));
+  };
+
+  if (prompt) {
+    const due = Date.now() - prompt.dismissedAt > REMINDER_AFTER_MS;
+    if (!due || prompt.reminderDismissed) return null;
     return (
-        <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0, y: -16, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -16, scale: 0.97 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-                className="relative overflow-hidden rounded-3xl border border-amber-500/30 
-                           bg-gradient-to-br from-amber-950/50 via-zinc-900/80 to-zinc-950/90
-                           backdrop-blur-xl p-5 mb-4 shadow-[0_4px_32px_rgba(245,158,11,0.1)]"
-            >
-                {/* Subtle glow effect */}
-                <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/8 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-orange-500/6 rounded-full blur-2xl pointer-events-none" />
-
-                {/* Dismiss button */}
-                <motion.button
-                    onClick={() => setDismissed(true)}
-                    whileTap={{ scale: 0.85 }}
-                    className="absolute top-3 right-3 p-1.5 rounded-xl bg-zinc-800/60 text-zinc-500 
-                               hover:text-zinc-300 hover:bg-zinc-700/60 transition-colors z-10"
-                    aria-label="Dismiss permission banner"
-                >
-                    <X className="w-3.5 h-3.5" />
-                </motion.button>
-
-                <div className="relative z-10 flex gap-4">
-                    {/* Icon */}
-                    <div className="flex-shrink-0 mt-0.5">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/20 
-                                        flex items-center justify-center shadow-[0_0_16px_rgba(245,158,11,0.15)]">
-                            <ShieldAlert className="w-6 h-6 text-amber-400" />
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-bold text-amber-300 mb-1 flex items-center gap-2">
-                            <Smartphone className="w-3.5 h-3.5" />
-                            Auto-Tracking Paused
-                        </h3>
-                        <p className="text-xs text-zinc-400 leading-relaxed mb-3">
-                            Spendly needs <span className="text-zinc-200 font-semibold">Notification Access</span> to 
-                            automatically detect your UPI payments from GPay, PhonePe, and Paytm. 
-                            Your data stays on-device — we never read SMS.
-                        </p>
-
-                        {/* CTA Button */}
-                        <motion.button
-                            onClick={openSettings}
-                            whileTap={{ scale: 0.96 }}
-                            whileHover={{ scale: 1.02 }}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black
-                                       bg-amber-500 text-black hover:bg-amber-400 
-                                       shadow-[0_2px_16px_rgba(245,158,11,0.3)] 
-                                       hover:shadow-[0_4px_24px_rgba(245,158,11,0.45)]
-                                       transition-all duration-200"
-                        >
-                            <Settings className="w-3.5 h-3.5" />
-                            Enable in Settings
-                        </motion.button>
-                    </div>
-                </div>
-            </motion.div>
-        </AnimatePresence>
+      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#141414] px-4 py-3 text-xs text-zinc-400">
+        <BellRing className="h-4 w-4 shrink-0 text-lime-400" />
+        <span className="flex-1">Automatic UPI detection is off.</span>
+        <button type="button" onClick={onEnable} className="font-bold text-lime-400">Enable</button>
+        <button type="button" onClick={dismiss} aria-label="Dismiss reminder" className="p-1 text-zinc-600"><X className="h-3.5 w-3.5" /></button>
+      </div>
     );
+  }
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border border-lime-400/20 bg-[#141414] p-5"
+      aria-labelledby="notif-access-title"
+    >
+      <div className="flex gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lime-400/15">
+          <BellRing className="h-5 w-5 text-lime-400" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 id="notif-access-title" className="text-sm font-bold text-white">Automatically detect UPI payments</h2>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+            Spendly can detect supported payment notifications from {SUPPORTED_APPS_SUMMARY} and ask you before adding them.
+            It needs Android Notification Access; Spendly ignores notifications from every other app, and does not read SMS.
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={onEnable} className="rounded-xl bg-lime-400 px-4 py-2 text-xs font-black text-black">
+              Enable Notification Access
+            </button>
+            <button type="button" onClick={dismiss} className="rounded-xl bg-zinc-800 px-4 py-2 text-xs font-bold text-zinc-300">
+              Not now
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
 }

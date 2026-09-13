@@ -242,7 +242,7 @@ export default function Features() {
             icon={TrendingUp}
             iconColor="bg-lime-400/15 text-lime-400"
             title="Round-Ups"
-            description="Save while you spend by auto-investing your spare change into a micro-savings vault."
+            description="See the spare change from every expense, rounded up to the next ₹5: a simple nudge to set money aside."
             delay={0.1}
           >
             <RoundUpMockup />
@@ -253,7 +253,7 @@ export default function Features() {
             icon={ShieldAlert}
             iconColor="bg-amber-500/15 text-amber-400"
             title="Aukatt Alert"
-            description="Real-time alerts before you overspend. Know your aukatt, stay on track — Spendly has your back."
+            description="A spending forecast that shows when you're on pace to overspend, while there's still time to adjust."
             delay={0.15}
           >
             <BudgetMockup />
@@ -263,8 +263,8 @@ export default function Features() {
           <FeatureCard
             icon={Users}
             iconColor="bg-purple-500/15 text-purple-400"
-            title="Group Splits"
-            description="No more awkward math. Split expenses with friends instantly and settle with one tap."
+            title="Group Splits (coming soon)"
+            description="Splitting shared expenses with friends is on the way."
             className="lg:col-span-2"
             delay={0.2}
           >

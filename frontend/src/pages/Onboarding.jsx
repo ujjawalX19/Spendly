@@ -20,6 +20,8 @@ import { Capacitor } from '@capacitor/core';
 import { Zap, PieChart, TrendingUp, Bell, ShieldCheck, ArrowRight, Check } from 'lucide-react';
 
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
+import { SUPPORTED_PAYMENT_APPS } from '../lib/supportedPaymentApps';
+import { recordNotificationPromptDismissed } from '../lib/notificationPrompt';
 
 export const ONBOARDING_KEY = 'spendly.onboarded.v1';
 
@@ -49,7 +51,7 @@ const SLIDES = [
     icon: Zap,
     tint: 'text-lime-400 bg-lime-400/15',
     title: 'Track without typing',
-    body: 'Spendly reads the payment notifications your UPI and bank apps already show you, and turns the real ones into expenses. No forms, no forgetting.',
+    body: 'With your permission, Spendly spots payment notifications from supported UPI and bank apps and asks before adding them as expenses. Or add expenses yourself — both work.',
   },
   {
     icon: PieChart,
@@ -61,14 +63,14 @@ const SLIDES = [
     icon: TrendingUp,
     tint: 'text-amber-400 bg-amber-400/15',
     title: 'Know what you can spend',
-    body: 'Not just what you spent. Safe-to-Spend works out what you can use each day until your next income — and shows you the assumptions behind it.',
+    body: 'Not just what you spent. Safe-to-Spend works out what is left to use each day this month, based on your budget and bills.',
   },
 ];
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const { isSupported, permissionGranted, requestPermission } = usePaymentNotifications();
+  const { isSupported, permissionGranted, openPermissionSettings } = usePaymentNotifications();
 
   // The permission screen is Android-only; on web the third slide is the last.
   const showPermissionStep = isSupported && Capacitor.isNativePlatform() && !permissionGranted;
@@ -119,16 +121,16 @@ export default function Onboarding() {
               </h1>
 
               <p className="mt-4 text-base leading-relaxed text-zinc-400">
-                To log payments automatically, Spendly needs Notification Access. Android will show a
-                scary-looking warning on the next screen — here is exactly what this does.
+                To detect payments automatically, Spendly needs Android Notification Access. Android shows a
+                strong warning because this access is powerful, so here is exactly how Spendly uses it.
               </p>
 
               <ul className="mt-6 space-y-3">
                 {[
-                  'Reads notifications from UPI and bank apps only, to spot payments.',
-                  'Does not read your SMS, contacts, or anything you type.',
-                  'Notification text never leaves your phone and is never logged.',
-                  'You can switch it off in Android settings at any time.',
+                  'Only notifications from the supported payment and bank apps listed below are processed. Notifications from WhatsApp, messages, email, social and every other app are ignored.',
+                  'From a payment notification Spendly keeps only the amount, payee name, app name and time. The notification text itself is not stored or uploaded.',
+                  'Nothing is added to your account until you tap "Add expense". Then the amount, payee and time are saved to your Spendly account.',
+                  'Spendly does not read SMS, contacts, or anything you type. You can turn this off in Android settings at any time.',
                 ].map(line => (
                   <li key={line} className="flex gap-3 text-sm leading-relaxed text-zinc-300">
                     <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-lime-400" />
@@ -136,6 +138,11 @@ export default function Onboarding() {
                   </li>
                 ))}
               </ul>
+
+              <details className="mt-5 rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs text-zinc-400">
+                <summary className="cursor-pointer font-bold text-zinc-300">Supported apps ({SUPPORTED_PAYMENT_APPS.length})</summary>
+                <p className="mt-2 leading-relaxed">{SUPPORTED_PAYMENT_APPS.map((a) => a.name).join(', ')}</p>
+              </details>
 
               <div className="mt-auto space-y-3 pt-8">
                 <button
@@ -145,7 +152,7 @@ export default function Onboarding() {
                     // Android settings screen, and they should land on the
                     // dashboard when they come back, not here again.
                     markOnboarded();
-                    await requestPermission();
+                    await openPermissionSettings();
                     navigate('/dash', { replace: true });
                   }}
                   className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black"
@@ -154,7 +161,7 @@ export default function Onboarding() {
                 </button>
                 <button
                   type="button"
-                  onClick={finish}
+                  onClick={() => { recordNotificationPromptDismissed(); finish(); }}
                   className="min-h-12 w-full text-sm font-bold text-zinc-500 hover:text-zinc-300"
                 >
                   Not now — I'll add expenses myself

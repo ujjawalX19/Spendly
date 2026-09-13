@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Lock, Sparkles, ChevronRight } from 'lucide-react';
+import { Lock, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePro } from '../contexts/ProContext';
 
@@ -13,7 +13,7 @@ import { usePro } from '../contexts/ProContext';
  *   </ProGate>
  */
 export default function ProGate({ feature, children, title = 'Pro Feature', description }) {
-  const { canUse, isPro } = usePro();
+  const { canUse } = usePro();
 
   if (canUse(feature)) {
     return children;
@@ -39,7 +39,7 @@ export default function ProGate({ feature, children, title = 'Pro Feature', desc
 
           <h3 className="text-xl font-black text-white mb-2">{title}</h3>
           <p className="text-sm text-zinc-400 mb-5">
-            {description || 'Unlock this feature with Spendly Pro for ₹99/month.'}
+            {description || 'This is planned for Spendly Pro, which is not available yet.'}
           </p>
 
           <Link to="/pro">
@@ -48,8 +48,7 @@ export default function ProGate({ feature, children, title = 'Pro Feature', desc
               whileHover={{ scale: 1.03 }}
               className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black px-6 py-3 rounded-2xl text-sm shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-shadow"
             >
-              <Sparkles className="w-4 h-4" />
-              Upgrade to Pro
+              What's planned for Pro
               <ChevronRight className="w-4 h-4" />
             </motion.button>
           </Link>

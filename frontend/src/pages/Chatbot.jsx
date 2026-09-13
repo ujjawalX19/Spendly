@@ -1,227 +1,177 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, TrendingUp, ShieldCheck, Banknote, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { Link } from 'react-router-dom';
 import { API_URL, apiFetch } from '../lib/apiConfig';
+import { friendlyError } from '../lib/errors';
 
-const CHIPS = [
-    {
-        keyword: 'Zerodha',
-        label: 'Open Zerodha',
-        icon: <TrendingUp className="w-4 h-4" />,
-        link: 'https://zerodha.com/?ref=SPENDLY'
-    },
-    {
-        keyword: 'Groww',
-        label: 'Try Groww',
-        icon: <TrendingUp className="w-4 h-4" />,
-        link: 'https://groww.in/refer/SPENDLY'
-    },
-    {
-        keyword: 'Kuvera',
-        label: 'Explore Kuvera',
-        icon: <TrendingUp className="w-4 h-4" />,
-        link: 'https://kuvera.in/refer/SPENDLY'
-    },
-    {
-        keyword: 'Gold',
-        label: 'Buy Digital Gold',
-        icon: <ShieldCheck className="w-4 h-4" />,
-        link: 'https://paytm.com/digital-gold'
-    }
+const MAX_CHARS = 500;
+
+const SUGGESTIONS = [
+    'Why did I spend more this month?',
+    'Can I afford a ₹3,000 purchase this week?',
+    'How does an emergency fund work?',
 ];
 
+const GREETING = {
+    id: 'greeting',
+    role: 'bot',
+    content: "Ask me about your spending — where it went, what you can afford, or how to save. I can also explain general money concepts. I don't recommend specific investments.",
+};
+
+/**
+ * Spendly money coach.
+ *
+ * Limits are enforced by the server (free plan: 10 questions a day, plus
+ * short-term rate limits). The page shows what the server reports and never
+ * decides access itself. Replies never contain links or product
+ * recommendations (see FINANCIAL_CONTENT_REVIEW.md).
+ */
 export default function Chatbot() {
     const { session } = useAuth();
-    const { canUse, getRemaining } = usePro();
-    const [messages, setMessages] = useState([]);
+    const { isPro, limits, applyQuota } = usePro();
+    const [messages, setMessages] = useState([GREETING]);
     const [input, setInput] = useState('');
-    const [goal, setGoal] = useState('habit');
     const [isLoading, setIsLoading] = useState(false);
+    const [limitReached, setLimitReached] = useState(false);
     const messagesEndRef = useRef(null);
 
-    // Fetch history on mount
     useEffect(() => {
-        const fetchHistory = async () => {
+        if (!session?.access_token) return;
+        let cancelled = false;
+        (async () => {
             try {
+                // GET is safe to retry while the server wakes up.
                 const res = await apiFetch(`${API_URL}/ai/history`, {
-                    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+                    headers: { Authorization: `Bearer ${session.access_token}` },
                 });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.history && data.history.length > 0) {
-                        setMessages(data.history);
-                    } else {
-                        // Default greeting
-                        setMessages([{
-                            id: 1, 
-                            role: 'bot', 
-                            content: "What’s up, boss? Ask me where to invest your money and I’ll use this month’s actual spending — no generic gyaan.",
-                            chips: []
-                        }]);
-                    }
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!cancelled && Array.isArray(data.history) && data.history.length > 0) {
+                    setMessages([GREETING, ...data.history]);
                 }
-            } catch (err) {
-                console.error("Failed to fetch chat history:", err);
+            } catch {
+                // History is a convenience; the chat still works without it.
             }
-        };
-        fetchHistory();
+        })();
+        return () => { cancelled = true; };
     }, [session?.access_token]);
-    // Auto-scroll to bottom
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSend = async (e) => {
-        e?.preventDefault();
-        if (!input.trim()) return;
+    const addBot = (content, extra = {}) =>
+        setMessages((prev) => [...prev, { id: `bot-${Date.now()}`, role: 'bot', content, ...extra }]);
 
-        const userMsg = { id: Date.now(), role: 'user', content: input, chips: [] };
-        if (!canUse('chat_message')) {
-            const limitMsg = { id: Date.now(), role: 'bot', content: "You've reached your free limit of 10 AI chat messages for today. Upgrade to Spendly Pro for unlimited access.", chips: [], isLimitAlert: true };
-            setMessages(prev => [...prev, userMsg, limitMsg]);
-            setInput('');
-            return;
-        }
+    const send = async (text) => {
+        const query = text.trim();
+        if (!query || isLoading || query.length > MAX_CHARS) return;
 
-        setMessages(prev => [...prev, userMsg]);
+        setMessages((prev) => [...prev, { id: `user-${Date.now()}`, role: 'user', content: query }]);
         setInput('');
         setIsLoading(true);
 
         try {
-            const res = await apiFetch(`${API_URL}/ai/invest-advice`, {
+            // Plain fetch: a question must not be sent twice by automatic retries.
+            const res = await fetch(`${API_URL}/ai/invest-advice`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {})
+                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
                 },
-                body: JSON.stringify({ query: input, goal })
+                body: JSON.stringify({ query }),
             });
-            if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
-            const data = await res.json();
-            
-            const reply = data.reply || "Error: AI is broke right now.";
+            const data = await res.json().catch(() => ({}));
 
-            // Detect keywords for Action Chips
-            const activeChips = CHIPS.filter(chip => 
-                reply.toLowerCase().includes(chip.keyword.toLowerCase())
-            );
+            if (res.status === 429 && data.code === 'QUOTA_EXCEEDED') {
+                setLimitReached(true);
+                addBot(data.message || "You've used today's free questions.", { isLimitAlert: true });
+                return;
+            }
+            if (!res.ok || !data.success) {
+                const err = Object.assign(new Error(data.message || `HTTP ${res.status}`), { status: res.status, data });
+                addBot(friendlyError(err, "I couldn't answer that just now. Please try again."), { isError: true });
+                return;
+            }
 
-            const botMsg = { 
-                id: Date.now() + 1, 
-                role: 'bot', 
-                content: reply,
-                chips: activeChips
-            };
-
-            setMessages(prev => [...prev, botMsg]);
-        } catch (error) {
-            setMessages(prev => [...prev, { 
-                id: Date.now() + 1, 
-                role: 'bot', 
-                content: "Bhai, server is down. Keep your money under the mattress for now.",
-                chips: []
-            }]);
+            if (data.quota) applyQuota(data.quota);
+            addBot(data.reply);
+        } catch (err) {
+            addBot(friendlyError(err, "I couldn't reach the server. Please check your connection."), { isError: true });
         } finally {
             setIsLoading(false);
         }
     };
 
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        send(input);
+    };
+
+    const remaining = !isPro && limits?.chatMessagesLimit != null
+        ? Math.max(0, limits.chatMessagesLimit - (limits.chatMessagesUsed || 0))
+        : null;
+
     return (
         <div className="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-40px)] bg-[var(--color-bg)]">
-            
-            {/* Header */}
             <div className="flex items-center gap-4 p-4 border-b border-[var(--glass-border)] bg-black/40 backdrop-blur-md sticky top-0 z-10 rounded-t-2xl">
                 <div className="w-12 h-12 rounded-full bg-[var(--color-neon-green)]/10 flex items-center justify-center border border-[var(--color-neon-green)]/30">
                     <Bot className="w-6 h-6 text-[var(--color-neon-green)]" />
                 </div>
-                <div>
-                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Spendly AI</h1>
-                    <p className="text-sm text-[var(--color-text)]/70">Your intelligent finance assistant</p>
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Money coach</h1>
+                    <p className="text-sm text-[var(--color-text)]/70">
+                        {remaining !== null ? `${remaining} free question${remaining === 1 ? '' : 's'} left today` : 'Answers based on your own spending'}
+                    </p>
                 </div>
             </div>
 
-            {/* Chat Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 <AnimatePresence initial={false}>
                     {messages.map((msg) => (
-                        <motion.div 
+                        <motion.div
                             key={msg.id}
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
                         >
-                            {/* Avatar */}
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${
-                                msg.role === 'user' 
-                                    ? 'bg-[var(--color-electric-blue)]/20 text-[var(--color-electric-blue)]' 
+                                msg.role === 'user'
+                                    ? 'bg-[var(--color-electric-blue)]/20 text-[var(--color-electric-blue)]'
                                     : 'bg-[var(--color-neon-green)]/20 text-[var(--color-neon-green)]'
                             }`}>
                                 {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                             </div>
 
-                            {/* Message Bubble */}
                             <div className="flex flex-col gap-2">
-                                <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                                <div className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
                                     msg.role === 'user'
                                         ? 'bg-[var(--color-electric-blue)]/10 border border-[var(--color-electric-blue)]/30 text-[var(--color-text)] rounded-tr-none'
-                                        : 'bg-zinc-900 border border-[var(--glass-border)] text-[var(--color-text)]/90 rounded-tl-none'
-                                } whitespace-pre-wrap`}>
+                                        : msg.isError
+                                            ? 'bg-red-500/10 border border-red-500/20 text-red-200 rounded-tl-none'
+                                            : 'bg-zinc-900 border border-[var(--glass-border)] text-[var(--color-text)]/90 rounded-tl-none'
+                                }`}>
                                     {msg.content}
                                 </div>
-
-                                {/* Action Chips */}
-                                {msg.chips?.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mt-1">
-                                        {msg.chips.map((chip, idx) => (
-                                            <motion.a
-                                                key={idx}
-                                                href={chip.link}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 border border-[var(--color-neon-green)]/40 rounded-full text-xs font-bold text-[var(--color-neon-green)] hover:bg-[var(--color-neon-green)]/10 transition-colors"
-                                            >
-                                                {chip.icon}
-                                                {chip.label}
-                                            </motion.a>
-                                        ))}
-                                    </div>
-                                )}
-                                
-                                {/* Upgrade CTA if limit reached */}
                                 {msg.isLimitAlert && (
-                                    <Link to="/pro" className="inline-block mt-2">
-                                        <motion.button
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-sm rounded-xl"
-                                        >
-                                            <Sparkles className="w-4 h-4" />
-                                            Upgrade to Pro
-                                        </motion.button>
-                                    </Link>
+                                    <Link to="/pro" className="text-xs font-bold text-amber-300 underline">See what Spendly Pro will include</Link>
                                 )}
                             </div>
                         </motion.div>
                     ))}
-                    
+
                     {isLoading && (
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="flex gap-3 max-w-[85%]"
-                        >
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 max-w-[85%]" role="status" aria-label="Coach is typing">
                             <div className="w-8 h-8 rounded-full bg-[var(--color-neon-green)]/20 flex items-center justify-center shrink-0 mt-1 border border-[var(--color-neon-green)]/30">
                                 <Bot className="w-4 h-4 text-[var(--color-neon-green)]" />
                             </div>
                             <div className="p-4 rounded-2xl bg-zinc-900 border border-[var(--glass-border)] rounded-tl-none flex items-center gap-1.5">
-                                <span className="w-2 h-2 bg-[var(--color-neon-green)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                <span className="w-2 h-2 bg-[var(--color-neon-green)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                <span className="w-2 h-2 bg-[var(--color-neon-green)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                {[0, 150, 300].map((d) => (
+                                    <span key={d} className="w-2 h-2 bg-[var(--color-neon-green)] rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                                ))}
                             </div>
                         </motion.div>
                     )}
@@ -229,42 +179,44 @@ export default function Chatbot() {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
             <div className="p-4 bg-black/40 backdrop-blur-md border-t border-[var(--glass-border)] rounded-b-2xl">
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2" htmlFor="investment-goal">This month’s goal</label>
-                <select
-                    id="investment-goal"
-                    value={goal}
-                    onChange={(event) => setGoal(event.target.value)}
-                    disabled={isLoading}
-                    className="mb-3 w-full bg-[var(--input-bg)] border border-[var(--glass-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-neon-green)]"
-                >
-                    <option value="habit">Build an investing habit</option>
-                    <option value="passive growth">Passive growth with mutual funds</option>
-                    <option value="active learning">Learn direct stocks safely</option>
-                </select>
-                <form onSubmit={handleSend} className="relative flex items-center">
+                {messages.length <= 1 && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                        {SUGGESTIONS.map((s) => (
+                            <button key={s} type="button" onClick={() => send(s)} disabled={isLoading || limitReached}
+                                className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-50">
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <form onSubmit={handleSubmit} className="relative flex items-center">
                     <input
                         type="text"
                         value={input}
+                        maxLength={MAX_CHARS}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Where should I invest 5000 rs?"
+                        placeholder={limitReached ? 'Daily limit reached. Come back tomorrow.' : 'Ask about your spending…'}
+                        aria-label="Your question"
                         className="w-full bg-[var(--input-bg)] border border-[var(--glass-border)] rounded-full pl-6 pr-14 py-4 text-sm outline-none focus:border-[var(--color-neon-green)] transition-colors text-[var(--color-text)]"
-                        disabled={isLoading}
+                        disabled={isLoading || limitReached}
                     />
                     <button
                         type="submit"
-                        disabled={!input.trim() || isLoading}
+                        aria-label="Send"
+                        disabled={!input.trim() || isLoading || limitReached}
                         className="absolute right-2 p-2.5 bg-[var(--color-neon-green)] text-black rounded-full hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all"
                     >
                         <Send className="w-5 h-5" />
                     </button>
                 </form>
-                {getRemaining('chat_message') < 5 && getRemaining('chat_message') > 0 && (
-                    <p className="text-[10px] text-zinc-500 mt-2 text-center">
-                        {getRemaining('chat_message')} free messages remaining today
+                <div className="mt-2 flex items-start justify-between gap-3 text-[10px] text-zinc-500">
+                    <p className="flex items-start gap-1">
+                        <Info className="mt-px h-3 w-3 shrink-0" />
+                        General education, not investment advice. Spendly is not a SEBI-registered adviser. AI answers can be wrong.
                     </p>
-                )}
+                    {input.length > MAX_CHARS * 0.8 && <span className="shrink-0">{input.length}/{MAX_CHARS}</span>}
+                </div>
             </div>
         </div>
     );

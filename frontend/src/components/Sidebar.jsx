@@ -1,13 +1,12 @@
-import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, Users, Wallet, FileText, Skull, Settings, Receipt } from 'lucide-react';
+import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, Wallet, FileText, Repeat, Settings, Receipt } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const navigation = [
   { to: '/dash', label: 'Overview', icon: LayoutDashboard },
   { to: '/transactions', label: 'Transactions', icon: Receipt },
-  { to: '/pool', label: 'Group Pool', icon: Users },
   { to: '/bot', label: 'Spendly AI', icon: Bot },
   { to: '/wealth', label: 'Wealth', icon: TrendingUp },
-  { to: '/graveyard', label: 'Subscriptions', icon: Skull },
+  { to: '/graveyard', label: 'Recurring charges', icon: Repeat },
   { to: '/import', label: 'Statement Import', icon: FileText },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

@@ -51,10 +51,11 @@ export default function PdfImport() {
         },
         body: formData,
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(`Upload failed with status ${res.status}`);
+        // Server messages here are written for users (e.g. "larger than 10 MB").
+        throw Object.assign(new Error(data.message || `Upload failed with status ${res.status}`), { status: res.status, data });
       }
-      const data = await res.json();
 
       if (data.success) {
         setResult(data);
@@ -73,7 +74,7 @@ export default function PdfImport() {
     <ProGate
       feature="pdf_import"
       title="Bank Statement Import"
-      description="Import months of expenses instantly from your bank statement PDF. Available exclusively for Spendly Pro members."
+      description="Import past expenses from a bank statement PDF. This is planned for Spendly Pro, which is not available yet."
     >
       <motion.div
         className="space-y-6 pb-6 p-4 max-w-lg mx-auto"
@@ -170,9 +171,15 @@ export default function PdfImport() {
             </div>
             <div className="space-y-2 text-sm text-zinc-300">
               <div className="flex justify-between"><span>Bank:</span> <span className="font-bold text-white">{result.bankName}</span></div>
-              <div className="flex justify-between"><span>Transactions:</span> <span className="font-bold text-white">{result.imported}</span></div>
+              <div className="flex justify-between"><span>New transactions added:</span> <span className="font-bold text-white">{result.imported}</span></div>
+              {result.duplicatesSkipped > 0 && (
+                <div className="flex justify-between"><span>Already in Spendly (skipped):</span> <span className="font-bold text-white">{result.duplicatesSkipped}</span></div>
+              )}
+              {result.invalidRowsSkipped > 0 && (
+                <div className="flex justify-between"><span>Unreadable rows skipped:</span> <span className="font-bold text-white">{result.invalidRowsSkipped}</span></div>
+              )}
               <div className="flex justify-between"><span>Total Amount:</span> <span className="font-mono text-white">₹{Number(result.totalAmount || 0).toLocaleString('en-IN')}</span></div>
-              <div className="flex justify-between"><span>Round-up Chillar:</span> <span className="font-mono text-lime-400">+₹{Number(result.totalChillar || 0).toLocaleString('en-IN')}</span></div>
+              <div className="flex justify-between"><span>Round-ups:</span> <span className="font-mono text-lime-400">+₹{Number(result.totalChillar || 0).toLocaleString('en-IN')}</span></div>
             </div>
           </motion.div>
         )}

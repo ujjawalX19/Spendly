@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabaseClient';
+import { NATIVE_SCHEME, NATIVE_HOSTS, authErrorFromUrl, isMissingVerifierError } from './lib/authRedirects';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProProvider } from './contexts/ProContext';
@@ -13,8 +14,6 @@ import { hasOnboarded } from './pages/Onboarding';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
 // out user sees, and a lazy chunk there would add a spinner to cold start.
-// Everything behind the auth boundary is split out, which keeps recharts and
-// framer-motion's heavier paths off the critical path to first render.
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 
@@ -30,8 +29,12 @@ const SubscriptionGraveyard = lazy(() => import('./pages/SubscriptionGraveyard')
 const PdfImport = lazy(() => import('./pages/PdfImport'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const DeleteAccountInfo = lazy(() => import('./pages/DeleteAccountInfo'));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 
 function FullScreenLoader({ label = 'Loading...' }) {
   return (
@@ -44,38 +47,48 @@ function FullScreenLoader({ label = 'Loading...' }) {
   );
 }
 
-// ── Inline Protected Route (replaces old ProtectedRoute component) ──
+function ProfileUnavailable() {
+  const { refreshProfile, logout } = useAuth();
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black px-6 text-center text-white">
+      <div className="max-w-sm">
+        <h1 className="text-xl font-black">We couldn't load your account</h1>
+        <p className="mt-2 text-sm text-zinc-400">Check your connection and try again. If this keeps happening, sign out and sign in again.</p>
+        <div className="mt-6 flex flex-col gap-3">
+          <button type="button" onClick={refreshProfile} className="h-12 rounded-xl bg-lime-400 font-bold text-black">Try again</button>
+          <button type="button" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} className="h-12 rounded-xl border border-white/10 font-bold text-zinc-300">Sign out</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }) {
-  const { session, loading } = useAuth();
+  const { session, loading, profileError, user } = useAuth();
 
   if (loading) return <FullScreenLoader />;
   if (!session) return <Navigate to="/login" replace />;
+  if (profileError && !user) return <ProfileUnavailable />;
 
-  // Send a first-time user through onboarding before the dashboard. Asking
-  // for notification access cold, with no explanation, is why most users
-  // decline the feature the product depends on.
+  // First-time users see what the app does, and the notification-access
+  // explanation, before the dashboard.
   if (!hasOnboarded()) return <Navigate to="/welcome" replace />;
 
   return children;
 }
 
 /**
- * Admin-only route.
- *
- * The API already enforces `role = 'admin'`, so this is not a security
- * boundary — it exists so a non-admin does not load a whole dashboard that
- * then fails with a wall of 403s.
+ * Admin-only route. The API enforces `role = 'admin'` on every request; this
+ * only avoids rendering a dashboard that would fail with 403s.
  */
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
-
   if (loading) return <FullScreenLoader />;
   if (user?.role !== 'admin') return <Navigate to="/dash" replace />;
-
   return children;
 }
 
-// ── Bottom Navigation / Sidebar Layout ──
 function Layout({ children }) {
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
@@ -89,31 +102,33 @@ function Layout({ children }) {
   return (
     <div className="pb-20 md:pb-0 md:pl-64 min-h-screen">
       <Sidebar theme={theme} toggleTheme={toggleTheme} onLogout={handleLogout} />
-
       <main className="p-4 md:p-8 max-w-7xl mx-auto">
         {children}
       </main>
-
-      {/* Mobile bottom nav — visible on ALL authenticated pages */}
       <BottomNav />
     </div>
   );
 }
 
+// Deep links already acted on. Android can deliver the same URL both as the
+// launch URL and as an appUrlOpen event, and React may remount the handler; a
+// PKCE code can only be exchanged once, so a second attempt would show a
+// spurious error.
+const handledDeepLinks = new Set();
+
 /**
- * Handles the `spendly://login-callback` deep link that ends the Google
- * OAuth round trip.
+ * Handles the Android deep links that finish an auth flow:
+ *   spendly://login-callback   Google sign-in, signup email confirmation
+ *   spendly://reset-password   password-reset email
  *
- * Lives inside <Router> so it can navigate with the router rather than
- * poking window.history and firing a synthetic popstate.
- *
- * Android delivers the callback as an `appUrlOpen` event. Supabase does not
- * consume custom-scheme URLs on its own, so the tokens are applied by hand.
- * Both response shapes are handled: the implicit flow puts tokens in the URL
- * fragment, the PKCE flow puts a `code` in the query string.
+ * Nothing in the URL is trusted beyond a one-time PKCE `code`, which only
+ * works together with the code verifier this app stored when it started the
+ * flow. Access or refresh tokens in a URL are ignored, so a crafted link
+ * cannot sign the user into someone else's account.
  */
-function DeepLinkHandler({ onError }) {
+function DeepLinkHandler({ onMessage }) {
   const navigate = useNavigate();
+  const { markPasswordRecovery } = useAuth();
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return undefined;
@@ -121,72 +136,62 @@ function DeepLinkHandler({ onError }) {
     let listener;
     let cancelled = false;
 
-    const finish = async () => {
-      // The Custom Tab stays on screen until we dismiss it.
-      try { await Browser.close(); } catch { /* already closed */ }
-    };
-
     const handleUrl = async (url) => {
-      let callbackUrl;
+      if (!url || handledDeepLinks.has(url)) return;
+
+      let parsed;
       try {
-        callbackUrl = new URL(url);
+        parsed = new URL(url);
       } catch {
         return;
       }
+      const host = parsed.hostname;
+      if (parsed.protocol !== `${NATIVE_SCHEME}:` || !Object.values(NATIVE_HOSTS).includes(host)) return;
+      handledDeepLinks.add(url);
 
-      if (callbackUrl.protocol !== 'spendly:' || callbackUrl.hostname !== 'login-callback') return;
-
-      await finish();
+      // Android does not close the Custom Tab for us.
+      try { await Browser.close(); } catch { /* not open, or unsupported */ }
       if (cancelled) return;
 
-      const hashParams = new URLSearchParams(callbackUrl.hash.replace(/^#/, ''));
-      const queryParams = callbackUrl.searchParams;
+      const isReset = host === NATIVE_HOSTS.reset;
+      const failTo = isReset ? '/forgot-password' : '/login';
 
-      // The user dismissed the Google consent screen, or the provider
-      // rejected the request.
-      const providerError =
-        hashParams.get('error_description') || hashParams.get('error') ||
-        queryParams.get('error_description') || queryParams.get('error');
+      const providerError = authErrorFromUrl(url);
       if (providerError) {
-        onError(
-          providerError === 'access_denied'
-            ? 'Google sign-in was cancelled.'
-            : 'Google sign-in failed. Please try again.'
-        );
-        navigate('/login', { replace: true });
+        onMessage(providerError);
+        navigate(failTo, { replace: true });
         return;
       }
 
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      const code = queryParams.get('code');
+      const code = parsed.searchParams.get('code');
+      if (!code || !/^[A-Za-z0-9._~-]{8,512}$/.test(code)) {
+        onMessage('That link is not valid. Please try again.');
+        navigate(failTo, { replace: true });
+        return;
+      }
 
-      try {
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (error) throw error;
-        } else if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-        } else {
-          throw new Error('The sign-in link did not contain a session.');
-        }
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (cancelled) return;
+      if (error) {
+        onMessage(isMissingVerifierError(error)
+          ? 'Please open the link on the same device where you requested it.'
+          : 'This link has expired or has already been used. Please request a new one.');
+        navigate(failTo, { replace: true });
+        return;
+      }
 
-        if (!cancelled) navigate('/dash', { replace: true });
-      } catch {
-        if (cancelled) return;
-        onError('We could not complete sign-in. Please try again.');
-        navigate('/login', { replace: true });
+      if (isReset) {
+        markPasswordRecovery(true);
+        navigate('/reset-password', { replace: true });
+      } else {
+        navigate('/dash', { replace: true });
       }
     };
 
     CapApp.addListener('appUrlOpen', ({ url }) => { handleUrl(url); })
-      .then((l) => { listener = l; });
+      .then((l) => { if (cancelled) l.remove(); else listener = l; });
 
-    // Cold start: the app may have been launched *by* the callback URL.
+    // Cold start: the app may have been launched by the callback itself.
     CapApp.getLaunchUrl()
       .then((launch) => { if (launch?.url) handleUrl(launch.url); })
       .catch(() => { /* no launch url */ });
@@ -195,108 +200,59 @@ function DeepLinkHandler({ onError }) {
       cancelled = true;
       listener?.remove();
     };
-  }, [navigate, onError]);
+  }, [navigate, onMessage, markPasswordRecovery]);
 
   return null;
 }
 
 function App() {
-  const [authError, setAuthError] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
 
   return (
     <ThemeProvider>
       <AuthProvider>
         <ProProvider>
           <Router>
-            <DeepLinkHandler onError={setAuthError} />
-            {authError ? (
-              <div
-                role="alert"
-                className="fixed top-0 inset-x-0 z-50 bg-red-500/95 text-white text-sm px-4 py-3 flex items-start gap-3"
-              >
-                <span className="flex-1">{authError}</span>
-                <button
-                  type="button"
-                  onClick={() => setAuthError('')}
-                  aria-label="Dismiss"
-                  className="shrink-0 px-2 -my-1 text-lg leading-none"
-                >
+            <DeepLinkHandler onMessage={setAuthMessage} />
+            {authMessage ? (
+              <div role="alert" className="fixed top-0 inset-x-0 z-50 bg-red-500/95 text-white text-sm px-4 py-3 flex items-start gap-3">
+                <span className="flex-1">{authMessage}</span>
+                <button type="button" onClick={() => setAuthMessage('')} aria-label="Dismiss" className="shrink-0 px-2 -my-1 text-lg leading-none">
                   &times;
                 </button>
               </div>
             ) : null}
             <Suspense fallback={<FullScreenLoader />}>
-            <Routes>
-              <Route path="/" element={
-                Capacitor.isNativePlatform() ? (
-                  <ProtectedRoute>
-                      <Navigate to="/dash" replace />
-                  </ProtectedRoute>
-                ) : (
-                  <Landing />
-                )
-              } />
-              <Route path="/login" element={<Login />} />
-              <Route path="/welcome" element={<Onboarding />} />
-              <Route path="/signup" element={<Signup />} />
-              
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<TermsOfService />} />
-              
-              <Route path="/dash" element={
-                  <ProtectedRoute>
-                      <Layout><Dashboard /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/transactions" element={
-                  <ProtectedRoute>
-                      <Layout><Transactions /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/pool" element={
-                  <ProtectedRoute>
-                      <Layout><HostelPool /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/bot" element={
-                  <ProtectedRoute>
-                      <Layout><Chatbot /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/wealth" element={
-                  <ProtectedRoute>
-                      <Layout><Wealth /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                  <ProtectedRoute>
-                      <Layout><Settings /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/graveyard" element={
-                  <ProtectedRoute>
-                      <Layout><SubscriptionGraveyard /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/import" element={
-                  <ProtectedRoute>
-                      <Layout><PdfImport /></Layout>
-                  </ProtectedRoute>
-              } />
-              <Route path="/pro" element={
-                  <ProtectedRoute>
-                      <ProUpgrade />
-                  </ProtectedRoute>
-              } />
-              
-              <Route path="/admin" element={
-                  <ProtectedRoute>
-                      <AdminRoute>
-                          <Layout><AdminDashboard /></Layout>
-                      </AdminRoute>
-                  </ProtectedRoute>
-              } />
-            </Routes>
+              <Routes>
+                <Route path="/" element={
+                  Capacitor.isNativePlatform()
+                    ? <ProtectedRoute><Navigate to="/dash" replace /></ProtectedRoute>
+                    : <Landing />
+                } />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/welcome" element={<Onboarding />} />
+
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/delete-account" element={<DeleteAccountInfo />} />
+
+                <Route path="/dash" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+                <Route path="/transactions" element={<ProtectedRoute><Layout><Transactions /></Layout></ProtectedRoute>} />
+                <Route path="/pool" element={<ProtectedRoute><Layout><HostelPool /></Layout></ProtectedRoute>} />
+                <Route path="/bot" element={<ProtectedRoute><Layout><Chatbot /></Layout></ProtectedRoute>} />
+                <Route path="/wealth" element={<ProtectedRoute><Layout><Wealth /></Layout></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+                <Route path="/graveyard" element={<ProtectedRoute><Layout><SubscriptionGraveyard /></Layout></ProtectedRoute>} />
+                <Route path="/import" element={<ProtectedRoute><Layout><PdfImport /></Layout></ProtectedRoute>} />
+                <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute><AdminRoute><Layout><AdminDashboard /></Layout></AdminRoute></ProtectedRoute>} />
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </Suspense>
           </Router>
         </ProProvider>

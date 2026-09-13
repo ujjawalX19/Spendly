@@ -1,82 +1,92 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabaseClient';
+import { isNative, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/authRedirects';
 
 const AuthContext = createContext();
 
+// Local, per-device app state that must not survive into another account.
+const LOCAL_KEYS_TO_CLEAR = ['spendly.seenPayments.v1', 'spendly.notificationPrompt.v1', 'spendly.recovery'];
+
+function clearLocalAppState() {
+  for (const key of LOCAL_KEYS_TO_CLEAR) {
+    try { window.localStorage.removeItem(key); } catch { /* storage unavailable */ }
+    try { window.sessionStorage.removeItem(key); } catch { /* storage unavailable */ }
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);       // Profile data from `profiles` table
-  const [session, setSession] = useState(null);  // Supabase auth session (contains JWT)
+  const [user, setUser] = useState(null);        // the signed-in user's profile row
+  const [session, setSession] = useState(null);  // Supabase auth session (JWT)
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState(false);
+  const [passwordRecovery, setPasswordRecovery] = useState(() => {
+    try { return window.sessionStorage.getItem('spendly.recovery') === '1'; } catch { return false; }
+  });
+  const lastUserId = useRef(null);
 
-  // ── Fetch profile from `profiles` table ──
-  const fetchProfile = async (userId) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching profile:', error.message);
-      return null;
-    }
-    return data;
-  };
-
-  // ── Initialize: check existing session + listen for auth changes ──
-  useEffect(() => {
-    if (!supabase) {
-      console.error('⚠️ Supabase client not initialized — check env vars');
-      setLoading(false);
-      return;
-    }
-
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      if (currentSession?.user) {
-        const profile = await fetchProfile(currentSession.user.id);
-        setUser(profile);
-      }
-      setLoading(false);
-    });
-
-    // Listen for auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        setSession(newSession);
-        if (newSession?.user) {
-          const profile = await fetchProfile(newSession.user.id);
-          setUser(profile);
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
+  const markPasswordRecovery = useCallback((value) => {
+    setPasswordRecovery(value);
+    try {
+      if (value) window.sessionStorage.setItem('spendly.recovery', '1');
+      else window.sessionStorage.removeItem('spendly.recovery');
+    } catch { /* storage unavailable */ }
   }, []);
 
-  // ── Auth Methods ──
+  // Reading the profile is the only table access the app makes directly; the
+  // database allows SELECT on the user's own row and nothing else.
+  const loadProfile = useCallback(async (userId) => {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (error || !data) {
+      setProfileError(true);
+      return null;
+    }
+    setProfileError(false);
+    setUser(data);
+    return data;
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const applySession = (nextSession) => {
+      setSession(nextSession);
+      const userId = nextSession?.user?.id || null;
+      if (!userId) {
+        lastUserId.current = null;
+        setUser(null);
+        setProfileError(false);
+        setLoading(false);
+        return;
+      }
+      if (userId === lastUserId.current) {
+        setLoading(false);
+        return;
+      }
+      lastUserId.current = userId;
+      // Deferred: calling Supabase from inside onAuthStateChange can deadlock
+      // the auth client (documented supabase-js behaviour).
+      setTimeout(() => {
+        loadProfile(userId).finally(() => { if (active) setLoading(false); });
+      }, 0);
+    };
+
+    supabase.auth.getSession().then(({ data }) => { if (active) applySession(data.session); });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') markPasswordRecovery(true);
+      applySession(nextSession);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [loadProfile, markPasswordRecovery]);
 
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      return { success: false, message: error.message };
-    }
-    if (data?.session) {
-      setSession(data.session);
-      if (data.user) {
-        const profile = await fetchProfile(data.user.id);
-        setUser(profile);
-      }
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, message: error.message };
     return { success: true };
   };
 
@@ -85,115 +95,104 @@ export function AuthProvider({ children }) {
       email,
       password,
       options: {
-        data: { full_name: name },  // Stored in raw_user_meta_data, used by trigger
+        data: { full_name: name },
+        // Without this the confirmation email opens the website, not the app.
+        emailRedirectTo: loginRedirectUrl(),
       },
     });
-    if (error) {
-      return { success: false, message: error.message };
-    }
+    if (error) return { success: false, message: error.message };
 
-    // Supabase returns data.user but data.session will be null when
-    // email confirmation is required (the default setting).
-    if (data?.user && !data.session) {
-      return {
-        success: false,
-        needsConfirmation: true,
-        message: 'Check your email and click the confirmation link to activate your account, then come back and log in.',
-      };
-    }
-
-    if (data?.session) {
-      setSession(data.session);
-      if (data.user) {
-        const profile = await fetchProfile(data.user.id);
-        setUser(profile);
-      }
-    }
-
-    return { success: true };
+    // With email confirmation on (the Supabase default) there is no session yet.
+    if (data?.user && !data.session) return { success: true, needsConfirmation: true };
+    return { success: true, needsConfirmation: false };
   };
-
 
   /**
    * Google sign-in.
    *
-   * On the web this is an ordinary redirect. On Android it must NOT be:
-   * supabase-js defaults to assigning the provider URL to `window.location`,
-   * which navigates the Capacitor WebView itself to accounts.google.com. The
-   * app visibly turns into a website, and Google rejects OAuth performed in an
-   * embedded WebView ("disallowed_useragent") anyway.
-   *
-   * So on native we ask supabase-js for the URL without following it
-   * (`skipBrowserRedirect`) and hand it to a Chrome Custom Tab. The app stays
-   * running underneath; Google redirects to spendly://login-callback, which
-   * Android delivers back to us as an `appUrlOpen` event (handled in App.jsx),
-   * and that handler closes the tab.
-   *
-   * REQUIRED SUPABASE DASHBOARD CONFIG (Authentication -> URL Configuration):
-   *   Redirect URLs must include `spendly://login-callback`.
-   * If it is missing, Supabase silently falls back to the project's Site URL
-   * and the user lands on the Spendly website instead of back in the app.
+   * Web: an ordinary redirect. Android: the provider URL is opened in a Chrome
+   * Custom Tab (never the WebView — Google blocks OAuth in embedded WebViews,
+   * and navigating the WebView turns the app into a website). Google returns to
+   * spendly://login-callback, handled by DeepLinkHandler in App.jsx.
    */
   const loginWithGoogle = async () => {
-    const isNative = Capacitor.isNativePlatform();
-
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-          redirectTo: isNative
-            ? 'spendly://login-callback'
-            : `${window.location.origin}/dash`,
-          // Native: take the URL, don't navigate the WebView to it.
-          skipBrowserRedirect: isNative,
+          redirectTo: loginRedirectUrl(),
+          skipBrowserRedirect: isNative(),
         },
       });
+      if (error) return { success: false, message: error.message };
 
-      if (error) {
-        return { success: false, message: error.message };
-      }
-
-      if (isNative) {
-        if (!data?.url) {
-          return { success: false, message: 'Could not start Google sign-in. Please try again.' };
-        }
+      if (isNative()) {
+        if (!data?.url) return { success: false, message: 'Could not start Google sign-in. Please try again.' };
         await Browser.open({ url: data.url, presentationStyle: 'popover' });
       }
-
       return { success: true };
-    } catch (err) {
-      return {
-        success: false,
-        message: err?.message || 'An unexpected error occurred during Google sign-in',
-      };
+    } catch {
+      return { success: false, message: 'Google sign-in could not be started. Please try again.' };
     }
   };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
+  /**
+   * Send a password-reset email. The response is deliberately the same
+   * whether or not the address has an account, so the form cannot be used to
+   * discover who uses Spendly.
+   */
+  const requestPasswordReset = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: passwordResetRedirectUrl() });
+    if (error) {
+      if (error.status === 429 || /rate limit|too many/i.test(error.message)) {
+        return { success: false, message: 'Too many reset requests. Please wait a few minutes and try again.' };
+      }
+      if (/valid email|invalid email|email address/i.test(error.message)) {
+        return { success: false, message: 'Please enter a valid email address.' };
+      }
+      // Anything else (including "user not found" on some configurations) is not revealed.
+    }
+    return { success: true };
+  };
+
+  /** Set a new password for the signed-in (recovery) session. */
+  const updatePassword = async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { success: false, message: error.message };
+    markPasswordRecovery(false);
+    return { success: true };
+  };
+
+  /**
+   * Sign out on this device. `scope: 'local'` so signing out of the phone does
+   * not also sign the user out of their other devices.
+   */
+  const logout = async ({ scope = 'local' } = {}) => {
+    try {
+      await supabase.auth.signOut({ scope });
+    } catch {
+      // The session may already be invalid (e.g. the account was deleted).
+    }
+    clearLocalAppState();
+    markPasswordRecovery(false);
+    lastUserId.current = null;
     setUser(null);
     setSession(null);
   };
 
-  // ── Update profile helper (for streak, chillar, budget updates) ──
-  const updateProfile = async (updates) => {
-    if (!session?.user) return;
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', session.user.id)
-      .select()
-      .single();
+  /**
+   * Merge server-returned values (e.g. new chillar total after logging an
+   * expense) into the displayed profile. This never writes to the database:
+   * those columns are server-owned.
+   */
+  const applyServerProfile = useCallback((fields) => {
+    const clean = Object.fromEntries(Object.entries(fields || {}).filter(([, v]) => v !== undefined && v !== null));
+    if (Object.keys(clean).length) setUser((prev) => (prev ? { ...prev, ...clean } : prev));
+  }, []);
 
-    if (!error && data) {
-      setUser(data);
-    }
-    return { data, error };
-  };
+  const refreshProfile = useCallback(async () => {
+    if (session?.user?.id) await loadProfile(session.user.id);
+  }, [session, loadProfile]);
 
   return (
     <AuthContext.Provider
@@ -201,12 +200,17 @@ export function AuthProvider({ children }) {
         user,
         session,
         loading,
+        profileError,
+        passwordRecovery,
+        markPasswordRecovery,
         login,
         signup,
         loginWithGoogle,
+        requestPasswordReset,
+        updatePassword,
         logout,
-        updateProfile,
-        setUser,
+        applyServerProfile,
+        refreshProfile,
       }}
     >
       {children}

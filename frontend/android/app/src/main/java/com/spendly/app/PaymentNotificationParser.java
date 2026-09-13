@@ -92,40 +92,40 @@ public final class PaymentNotificationParser {
     }
 
     // ── Supported sources ───────────────────────────────────────────────────
-    // UPI apps and the bank apps that post transaction notifications. Anything
-    // not listed here is ignored outright, which keeps the blast radius small.
+    // A strict allowlist of payment and banking apps. Notifications from any
+    // other package are ignored before their text is read — in particular
+    // messaging (WhatsApp, Telegram, SMS), email, social and shopping apps,
+    // where people routinely write "I paid ₹500" in conversation.
+    //
+    // MUST match frontend/src/lib/supportedPaymentApps.js, which is what the
+    // onboarding screen and privacy policy show users. A frontend test fails
+    // if the two lists differ. Package ids must be verified against the Play
+    // Store listing before adding a new entry.
 
     private static final String[][] KNOWN_PACKAGES = {
+        // UPI apps
         { "com.google.android.apps.nbu.paisa.user", "GPay" },
         { "com.phonepe.app",                        "PhonePe" },
         { "net.one97.paytm",                        "Paytm" },
         { "in.org.npci.upiapp",                     "BHIM" },
-        { "in.amazon.mShop.android.shopping",       "Amazon Pay" },
-        { "com.amazon.mShop.android.shopping",      "Amazon Pay" },
+        { "com.sbi.SBIFreedomPlus",                 "BHIM SBI Pay" },
         { "com.dreamplug.androidapp",               "CRED" },
-        { "money.super.payments",                   "Super.money" },
-        { "com.whatsapp",                           "WhatsApp Pay" },
+        { "money.super.payments",                   "super.money" },
         { "com.mobikwik_new",                       "MobiKwik" },
         { "com.freecharge.android",                 "Freecharge" },
+        { "com.fampay.in",                          "FamPay" },
+        // Bank apps
         { "com.snapwork.hdfc",                      "HDFC Bank" },
         { "com.csam.icici.bank.imobile",            "ICICI Bank" },
-        { "com.sbi.lotusintouch",                   "SBI" },
-        { "com.sbi.SBIFreedomPlus",                 "SBI" },
+        { "com.sbi.lotusintouch",                   "SBI YONO" },
         { "com.msf.kbank.mobile",                   "Kotak" },
         { "com.axis.mobile",                        "Axis Bank" },
         { "com.bankofbaroda.mconnect",              "Bank of Baroda" },
         { "com.infrasoft.uboi",                     "Union Bank" },
         { "com.fss.pnbpsp",                         "PNB" },
         { "com.canarabank.mobility",                "Canara Bank" },
-        { "com.idbibank.mpassbook",                 "IDBI" },
-        { "com.ideabank.mobile",                    "IDFC FIRST" },
-        { "com.idfcfirstbank.optimus",              "IDFC FIRST" },
-        { "in.yesbank",                             "YES Bank" },
-        { "com.indusind.indusmobile",               "IndusInd" },
-        { "com.jio.myjio",                          "Jio Finance" },
-        { "com.navi.android",                       "Navi" },
-        { "com.slice.android",                      "Slice" },
-        { "com.fampay.in",                          "FamPay" },
+        { "com.indusind.indusmobile",               "IndusInd Bank" },
+        { "com.idfcfirstbank.optimus",              "IDFC FIRST Bank" },
     };
 
     /** Human-readable name for a package, or null when the app is not supported. */
@@ -205,9 +205,9 @@ public final class PaymentNotificationParser {
     private static final List<String> NON_TRANSACTION_WORDS = Arrays.asList(
         "is requesting", "has requested", "requested money", "payment request",
         "requesting", "collect request", "reminder", "remind",
-        "scratch card", "cashback of up to", "assured", "win ", "won ",
-        "offer", "voucher", "coupon", "reward points", "get flat", "flat ",
-        "sign up", "refer", "invite", "lucky", "congratulations",
+        "scratch card", "cashback of up to", "assured", "win", "won",
+        "offer", "offers", "voucher", "coupon", "reward points", "get flat", "flat",
+        "sign up", "refer", "referral", "invite", "lucky", "congratulations",
         "statement is ready", "bill is due", "due on", "autopay set",
         "will be debited", "will be deducted", "scheduled"
     );
@@ -393,9 +393,32 @@ public final class PaymentNotificationParser {
         return s.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
+    /**
+     * Index of `needle` in `haystack` as a whole word or phrase, or -1.
+     *
+     * Plain substring matching misread ordinary words: "reference" contains
+     * "refer" (so real bank alerts were dropped as marketing), "consent" and
+     * "present" contain "sent", "prepaid" contains "paid", "darwin" contains
+     * "win". A match must not be glued to a letter or digit on either side.
+     */
+    static int indexOfPhrase(String haystack, String needle) {
+        if (haystack == null || needle == null || needle.isEmpty()) return -1;
+        int from = 0;
+        while (from <= haystack.length() - needle.length()) {
+            int i = haystack.indexOf(needle, from);
+            if (i < 0) return -1;
+            int end = i + needle.length();
+            boolean startOk = i == 0 || !Character.isLetterOrDigit(haystack.charAt(i - 1));
+            boolean endOk = end >= haystack.length() || !Character.isLetterOrDigit(haystack.charAt(end));
+            if (startOk && endOk) return i;
+            from = i + 1;
+        }
+        return -1;
+    }
+
     private static String firstMatch(String haystack, List<String> needles) {
         for (String n : needles) {
-            if (haystack.contains(n)) return n;
+            if (indexOfPhrase(haystack, n) >= 0) return n;
         }
         return null;
     }
@@ -403,7 +426,7 @@ public final class PaymentNotificationParser {
     private static Hit earliest(String haystack, List<String> needles) {
         Hit best = null;
         for (String n : needles) {
-            int i = haystack.indexOf(n);
+            int i = indexOfPhrase(haystack, n);
             if (i >= 0 && (best == null || i < best.index)) {
                 best = new Hit(n, i);
             }

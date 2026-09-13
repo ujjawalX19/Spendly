@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   TrendingUp, Camera, ChevronRight,
   Flame, Zap, ShoppingCart, Tv, ShoppingBag, AlertCircle,
@@ -20,6 +20,7 @@ import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import PermissionBanner from '../components/PermissionBanner';
 import { API_URL } from '../lib/apiConfig';
+import { localDateKey } from '../lib/dates';
 
 // ─── ANIMATION VARIANTS ───────────────────────────────────────
 const pageVariants = {
@@ -343,9 +344,9 @@ function ChillarCard({ totalChillar, todayRoundup }) {
         </div>
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl font-black text-[#a3e635]">{'\u20b9'}{totalChillar}</span>
-          <span className="text-[#a3e635] font-black uppercase text-sm">SAVED</span>
+          <span className="text-[#a3e635] font-black uppercase text-sm">ROUND-UPS</span>
         </div>
-        <p className="text-xs text-[#a1a1aa] font-bold mt-1">Fractional Roundups</p>
+        <p className="text-xs text-[#a1a1aa] font-bold mt-1">Spare change to the next ₹5, for you to set aside</p>
       </div>
       {todayRoundup > 0 && (
         <div className="mt-3 inline-flex items-center w-max bg-[#84cc16]/20 text-[#a3e635] text-xs font-bold px-2.5 py-1 rounded-full">
@@ -393,8 +394,9 @@ function ScanBillCTA({ onScan, loading, fileInputRef }) {
 
 // ─── RECENT KALESH ──────────────────────────────────────────
 function RecentExpenses({ expenses, loading }) {
+  const navigate = useNavigate();
   const recent = expenses.slice(0, 4);
-  const recentCount = expenses.filter(e => Date.now() - new Date(e.created_at) < 3 * 86400000).length;
+  const recentCount = expenses.filter(e => Date.now() - new Date(e.occurred_at || e.created_at) < 3 * 86400000).length;
 
   return (
     <motion.div variants={cardVariants} className="rounded-2xl bg-[#141414] p-5">
@@ -408,7 +410,7 @@ function RecentExpenses({ expenses, loading }) {
             </span>
           )}
         </div>
-        <button className="text-[13px] font-bold text-[#a1a1aa] hover:text-white flex items-center gap-0.5 transition-colors">
+        <button type="button" onClick={() => navigate('/transactions')} className="text-[13px] font-bold text-[#a1a1aa] hover:text-white flex items-center gap-0.5 transition-colors">
           View All <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -449,7 +451,7 @@ function RecentExpenses({ expenses, loading }) {
                   <p className="text-[15px] font-bold text-white truncate leading-tight">
                     {exp.description}
                   </p>
-                  <p className="text-xs text-[#a1a1aa] font-medium mt-1">{formatRelativeDate(exp.created_at)}</p>
+                  <p className="text-xs text-[#a1a1aa] font-medium mt-1">{formatRelativeDate(exp.occurred_at || exp.created_at)}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-mono-finance tabular-nums font-black text-[#f43f5e] text-[15px] leading-tight">
@@ -470,10 +472,14 @@ function RecentExpenses({ expenses, loading }) {
 
 // ─── AI DOST TIP ──────────────────────────────────────────
 function AiTipCard({ expenses }) {
-  const foodSpend = expenses.filter(e => e.category === 'Food')
-    .reduce((s, e) => s + parseFloat(e.amount), 0);
-  
-  const savings = Math.round(foodSpend * 0.3) || 460;
+  // A simple rule on this month's own data. No figure is shown unless it
+  // comes from the user's expenses.
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const foodSpend = expenses
+    .filter(e => e.category === 'Food' && new Date(e.occurred_at || e.created_at) >= monthStart)
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  if (foodSpend < 500) return null;
+  const tenPercent = Math.round(foodSpend * 0.1);
 
   return (
     <motion.div
@@ -484,9 +490,9 @@ function AiTipCard({ expenses }) {
         <Lightbulb className="w-6 h-6 text-[#a3e635]" />
       </div>
       <div className="min-w-0">
-        <p className="text-[15px] font-bold text-white leading-tight">Budget tip from Spendly AI</p>
+        <p className="text-[15px] font-bold text-white leading-tight">Budget tip</p>
         <p className="text-[13px] font-semibold text-[#a1a1aa] mt-1">
-          Cut 2 late-night orders — save <span className="text-[#a3e635]">{'\u20b9'}{savings}/week</span>
+          You've spent {'\u20b9'}{Math.round(foodSpend).toLocaleString('en-IN')} on food this month. Trimming it by 10% frees up <span className="text-[#a3e635]">{'\u20b9'}{tenPercent.toLocaleString('en-IN')}</span>.
         </p>
       </div>
     </motion.div>
@@ -544,13 +550,16 @@ function BurnRateCard({ burnData }) {
         </div>
         <div className="min-w-0">
           <p className="text-[14px] font-bold text-[#f43f5e] leading-tight">
-            Broke by {burnData.brokeDate}
+            {burnData.budgetRemaining < 0
+              ? `Over budget by \u20b9${Math.abs(burnData.budgetRemaining).toLocaleString('en-IN')}`
+              : `At this pace your budget runs out around ${burnData.brokeDate}`}
           </p>
           {burnData.cutSuggestion && (
             <p className="text-xs text-[#a1a1aa] mt-1">
               {burnData.cutSuggestion.message}
             </p>
           )}
+          <p className="text-[10px] text-[#71717a] mt-1">Spending forecast based on your pace so far this month.</p>
         </div>
       </div>
     </motion.div>
@@ -560,7 +569,7 @@ function BurnRateCard({ burnData }) {
 // ─── SPEND SCORE WIDGET ───────────────────────────────────
 function PaisaScoreCard({ score }) {
   if (!score) return null;
-  const pct = Math.round((score.total / 850) * 100);
+  const pct = Math.round((score.total / (score.max || 850)) * 100);
   const circumference = 2 * Math.PI * 32;
   const strokeDash = (pct / 100) * circumference;
 
@@ -583,11 +592,13 @@ function PaisaScoreCard({ score }) {
         </div>
       </div>
       <div>
-        <p className="text-sm font-bold text-white">Spend Score</p>
-        <p className="text-xs text-[#a1a1aa] mt-0.5">Top {100 - score.percentile}% of users</p>
-        {score.change !== 0 && (
+        <p className="text-sm font-bold text-white">Paisa Score <span className="text-[#71717a] font-semibold">/ {score.max || 850}</span></p>
+        <p className="text-xs text-[#a1a1aa] mt-0.5">
+          {score.confidence === 'low' ? 'Early estimate: log more expenses for an accurate score' : 'Based on your budget pace, daily limit and streak'}
+        </p>
+        {typeof score.change === 'number' && score.change !== 0 && (
           <p className={`text-xs font-bold mt-1 ${score.change > 0 ? 'text-[#a3e635]' : 'text-[#f43f5e]'}`}>
-            {score.change > 0 ? '+' : ''}{score.change} this week
+            {score.change > 0 ? '+' : ''}{score.change} since last week
           </p>
         )}
       </div>
@@ -606,9 +617,15 @@ const PAYMENT_COPY = {
   REFUND: { title: 'Refund received', action: 'Log it', verb: 'refunded' },
 };
 
-function PaymentToast({ payment, onAdd, onDismiss }) {
+function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
   const copy = PAYMENT_COPY[payment.kind] || PAYMENT_COPY.EXPENSE;
   const uncertain = payment.needsConfirmation;
+  const [amount, setAmount] = useState(String(payment.amount));
+  const isExpense = payment.kind === 'EXPENSE';
+  const parsed = Number(amount);
+  const valid = Number.isFinite(parsed) && parsed > 0 && parsed <= 10000000;
+  const when = new Date(payment.timestamp);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -60, scale: 0.9 }}
@@ -618,6 +635,8 @@ function PaymentToast({ payment, onAdd, onDismiss }) {
       className="fixed top-4 inset-x-4 z-[300] max-w-sm mx-auto
                  bg-zinc-900 border border-lime-500/30 rounded-2xl p-4
                  shadow-[0_0_30px_rgba(57,255,20,0.2)] backdrop-blur-xl"
+      role="dialog"
+      aria-label={copy.title}
     >
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-xl bg-lime-500/15 flex items-center justify-center shrink-0 mt-0.5">
@@ -625,30 +644,46 @@ function PaymentToast({ payment, onAdd, onDismiss }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-zinc-100">
-            {uncertain ? `${copy.title} — is this right?` : copy.title}
+            {uncertain ? `${copy.title}: please check` : copy.title}
+            {queued > 1 && <span className="ml-2 text-[11px] font-semibold text-zinc-500">1 of {queued}</span>}
           </p>
           <p className="text-xs text-zinc-400 mt-0.5 truncate">
-            {'\u20b9'}{Number(payment.amount).toLocaleString('en-IN')} {copy.verb}
-            {payment.merchant && payment.merchant !== 'Unknown' ? ` · ${payment.merchant}` : ''}
+            {payment.merchant && payment.merchant !== 'Unknown' ? payment.merchant : 'Unknown payee'}
+            {payment.app ? ` · ${payment.app}` : ''} · {when.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
           </p>
-          {uncertain && (
-            <p className="text-[11px] text-amber-400/90 mt-1">
-              We could not read this one confidently. Check the amount before saving.
-            </p>
+          {isExpense ? (
+            <label className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
+              Amount
+              <span className="relative flex-1">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-500">{'\u20b9'}</span>
+                <input
+                  type="number" inputMode="decimal" min="0.01" step="0.01" value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-1.5 pl-6 pr-2 font-mono text-zinc-100 outline-none focus:border-lime-500/60"
+                />
+              </span>
+            </label>
+          ) : (
+            <p className="text-xs text-zinc-400 mt-1">{'\u20b9'}{Number(payment.amount).toLocaleString('en-IN')} {copy.verb}. Income isn't tracked yet, so this won't be added.</p>
+          )}
+          {uncertain && isExpense && (
+            <p className="text-[11px] text-amber-400/90 mt-1">We couldn't read this one confidently. Check the amount before saving.</p>
           )}
         </div>
-        <button onClick={onDismiss} className="text-zinc-600 hover:text-zinc-400 p-1 transition-colors">
+        <button onClick={onDismiss} aria-label="Dismiss" className="text-zinc-600 hover:text-zinc-400 p-1 transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
       <div className="flex gap-2 mt-3">
-        <motion.button whileTap={{ scale: 0.94 }} onClick={onAdd}
-          className="flex-1 bg-lime-400 text-black text-xs font-black py-2 rounded-xl hover:bg-lime-300 transition-colors">
-          {copy.action} {'\u2713'}
-        </motion.button>
+        {isExpense && (
+          <motion.button whileTap={{ scale: 0.94 }} onClick={() => valid && onAdd(parsed)} disabled={!valid || saving}
+            className="flex-1 bg-lime-400 text-black text-xs font-black py-2 rounded-xl hover:bg-lime-300 transition-colors disabled:opacity-50">
+            {saving ? 'Saving…' : 'Add expense'}
+          </motion.button>
+        )}
         <motion.button whileTap={{ scale: 0.94 }} onClick={onDismiss}
           className="flex-1 bg-zinc-800 text-zinc-400 text-xs font-bold py-2 rounded-xl hover:bg-zinc-700 transition-colors">
-          Skip
+          {isExpense ? 'Not an expense' : 'OK'}
         </motion.button>
       </div>
     </motion.div>
@@ -674,7 +709,6 @@ export default function Dashboard() {
   const [showAddModal, setShowAddModal]     = useState(false);
   const [addLoading, setAddLoading]         = useState(false);
   const [scanLoading, setScanLoading]       = useState(false);
-  const [pendingPayment, setPendingPayment] = useState(null);
   const [safeToSpend, setSafeToSpend]       = useState(null);
   const [burnRate, setBurnRate]             = useState(null);
   const [paisaScore, setPaisaScore]         = useState(null);
@@ -683,18 +717,13 @@ export default function Dashboard() {
 
 
   // ── UPI Notifications ──────────────────────────────────────
-  const { isSupported, permissionGranted, requestPermission } = usePaymentNotifications({
-    onPaymentDetected: useCallback((payload) => {
-      setPendingPayment(payload);
-    }, []),
-  });
-
-  useEffect(() => {
-    if (isSupported && !permissionGranted) {
-      const t = setTimeout(() => requestPermission(), 2000);
-      return () => clearTimeout(t);
-    }
-  }, [isSupported, permissionGranted, requestPermission]);
+  // Android Notification Access is only ever requested from an explicit tap on
+  // "Enable". The dashboard must never send the user to Settings on its own.
+  const {
+    isSupported, permissionGranted, permissionChecked, pending, resolvePayment, openPermissionSettings,
+  } = usePaymentNotifications();
+  const pendingPayment = pending[0] || null;
+  const [savingPayment, setSavingPayment] = useState(false);
 
   // ── Fetch v1 feature data ──────────────────────────────────
   useEffect(() => {
@@ -736,9 +765,9 @@ export default function Dashboard() {
   const streakDays    = user?.streak_current  || 0;
   const totalChillar  = parseFloat(user?.total_chillar || 0);
 
-  const today = new Date().toDateString();
+  const today = localDateKey(new Date());
   const todayRoundup = expenses
-    .filter(e => new Date(e.created_at).toDateString() === today)
+    .filter(e => localDateKey(new Date(e.occurred_at || e.created_at)) === today)
     .reduce((s, e) => s + (parseFloat(e.roundup_chillar) || 0), 0);
 
   // ── Handlers ───────────────────────────────────────────────
@@ -779,33 +808,30 @@ export default function Dashboard() {
     };
   }, [addScannedExpense]);
 
-  const handleLogUpiPayment = async () => {
-    if (!pendingPayment) return;
+  const handleLogUpiPayment = async (confirmedAmount) => {
+    if (!pendingPayment || savingPayment) return;
+    const payment = pendingPayment;
 
-    const amount = Number(pendingPayment.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setPendingPayment(null);
+    // Income and refunds are never recorded as spending.
+    if (payment.kind !== 'EXPENSE') {
+      await resolvePayment(payment.fingerprint);
       return;
     }
 
-    // Income and refunds are money coming in. Recording them as expenses
-    // would inflate every spending figure in the app, so until a dedicated
-    // income ledger exists they are acknowledged and not written.
-    if (pendingPayment.kind && pendingPayment.kind !== 'EXPENSE') {
-      setScanToast({
-        type: 'success',
-        message: `\u20b9${amount.toLocaleString('en-IN')} received — not counted as spending.`,
-      });
-      setPendingPayment(null);
-      return;
+    const merchant = payment.merchant && payment.merchant !== 'Unknown' ? payment.merchant : 'UPI payment';
+    setSavingPayment(true);
+    const result = await addExpense(confirmedAmount, 'Other', merchant.slice(0, 200), {
+      source: 'upi_auto',
+      occurredAt: new Date(payment.timestamp).toISOString(),
+    });
+    setSavingPayment(false);
+
+    if (result.success) {
+      await resolvePayment(payment.fingerprint);
+    } else {
+      // Keep it in the queue so the user can retry.
+      setScanToast({ type: 'error', message: result.message || 'Could not save that payment.' });
     }
-
-    const merchant = pendingPayment.merchant && pendingPayment.merchant !== 'Unknown'
-      ? pendingPayment.merchant
-      : 'UPI Payment';
-
-    await addExpense(amount, 'Other', merchant);
-    setPendingPayment(null);
   };
 
   const firstName = (user?.full_name || user?.name || 'buddy').split(' ')[0];
@@ -818,9 +844,12 @@ export default function Dashboard() {
       <AnimatePresence>
         {pendingPayment && (
           <PaymentToast
+            key={pendingPayment.fingerprint}
             payment={pendingPayment}
+            queued={pending.length}
+            saving={savingPayment}
             onAdd={handleLogUpiPayment}
-            onDismiss={() => setPendingPayment(null)}
+            onDismiss={() => resolvePayment(pendingPayment.fingerprint)}
           />
         )}
       </AnimatePresence>
@@ -889,7 +918,12 @@ export default function Dashboard() {
         </motion.header>
 
         {/* NOTIFICATION PERMISSION BANNER */}
-        <PermissionBanner />
+        <PermissionBanner
+          isSupported={isSupported}
+          permissionGranted={permissionGranted}
+          permissionChecked={permissionChecked}
+          onEnable={openPermissionSettings}
+        />
 
         {/* SAFE-TO-SPEND HERO */}
         <SafeToSpendCard safeData={safeToSpend} />

@@ -1,38 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../contexts/AuthContext';
 import { apiUrl } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
+import { lastNDays, localDateKey, startOfLocalMonth } from '../lib/dates';
 
 const API_URL = apiUrl('/expenses');
 
+/** `occurred_at` is when the money moved; `created_at` only when the row was written. */
+const when = (e) => new Date(e.occurred_at || e.created_at);
+
 /**
- * useExpenses — Custom hook for personal expense CRUD via Express backend.
+ * useExpenses — the signed-in user's expenses, via the Spendly backend.
  *
- * Returns:
- *  - expenses: array of expense objects, sorted by created_at desc
- *  - loading: boolean
- *  - error: string | null
- *  - totalSpent: sum of all expense amounts
- *  - addExpense: (amount, category, description) => Promise
- *  - addScannedExpense: (receiptData) => Promise — for AI-scanned receipts
- *  - deleteExpense: (id) => Promise
- *  - chartData: last 7 days spending data for Recharts
- *  - fetchExpenses / refetch: function to reload expenses manually
+ * All writes go through the API. Server-owned profile values that change as a
+ * side effect (round-up savings, streak) are taken from the API response and
+ * merged into the displayed profile — never written to the database from here.
  */
 export function useExpenses() {
-  const { session, updateProfile } = useAuth();
+  const { session, applyServerProfile } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Helper to get auth headers
   const getHeaders = useCallback(() => {
     const token = session?.access_token;
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [session]);
 
-  // ── Fetch expenses (GET) ──
   const fetchExpenses = useCallback(async () => {
     if (!session?.access_token) {
       setExpenses([]);
@@ -43,14 +39,12 @@ export function useExpenses() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(API_URL, { headers: getHeaders(), params: { limit: 500 } });
-      if (response.data.success) {
-        setExpenses(response.data.expenses || []);
-      } else {
-        throw new Error(response.data.message || 'Failed to fetch expenses');
-      }
+      // The dashboard only needs this month and the last 7 days.
+      const from = new Date(Math.min(startOfLocalMonth().getTime(), lastNDays(7)[0].start.getTime())).toISOString();
+      const response = await axios.get(API_URL, { headers: getHeaders(), params: { limit: 500, from } });
+      if (!response.data.success) throw new Error(response.data.message || 'Failed to fetch expenses');
+      setExpenses(response.data.expenses || []);
     } catch (err) {
-      console.error('Error fetching expenses:', err);
       setError(friendlyError(err, "Couldn't load your expenses. Check your connection and try again."));
     } finally {
       setLoading(false);
@@ -61,171 +55,170 @@ export function useExpenses() {
     fetchExpenses();
   }, [fetchExpenses]);
 
-  // ── Derived state ──
-  // `occurred_at` is when the money actually moved; `created_at` is only when
-  // the row was written. Rows created before that column existed fall back.
-  const when = (e) => new Date(e.occurred_at || e.created_at);
+  // This month's total, on the device's calendar.
+  const totalSpent = useMemo(() => {
+    const monthStart = startOfLocalMonth();
+    return expenses
+      .filter((e) => when(e) >= monthStart)
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [expenses]);
 
-  // Only count expenses from the current month for budget tracking.
-  // This runs on the user's device, so the device's local month is the right
-  // one — unlike the server, which must be told to use IST explicitly.
-  const now = new Date();
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const currentMonthExpenses = expenses.filter(e => when(e) >= currentMonthStart);
-  const totalSpent = currentMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
-
-  // ── Chart data: last 7 days ──
-  const chartData = (() => {
-    const last7 = {};
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      last7[d.toLocaleDateString('en-US', { weekday: 'short' })] = 0;
+  // The last 7 calendar days, oldest first. Buckets by full date, not weekday
+  // name: the old version added last week's Monday to this week's.
+  const chartData = useMemo(() => {
+    const days = lastNDays(7);
+    const totals = new Map(days.map((d) => [d.key, 0]));
+    for (const e of expenses) {
+      const key = localDateKey(when(e));
+      if (totals.has(key)) totals.set(key, totals.get(key) + (Number(e.amount) || 0));
     }
-    expenses.forEach((e) => {
-      const d = when(e).toLocaleDateString('en-US', { weekday: 'short' });
-      if (last7[d] !== undefined) last7[d] += parseFloat(e.amount);
+    return days.map((d) => ({ name: d.label, date: d.key, kharcha: Math.round(totals.get(d.key) * 100) / 100 }));
+  }, [expenses]);
+
+  const applyStats = (data) => {
+    applyServerProfile({
+      total_chillar: data.totalChillar,
+      streak_current: data.streak?.currentDays,
+      streak_longest: data.streak?.longestStreak,
     });
-    return Object.keys(last7).map((k) => ({ name: k, kharcha: last7[k] }));
-  })();
+  };
 
-  // ── Add manual expense (POST) ──
-  const addExpense = async (amount, category = 'Other', description = '') => {
+  /**
+   * @param {number} amount
+   * @param {string} [category]
+   * @param {string} [description]
+   * @param {{source?: 'manual'|'upi_auto', occurredAt?: string}} [options]
+   */
+  const addExpense = async (amount, category = 'Other', description = '', options = {}) => {
     if (!session?.access_token) return { success: false, message: 'Not authenticated' };
-
     try {
-      const response = await axios.post(
-        API_URL,
-        { amount, category, description },
-        { headers: getHeaders() }
-      );
+      const body = { amount, category, description };
+      if (options.source) body.source = options.source;
+      if (options.occurredAt) body.occurred_at = options.occurredAt;
 
-      if (response.data.success) {
-        // Optimistically add to top of local state
-        setExpenses((prev) => [response.data.expense, ...prev]);
+      const response = await axios.post(API_URL, body, { headers: getHeaders() });
+      if (!response.data.success) return { success: false, message: response.data.message };
 
-        // Update AuthContext so the UI immediately reflects the new chillar and streak
-        if (updateProfile) {
-          await updateProfile({
-            total_chillar: response.data.totalChillar,
-            streak_current: response.data.streak?.currentDays,
-            streak_longest: response.data.streak?.longestStreak,
-          });
-        }
-
-        return { 
-          success: true, 
-          expense: response.data.expense, 
-          roundupChillar: response.data.roundupChillar 
-        };
-      }
-      return { success: false, message: response.data.message };
+      setExpenses((prev) => [response.data.expense, ...prev]);
+      applyStats(response.data);
+      return { success: true, expense: response.data.expense, roundupChillar: response.data.roundupChillar };
     } catch (err) {
-      console.error('Error adding expense:', err);
       return { success: false, message: friendlyError(err, "We couldn't save that expense. Please try again.") };
     }
   };
 
-  // ── Add AI-scanned expense (POST /scan) ──
   const addScannedExpense = async (receiptData) => {
     if (!session?.access_token) return { success: false, message: 'Not authenticated' };
-
     try {
       const response = await axios.post(
         `${API_URL}/scan`,
         { imageBase64: receiptData.imageBase64 || receiptData },
         { headers: getHeaders() }
       );
+      if (!response.data.success) return { success: false, message: response.data.message };
 
-      if (response.data.success) {
-        setExpenses((prev) => [response.data.expense, ...prev]);
-
-        if (updateProfile) {
-          await updateProfile({
-            total_chillar: response.data.totalChillar,
-            streak_current: response.data.streak?.currentDays,
-            streak_longest: response.data.streak?.longestStreak,
-          });
-        }
-
-        return { 
-          success: true, 
-          expense: response.data.expense, 
-          roundupChillar: response.data.roundupChillar 
-        };
-      }
-      return { success: false, message: response.data.message };
+      setExpenses((prev) => [response.data.expense, ...prev]);
+      applyStats(response.data);
+      return { success: true, expense: response.data.expense, roundupChillar: response.data.roundupChillar };
     } catch (err) {
-      console.error('Error adding scanned expense:', err);
       return { success: false, message: friendlyError(err, "We couldn't read that receipt. Try a clearer photo, or add it manually.") };
     }
   };
 
-  // ── Delete Expense (DELETE) ──
   const deleteExpense = async (id) => {
     if (!session?.access_token) return { success: false, message: 'Not authenticated' };
-
     try {
       const response = await axios.delete(`${API_URL}/${id}`, { headers: getHeaders() });
-      if (response.data.success) {
-        setExpenses((prev) => prev.filter(e => e.id !== id));
-        return { success: true };
-      }
-      return { success: false, message: response.data.message };
+      if (!response.data.success) return { success: false, message: response.data.message };
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+      return { success: true };
     } catch (err) {
-      console.error('Error deleting expense:', err);
       return { success: false, message: friendlyError(err, "We couldn't delete that expense. Please try again.") };
     }
   };
 
-  // ── Edit an existing expense (PATCH) ──
   const editExpense = async (id, updates) => {
     if (!session?.access_token) return { success: false, message: 'Not authenticated' };
-
     try {
       const response = await axios.patch(`${API_URL}/${id}`, updates, { headers: getHeaders() });
-      if (response.data.success) {
-        setExpenses((prev) => prev.map(e => (e.id === id ? response.data.expense : e)));
-        return { success: true, expense: response.data.expense };
-      }
-      return { success: false, message: response.data.message };
+      if (!response.data.success) return { success: false, message: response.data.message };
+      setExpenses((prev) => prev.map((e) => (e.id === id ? response.data.expense : e)));
+      return { success: true, expense: response.data.expense };
     } catch (err) {
-      console.error('Error updating expense:', err);
       return { success: false, message: friendlyError(err, "We couldn't update that expense. Please try again.") };
     }
   };
 
   /**
-   * Download the user's expenses as CSV.
+   * Export expenses as CSV.
    *
-   * The file is fetched as a blob and saved through an object URL rather than
-   * by pointing the browser at the endpoint, because the request needs an
-   * Authorization header.
+   * Web: download through an object URL.
+   * Android: the WebView ignores `<a download>` on blob URLs (the old code did
+   * nothing and still reported success), so the file is written to app storage
+   * and handed to the system share sheet, from which the user can save it to
+   * Files/Drive or open it in a spreadsheet app.
+   *
+   * @returns {Promise<{success: boolean, cancelled?: boolean, message?: string}>}
    */
   const exportCsv = async (filters = {}) => {
     if (!session?.access_token) return { success: false, message: 'Not authenticated' };
 
+    let csvText;
+    let rowCount = null;
     try {
       const response = await axios.get(`${API_URL}/export.csv`, {
         headers: getHeaders(),
         params: filters,
-        responseType: 'blob',
+        responseType: 'text',
+        transformResponse: (d) => d,
       });
+      csvText = String(response.data || '');
+      rowCount = Number(response.headers?.['x-row-count']);
+    } catch (err) {
+      return { success: false, message: friendlyError(err, "We couldn't prepare your export. Please try again.") };
+    }
 
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+    const filename = `spendly-expenses-${localDateKey(new Date())}.csv`;
+    const summary = Number.isFinite(rowCount) ? `${rowCount} expense${rowCount === 1 ? '' : 's'} exported` : undefined;
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const [{ Filesystem, Directory, Encoding }, { Share }] = await Promise.all([
+          import('@capacitor/filesystem'),
+          import('@capacitor/share'),
+        ]);
+        const written = await Filesystem.writeFile({
+          path: filename,
+          data: csvText,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+        try {
+          await Share.share({ title: 'Spendly expenses', files: [written.uri], dialogTitle: 'Save or share your expenses' });
+        } catch (shareErr) {
+          // Dismissing the share sheet rejects with a cancellation; that is not a failure.
+          if (/cancel/i.test(shareErr?.message || '')) return { success: false, cancelled: true };
+          throw shareErr;
+        }
+        return { success: true, message: summary };
+      } catch {
+        return { success: false, message: "We couldn't save the export file on this device." };
+      }
+    }
+
+    try {
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `spendly-expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
-
-      return { success: true };
-    } catch (err) {
-      console.error('Error exporting expenses:', err);
-      return { success: false, message: friendlyError(err, "We couldn't prepare your export. Please try again.") };
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+      return { success: true, message: summary };
+    } catch {
+      return { success: false, message: "Your browser blocked the download." };
     }
   };
 
@@ -241,6 +234,6 @@ export function useExpenses() {
     deleteExpense,
     exportCsv,
     fetchExpenses,
-    refetch: fetchExpenses, // Alias for backwards compatibility
+    refetch: fetchExpenses,
   };
 }

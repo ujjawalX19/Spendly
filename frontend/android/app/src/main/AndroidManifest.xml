@@ -34,12 +34,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!--
+                Auth deep links. Only these two exact hosts are handled; the app
+                accepts nothing from them except a one-time PKCE code (see
+                DeepLinkHandler in src/App.jsx and AUTH_DEEP_LINKS.md).
+                  spendly://login-callback   Google sign-in, email confirmation
+                  spendly://reset-password   password-reset email
+                Custom schemes are not verified by Android; PKCE is what keeps a
+                hijacked link from yielding a session. Android App Links (https)
+                are the recommended upgrade once a domain is verified.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- This tells Android to open this app for links starting with spendly://login-callback -->
                 <data android:scheme="spendly" android:host="login-callback" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="spendly" android:host="reset-password" />
             </intent-filter>
 
         </activity>
@@ -66,16 +81,14 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
-
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
     <!--
-        NotificationListenerService — reads active push notifications.
-        NOTE: Does NOT read SMS. User must grant access via:
-        Settings → Apps → Special App Access → Notification Access
+        Permissions. Deliberately minimal.
+        - INTERNET: talk to the Spendly API and Supabase.
+        Notification access is NOT a manifest permission: the listener service
+        above is protected by BIND_NOTIFICATION_LISTENER_SERVICE (which only the
+        system holds), and the user grants access in Android settings.
+        POST_NOTIFICATIONS was removed: Spendly does not post notifications.
+        SMS permissions are not requested.
     -->
-    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
