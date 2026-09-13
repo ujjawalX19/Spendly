@@ -1,80 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
-const { GoogleGenAI } = require('@google/genai');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
-const { advanceStreak } = require('../lib/streak');
+const { receiptScanLimiter, exportLimiter } = require('../middleware/rateLimits');
+const { applyProfileStats, roundupFor } = require('../lib/profileStats');
+const gemini = require('../lib/gemini');
 const appTime = require('../lib/appTime');
 const { toCsv } = require('../lib/csv');
+const { validationError } = require('../lib/validation');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-let ai = null;
-if (process.env.GEMINI_API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-} else {
-    console.warn('⚠️  GEMINI_API_KEY not set — Receipt scanning will run in mock mode.');
-}
-
-// ── Zod Schemas ──────────────────────────────────────────────────────────────
 const VALID_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
+const VALID_SOURCES = ['manual', 'ai_scan', 'upi_auto', 'pdf_import'];
+
+// How far in the past an automatically detected payment may be dated. The
+// native queue keeps detections for 7 days; a little slack covers clock skew.
+const MAX_UPI_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
+
+const amountSchema = z.coerce.number()
+    .positive('Amount must be a positive number')
+    .max(10_000_000, 'Amount too large')
+    .refine((n) => Math.round(n * 100) === Number((n * 100).toFixed(6)), 'Amount can have at most 2 decimal places');
 
 const expenseSchema = z.object({
-    amount: z.coerce.number().positive('Amount must be a positive number').max(10_000_000, 'Amount too large'),
+    amount: amountSchema,
     category: z.enum(VALID_CATEGORIES).optional().default('Other'),
-    description: z.string().max(200, 'Description too long (max 200 chars)').optional().default(''),
-});
+    description: z.string().trim().max(200, 'Description too long (max 200 chars)').optional().default(''),
+    // Only the app's own notification flow may mark an expense as automatic.
+    // `ai_scan` and `pdf_import` are set exclusively by their server routes.
+    source: z.enum(['manual', 'upi_auto']).optional().default('manual'),
+    occurred_at: z.string().datetime({ offset: true }).optional(),
+}).strict();
 
 // ---------------------------------------------------------------------------
-// Helper: Update streak and total_chillar in public.profiles
-// Reads the current profile, computes the new streak, and saves atomically.
-// ---------------------------------------------------------------------------
-const updateProfileStats = async (userId, chillarToAdd) => {
-    // Fetch current profile stats
-    const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('total_chillar, streak_current, streak_last_log, streak_longest')
-        .eq('id', userId)
-        .single();
-
-    if (fetchError || !profile) {
-        console.error('Failed to fetch profile for stats update:', fetchError);
-        return null;
-    }
-
-    const now = new Date();
-
-    // Streak days are local calendar days (see lib/appTime.js), shared with
-    // the /api/streaks routes so the two can never disagree.
-    const streak = advanceStreak(profile, now);
-    const newChillar = Number(parseFloat(profile.total_chillar) || 0) + chillarToAdd;
-
-    const { data: updated, error: updateError } = await supabase
-        .from('profiles')
-        .update({
-            total_chillar: Number(newChillar.toFixed(2)),
-            streak_current: streak.streak_current,
-            streak_longest: streak.streak_longest,
-            streak_last_log: streak.streak_last_log
-        })
-        .eq('id', userId)
-        .select('total_chillar, streak_current, streak_longest')
-        .single();
-
-    if (updateError) {
-        console.error('Failed to update profile stats:', updateError);
-        return null;
-    }
-
-    return updated;
-};
-
-// ---------------------------------------------------------------------------
-// @route   GET /api/expenses
-// @desc    Get all expenses for the authenticated user
-// @access  Protected
+// Listing and export
 // ---------------------------------------------------------------------------
 const listQuerySchema = z.object({
     q: z.string().trim().max(100).optional(),
@@ -83,7 +46,7 @@ const listQuerySchema = z.object({
     to: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
     minAmount: z.coerce.number().nonnegative().optional(),
     maxAmount: z.coerce.number().nonnegative().optional(),
-    source: z.enum(['manual', 'ai_scan', 'upi_auto', 'pdf_import']).optional(),
+    source: z.enum(VALID_SOURCES).optional(),
     sort: z.enum(['newest', 'oldest', 'highest', 'lowest']).optional().default('newest'),
     limit: z.coerce.number().int().min(1).max(500).optional().default(100),
     offset: z.coerce.number().int().min(0).optional().default(0),
@@ -97,9 +60,8 @@ const SORTS = {
 };
 
 /**
- * Build the filtered, sorted, paginated expense query for one user.
- * Shared by the list endpoint and the CSV export so the two can never
- * disagree about what the user is looking at.
+ * Build the filtered, sorted expense query for one user. Shared by the list
+ * endpoint and the CSV export so the two can never disagree.
  */
 const buildExpenseQuery = (userId, filters, { count = false } = {}) => {
     let query = supabase
@@ -108,14 +70,18 @@ const buildExpenseQuery = (userId, filters, { count = false } = {}) => {
         .eq('user_id', userId);
 
     if (filters.q) {
-        // Escape PostgREST's pattern metacharacters so a user searching for
-        // "50%" does not accidentally run a wildcard query.
-        const term = filters.q.replace(/[%_,()]/g, '\\$&');
+        // Escape PostgREST pattern metacharacters so "50%" is literal.
+        const term = filters.q.replace(/[%_,()\\]/g, '\\$&');
         query = query.ilike('description', `%${term}%`);
     }
     if (filters.category) query = query.eq('category', filters.category);
     if (filters.source) query = query.eq('source', filters.source);
-    if (filters.from) query = query.gte('occurred_at', new Date(filters.from).toISOString());
+    if (filters.from) {
+        const from = filters.from.length === 10
+            ? appTime.zonedTimeToUtc(...filters.from.split('-').map(Number), 0, 0, 0)
+            : new Date(filters.from);
+        query = query.gte('occurred_at', new Date(from).toISOString());
+    }
     if (filters.to) {
         // A bare date means "through the end of that day", local time.
         const to = filters.to.length === 10
@@ -130,30 +96,17 @@ const buildExpenseQuery = (userId, filters, { count = false } = {}) => {
     return query.order(sort.column, { ascending: sort.ascending });
 };
 
-// ---------------------------------------------------------------------------
-// @route   GET /api/expenses
-// @desc    List the authenticated user's expenses, with search, filtering,
-//          sorting and pagination.
-// @access  Protected
-//
-// Query: q, category, source, from, to, minAmount, maxAmount, sort, limit, offset
-// ---------------------------------------------------------------------------
+// @route   GET /api/expenses — search, filter, sort, paginate
 router.get('/', protect, async (req, res) => {
     const parsed = listQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid filter',
-            errors: parsed.error.issues.map(e => ({ field: e.path.join('.'), message: e.message })),
-        });
-    }
+    if (!parsed.success) return validationError(res, parsed.error, 'Invalid filter');
     const filters = parsed.data;
 
     const { data: expenses, error, count } = await buildExpenseQuery(req.user.id, filters, { count: true })
         .range(filters.offset, filters.offset + filters.limit - 1);
 
     if (error) {
-        console.error('Error fetching expenses:', error);
+        console.error('Error fetching expenses:', error.message);
         return res.status(500).json({ success: false, message: 'Server error fetching expenses' });
     }
 
@@ -169,235 +122,198 @@ router.get('/', protect, async (req, res) => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// @route   GET /api/expenses/export.csv
-// @desc    Download the user's expenses as CSV. Honours the same filters as
-//          the list endpoint, so "export what I am looking at" works.
-// @access  Protected
-//
-// Being able to take your data with you is a trust feature; it is available
-// on the free tier on purpose.
-// ---------------------------------------------------------------------------
-router.get('/export.csv', protect, async (req, res) => {
+// @route   GET /api/expenses/export.csv — the user's data, as CSV (free tier)
+router.get('/export.csv', protect, exportLimiter, async (req, res) => {
     const parsed = listQuerySchema.safeParse({ ...req.query, limit: 500, offset: 0 });
-    if (!parsed.success) {
-        return res.status(400).json({ success: false, message: 'Invalid filter' });
-    }
+    if (!parsed.success) return validationError(res, parsed.error, 'Invalid filter');
 
-    // Export is not paginated — page through everything the filter matches.
     const rows = [];
     const PAGE = 500;
     for (let offset = 0; offset < 50_000; offset += PAGE) {
         const { data, error } = await buildExpenseQuery(req.user.id, parsed.data)
             .range(offset, offset + PAGE - 1);
         if (error) {
-            console.error('Error exporting expenses:', error);
+            console.error('Error exporting expenses:', error.message);
             return res.status(500).json({ success: false, message: 'Could not export your expenses' });
         }
         rows.push(...data);
         if (data.length < PAGE) break;
     }
 
-    const csv = toCsv(rows);
     const filename = `spendly-expenses-${appTime.localDateKey()}.csv`;
-
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-Row-Count', String(rows.length));
     // A BOM makes Excel open UTF-8 (and the rupee sign) correctly.
-    res.send('\uFEFF' + csv);
+    res.send("\uFEFF" + toCsv(rows));
 });
 
 // ---------------------------------------------------------------------------
-// @route   POST /api/expenses
-// @desc    Log a manual expense and update streak + chillar
-// @access  Protected
+// @route   POST /api/expenses — log an expense (manual or confirmed UPI detection)
 // ---------------------------------------------------------------------------
 router.post('/', protect, proGate('add_expense'), async (req, res) => {
-    // ── Zod Validation ──
     const parsed = expenseSchema.safeParse(req.body);
-    if (!parsed.success) {
-        const errors = parsed.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }));
-        return res.status(400).json({ success: false, message: 'Validation failed', errors });
-    }
-    const { amount, category, description } = parsed.data;
+    if (!parsed.success) return validationError(res, parsed.error);
+    const { amount, category, description, source } = parsed.data;
 
-    const parsedAmount = amount; // Already a number via Zod coerce
-    const remainder = parsedAmount % 5;
-    const roundupChillar = remainder === 0 ? 0 : parseFloat((5 - remainder).toFixed(2));
+    const now = Date.now();
+    let occurredAt = new Date(now);
+    if (parsed.data.occurred_at) {
+        const when = new Date(parsed.data.occurred_at);
+        if (when.getTime() > now + MAX_FUTURE_SKEW_MS) {
+            return res.status(400).json({ success: false, message: 'An expense cannot be dated in the future' });
+        }
+        if (source === 'upi_auto' && now - when.getTime() > MAX_UPI_AGE_MS) {
+            return res.status(400).json({ success: false, message: 'That payment is too old to add automatically. Add it manually instead.' });
+        }
+        occurredAt = when;
+    }
+
+    const roundupChillar = roundupFor(amount);
 
     const { data: expense, error } = await supabase
         .from('expenses')
         .insert({
             user_id: req.user.id,
-            amount: parsedAmount,
-            category: category || 'Other',
-            description: description || '',
+            amount,
+            category,
+            description,
             roundup_chillar: roundupChillar,
-            source: 'manual',
-            occurred_at: new Date().toISOString()
+            source,
+            occurred_at: occurredAt.toISOString(),
         })
         .select()
         .single();
 
     if (error) {
-        console.error('Error saving expense:', error);
+        console.error('Error saving expense:', error.message);
         return res.status(500).json({ success: false, message: 'Server error saving expense' });
     }
 
-    const updatedStats = await updateProfileStats(req.user.id, roundupChillar);
+    const stats = await applyProfileStats(req.user.id, { chillar: roundupChillar });
 
-    res.json({
+    res.status(201).json({
         success: true,
         expense,
         roundupChillar,
-        totalChillar: updatedStats?.total_chillar ?? null,
+        totalChillar: stats?.total_chillar ?? null,
         streak: {
-            currentDays: updatedStats?.streak_current ?? null,
-            longestStreak: updatedStats?.streak_longest ?? null
-        }
+            currentDays: stats?.streak_current ?? null,
+            longestStreak: stats?.streak_longest ?? null,
+        },
+        quota: res.locals.quota || null,
     });
 });
 
 // ---------------------------------------------------------------------------
-// @route   POST /api/expenses/scan
-// @desc    Scan a receipt image via Gemini Vision API and log the expense
-// @access  Protected
+// @route   POST /api/expenses/scan — read a receipt image with Gemini and log it
 // ---------------------------------------------------------------------------
-router.post('/scan', protect, proGate('receipt_scan'), async (req, res) => {
-    const { imageBase64 } = req.body;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const IMAGE_DATA_URI = /^data:(image\/(?:jpeg|png|webp|heic|heif));base64,/;
 
-    if (!imageBase64) {
-        return res.status(400).json({ success: false, message: 'No image provided' });
+const scanSchema = z.object({
+    imageBase64: z.string().min(100, 'No image provided').max(8 * 1024 * 1024, 'Image is too large'),
+}).strict();
+
+router.post('/scan', protect, receiptScanLimiter, async (req, res, next) => {
+    // Validate before charging the quota.
+    const parsed = scanSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    if (!gemini.isConfigured()) {
+        return res.status(503).json({ success: false, message: 'Receipt scanning is temporarily unavailable.' });
+    }
+    return next();
+}, proGate('receipt_scan'), async (req, res) => {
+    const input = req.body.imageBase64;
+    const match = IMAGE_DATA_URI.exec(input);
+    const mimeType = match ? match[1] : 'image/jpeg';
+    const base64Data = match ? input.slice(match[0].length) : input;
+
+    if (!/^[A-Za-z0-9+/=\s]+$/.test(base64Data) || Buffer.byteLength(base64Data, 'base64') > MAX_IMAGE_BYTES) {
+        return res.status(400).json({ success: false, message: 'Please upload a JPEG, PNG or WebP image under 5 MB.' });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ success: false, message: 'GEMINI_API_KEY is not configured.' });
-    }
+    const prompt = `You are a receipt parser. Extract only the merchant name, the purchased items with prices, and the total amount in INR from this receipt image.
+Never include card numbers, account numbers, UPI IDs, phone numbers or other identifiers.
+Return ONLY raw JSON, no markdown:
+{"merchantName": "Store", "items": [{"itemName": "Item", "price": 10.5}], "scannedTotal": 10.5}`;
 
-    // Strip the data URI prefix (e.g. "data:image/jpeg;base64,")
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-
-    const promptContext = `
-        You are a helpful receipt parser.
-        Extract the following from the provided receipt image:
-        1. The Merchant Name.
-        2. The items purchased and their prices.
-        3. The total amount.
-
-        PRIVACY RULES (MANDATORY):
-        - NEVER include any credit card numbers, debit card numbers, CVV codes,
-          bank account numbers, UPI IDs, or other sensitive financial identifiers.
-        - If such data is visible on the receipt, OMIT it entirely from your response.
-        - Only return merchant name, item names, item prices, and the total.
-
-        Return ONLY a valid JSON object matching this schema exactly:
-        {
-            "merchantName": "Name of the store",
-            "items": [
-                {"itemName": "Item 1", "price": 10.50},
-                {"itemName": "Item 2", "price": 5.00}
-            ],
-            "scannedTotal": 15.50
-        }
-        Do not include any markdown formatting, only the raw JSON.
-    `;
-
+    let receiptData;
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: [
-                promptContext,
-                { inlineData: { data: base64Data, mimeType: 'image/jpeg' } }
-            ]
-        });
-
-        const replyText = response.text || '';
-
-        let receiptData;
-        try {
-            const cleanJsonStr = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
-            receiptData = JSON.parse(cleanJsonStr);
-        } catch (e) {
-            // Receipt AI output may contain personal financial information.
-            console.error('Failed to parse Gemini receipt output as JSON');
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to parse receipt correctly'
-            });
-        }
-
-        const totalAmount = parseFloat(receiptData.scannedTotal) || 0;
-        if (totalAmount <= 0 || totalAmount > 10_000_000) {
-            return res.status(422).json({ success: false, message: 'The receipt did not contain a valid total.' });
-        }
-        const remainder = totalAmount % 5;
-        const roundupChillar = remainder === 0 ? 0 : parseFloat((5 - remainder).toFixed(2));
-
-        const { data: expense, error } = await supabase
-            .from('expenses')
-            .insert({
-                user_id: req.user.id,
-                amount: totalAmount,
-                category: 'Shopping',
-                description: `Receipt from ${receiptData.merchantName || 'Unknown'}`,
-                roundup_chillar: roundupChillar,
-                source: 'ai_scan',
-                occurred_at: new Date().toISOString(),
-                receipt_data: {
-                    merchantName: receiptData.merchantName,
-                    items: receiptData.items || [],
-                    scannedTotal: totalAmount
-                }
-            })
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Error saving scanned expense:', error);
-            return res.status(500).json({ success: false, message: 'Server error saving expense' });
-        }
-
-        const updatedStats = await updateProfileStats(req.user.id, roundupChillar);
-
-        res.json({
-            success: true,
-            expense,
-            roundupChillar,
-            totalChillar: updatedStats?.total_chillar ?? null,
-            streak: {
-                currentDays: updatedStats?.streak_current ?? null,
-                longestStreak: updatedStats?.streak_longest ?? null
-            }
-        });
-
+        const replyText = await gemini.generateText(
+            [prompt, { inlineData: { data: base64Data, mimeType } }],
+            { maxOutputTokens: 1024, temperature: 0 }
+        );
+        receiptData = JSON.parse(replyText.replace(/```json/g, '').replace(/```/g, '').trim());
     } catch (error) {
-        console.error('Gemini AI Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to process receipt',
-            ...(process.env.NODE_ENV !== 'production' ? { error: error.message } : {}),
-        });
+        // Receipt output may contain personal data; log only the failure type.
+        console.error('Receipt scan failed:', error.code || error.name);
+        return res.status(502).json({ success: false, message: "We couldn't read that receipt. Try a clearer photo, or add it manually." });
     }
+
+    const totalAmount = Number(receiptData?.scannedTotal);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0 || totalAmount > 10_000_000) {
+        return res.status(422).json({ success: false, message: 'The receipt did not contain a valid total.' });
+    }
+    const amount = Number(totalAmount.toFixed(2));
+    const merchant = String(receiptData.merchantName || 'Unknown').slice(0, 100);
+    const items = Array.isArray(receiptData.items)
+        ? receiptData.items.slice(0, 50).map((i) => ({
+            itemName: String(i?.itemName || '').slice(0, 100),
+            price: Number(i?.price) || 0,
+        }))
+        : [];
+
+    const roundupChillar = roundupFor(amount);
+    const { data: expense, error } = await supabase
+        .from('expenses')
+        .insert({
+            user_id: req.user.id,
+            amount,
+            category: 'Shopping',
+            description: `Receipt from ${merchant}`.slice(0, 200),
+            roundup_chillar: roundupChillar,
+            source: 'ai_scan',
+            occurred_at: new Date().toISOString(),
+            receipt_data: { merchantName: merchant, items, scannedTotal: amount },
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error saving scanned expense:', error.message);
+        return res.status(500).json({ success: false, message: 'Server error saving expense' });
+    }
+
+    const stats = await applyProfileStats(req.user.id, { chillar: roundupChillar });
+
+    res.status(201).json({
+        success: true,
+        expense,
+        roundupChillar,
+        totalChillar: stats?.total_chillar ?? null,
+        streak: {
+            currentDays: stats?.streak_current ?? null,
+            longestStreak: stats?.streak_longest ?? null,
+        },
+        quota: res.locals.quota || null,
+    });
 });
 
-
 // ---------------------------------------------------------------------------
-// @route   PATCH /api/expenses/:id
-// @desc    Edit an expense (amount, category, description, or its date)
-// @access  Protected
+// @route   PATCH /api/expenses/:id — edit amount, category, description or date
 //
-// Note this does NOT retroactively adjust round-up chillar or streaks.
-// Those are earned at the moment of logging; silently rewriting a user's
-// savings total when they fix a typo would be worse than leaving it.
+// Does NOT retroactively adjust round-up chillar or streaks: those are earned
+// at the moment of logging.
 // ---------------------------------------------------------------------------
 const expenseUpdateSchema = z.object({
-    amount: z.coerce.number().positive('Amount must be a positive number').max(10_000_000, 'Amount too large').optional(),
+    amount: amountSchema.optional(),
     category: z.enum(VALID_CATEGORIES).optional(),
-    description: z.string().max(200, 'Description too long (max 200 chars)').optional(),
+    description: z.string().trim().max(200, 'Description too long (max 200 chars)').optional(),
     occurred_at: z.string().datetime({ offset: true })
         .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
         .optional(),
-}).refine(v => Object.keys(v).length > 0, { message: 'No fields to update' });
+}).strict().refine((v) => Object.keys(v).length > 0, { message: 'No fields to update' });
 
 router.patch('/:id', protect, async (req, res) => {
     if (!UUID_RE.test(String(req.params.id || ''))) {
@@ -405,13 +321,7 @@ router.patch('/:id', protect, async (req, res) => {
     }
 
     const parsed = expenseUpdateSchema.safeParse(req.body);
-    if (!parsed.success) {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: parsed.error.issues.map(e => ({ field: e.path.join('.'), message: e.message })),
-        });
-    }
+    if (!parsed.success) return validationError(res, parsed.error);
 
     const updates = { ...parsed.data };
     if (updates.occurred_at) {
@@ -436,7 +346,7 @@ router.patch('/:id', protect, async (req, res) => {
         .maybeSingle();
 
     if (error) {
-        console.error('Error updating expense:', error);
+        console.error('Error updating expense:', error.message);
         return res.status(500).json({ success: false, message: 'Server error updating expense' });
     }
     if (!expense) {
@@ -446,19 +356,14 @@ router.patch('/:id', protect, async (req, res) => {
     res.json({ success: true, expense });
 });
 
-// ---------------------------------------------------------------------------
 // @route   DELETE /api/expenses/:id
-// @desc    Delete an expense
-// @access  Protected
-// ---------------------------------------------------------------------------
 router.delete('/:id', protect, async (req, res) => {
     const { id } = req.params;
     if (!UUID_RE.test(String(id || ''))) {
         return res.status(400).json({ success: false, message: 'Invalid expense id' });
     }
 
-    // `select()` lets us tell "deleted" apart from "was never yours", instead
-    // of reporting success for an id that belongs to someone else.
+    // `select()` distinguishes "deleted" from "was never yours".
     const { data: deleted, error } = await supabase
         .from('expenses')
         .delete()
@@ -468,7 +373,7 @@ router.delete('/:id', protect, async (req, res) => {
         .maybeSingle();
 
     if (error) {
-        console.error('Error deleting expense:', error);
+        console.error('Error deleting expense:', error.message);
         return res.status(500).json({ success: false, message: 'Server error deleting expense' });
     }
     if (!deleted) {
@@ -479,3 +384,4 @@ router.delete('/:id', protect, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.VALID_CATEGORIES = VALID_CATEGORIES;

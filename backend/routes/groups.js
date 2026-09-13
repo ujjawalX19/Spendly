@@ -1,48 +1,31 @@
 const express = require('express');
 const router = express.Router();
+const { z } = require('zod');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const { validationError } = require('../lib/validation');
+
+/**
+ * Group pools (shared expenses).
+ *
+ * STATUS: the app marks Group Pools as "coming soon". There is no invite /
+ * accept flow yet, so these routes support creating a group, reading groups
+ * you belong to, and recording expenses and settlements among existing
+ * members — nothing that adds another person without their consent.
+ *
+ * The backend uses the service-role key, which bypasses RLS, so every
+ * group-scoped route proves membership itself via requireMembership().
+ */
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuid = z.string().regex(UUID_RE, 'Invalid id');
+const money = z.coerce.number().positive('Amount must be positive').max(10_000_000, 'Amount too large');
 
-// ---------------------------------------------------------------------------
-// Helper: Increment karma_score on public.profiles (clamped 0–1000)
-// ---------------------------------------------------------------------------
-const awardKarma = async (userId, points) => {
-    const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('karma_score')
-        .eq('id', userId)
-        .single();
-
-    if (fetchError || !profile) {
-        console.error('Error fetching profile for karma update:', fetchError);
-        return;
-    }
-
-    const newScore = Math.min(1000, Math.max(0, profile.karma_score + points));
-
-    const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ karma_score: newScore })
-        .eq('id', userId);
-
-    if (updateError) {
-        console.error('Error updating karma score:', updateError);
-    }
-};
-
-
-// ---------------------------------------------------------------------------
-// Helper: assert the authenticated user belongs to the group.
-//
-// The backend talks to Supabase with the SERVICE ROLE key, which bypasses RLS
-// entirely. Every group-scoped route must therefore prove membership itself —
-// the database will not do it for us.
-//
-// Returns true when the caller is a member; otherwise responds 403/404 and
-// returns false, so callers can simply `if (!(await requireMembership(...))) return;`
-// ---------------------------------------------------------------------------
+/**
+ * Responds 400/403/500 and returns false unless `userId` belongs to the group.
+ * A non-member gets the same 403 whether or not the group exists, so group ids
+ * cannot be probed.
+ */
 const requireMembership = async (groupId, userId, res) => {
     if (!UUID_RE.test(String(groupId || ''))) {
         res.status(400).json({ success: false, message: 'Invalid group id' });
@@ -57,319 +40,199 @@ const requireMembership = async (groupId, userId, res) => {
         .maybeSingle();
 
     if (error) {
-        console.error('Group membership check failed:', error);
+        console.error('Group membership check failed:', error.message);
         res.status(500).json({ success: false, message: 'Could not verify group access' });
         return false;
     }
-
     if (!membership) {
-        // Deliberately identical to the "no such group" response so that a
-        // non-member cannot probe which group ids exist.
         res.status(403).json({ success: false, message: 'Not a member of this group' });
         return false;
     }
-
     return membership;
 };
 
-// ---------------------------------------------------------------------------
-// @route   POST /api/groups
-// @desc    Create a new group (Hostel Pool) and add creator as admin
-// @access  Protected
-// ---------------------------------------------------------------------------
+// @route POST /api/groups — create a group with the caller as admin
 router.post('/', protect, async (req, res) => {
-    const { name } = req.body;
+    const parsed = z.object({ name: z.string().trim().min(1, 'Group name is required').max(60) }).strict().safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
 
-    if (!name || !name.trim()) {
-        return res.status(400).json({ success: false, message: 'Group name is required' });
-    }
-
-    // 1. Insert the group
     const { data: group, error: groupError } = await supabase
         .from('groups')
-        .insert({
-            name: name.trim(),
-            created_by: req.user.id
-        })
-        .select()
+        .insert({ name: parsed.data.name, created_by: req.user.id })
+        .select('id, name, created_by, is_settled, created_at')
         .single();
 
     if (groupError) {
-        console.error('Error creating group:', groupError);
+        console.error('Error creating group:', groupError.message);
         return res.status(500).json({ success: false, message: 'Server error creating group' });
     }
 
-    // 2. Add creator as admin member
     const { error: memberError } = await supabase
         .from('group_members')
-        .insert({
-            group_id: group.id,
-            user_id: req.user.id,
-            role: 'admin'
-        });
+        .insert({ group_id: group.id, user_id: req.user.id, role: 'admin' });
 
     if (memberError) {
-        console.error('Error adding creator as group member:', memberError);
-        return res.status(500).json({ success: false, message: 'Group created but failed to add member' });
+        console.error('Error adding creator as group member:', memberError.message);
+        // Do not leave an orphaned group nobody can see.
+        await supabase.from('groups').delete().eq('id', group.id);
+        return res.status(500).json({ success: false, message: 'Server error creating group' });
     }
 
     res.status(201).json({ success: true, group });
 });
 
-// ---------------------------------------------------------------------------
-// @route   GET /api/groups
-// @desc    Get all groups the authenticated user belongs to
-// @access  Protected
-// ---------------------------------------------------------------------------
+// @route GET /api/groups — groups the caller belongs to, with member display names
 router.get('/', protect, async (req, res) => {
-    // Fetch all group_ids for this user, then fetch group details with members
     const { data: memberships, error: memberError } = await supabase
         .from('group_members')
-        .select('group_id, role, groups(id, name, created_by, is_settled, pool_state, created_at, updated_at)')
+        .select('group_id, role, groups(id, name, created_by, is_settled, created_at, updated_at)')
         .eq('user_id', req.user.id);
 
     if (memberError) {
-        console.error('Error fetching groups:', memberError);
+        console.error('Error fetching groups:', memberError.message);
         return res.status(500).json({ success: false, message: 'Server error fetching groups' });
     }
 
-    // For each group, also fetch the member list with their profile info
-    const groupIds = memberships.map(m => m.group_id);
-
-    let groupsWithMembers = memberships.map(m => ({ ...m.groups, userRole: m.role, members: [] }));
+    const groupIds = memberships.map((m) => m.group_id);
+    let groups = memberships.map((m) => ({ ...m.groups, userRole: m.role, members: [] }));
 
     if (groupIds.length > 0) {
-        const { data: allMembers, error: allMembersError } = await supabase
+        // Display name only. Other members' email addresses are not needed to
+        // split a bill and are not shared.
+        const { data: allMembers, error } = await supabase
             .from('group_members')
-            .select('group_id, role, profiles(id, full_name, email, karma_score)')
+            .select('group_id, role, user_id, profiles(full_name)')
             .in('group_id', groupIds);
 
-        if (!allMembersError && allMembers) {
-            groupsWithMembers = groupsWithMembers.map(group => ({
+        if (!error && allMembers) {
+            groups = groups.map((group) => ({
                 ...group,
                 members: allMembers
-                    .filter(m => m.group_id === group.id)
-                    .map(m => ({ ...m.profiles, role: m.role }))
+                    .filter((m) => m.group_id === group.id)
+                    .map((m) => ({ id: m.user_id, full_name: m.profiles?.full_name || 'Member', role: m.role })),
             }));
         }
     }
 
-    res.json({ success: true, groups: groupsWithMembers });
+    res.json({ success: true, groups });
 });
 
-// ---------------------------------------------------------------------------
-// @route   POST /api/groups/:id/members
-// @desc    Add a member to a group (admin only)
-// @access  Protected
-// ---------------------------------------------------------------------------
-router.post('/:id/members', protect, async (req, res) => {
-    const { userId } = req.body;
-    const groupId = req.params.id;
-
-    if (!userId) {
-        return res.status(400).json({ success: false, message: 'userId is required' });
-    }
-
-    // Verify the requester is the group admin
-    const { data: group, error: groupError } = await supabase
-        .from('groups')
-        .select('created_by')
-        .eq('id', groupId)
-        .single();
-
-    if (groupError || !group) {
-        return res.status(404).json({ success: false, message: 'Group not found' });
-    }
-
-    if (group.created_by !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'Only the group admin can add members' });
-    }
-
-    const { error } = await supabase
-        .from('group_members')
-        .insert({ group_id: groupId, user_id: userId, role: 'member' });
-
-    if (error) {
-        if (error.code === '23505') {
-            return res.status(409).json({ success: false, message: 'User is already a member of this group' });
-        }
-        console.error('Error adding member:', error);
-        return res.status(500).json({ success: false, message: 'Server error adding member' });
-    }
-
-    res.json({ success: true, message: 'Member added successfully' });
+// @route POST /api/groups/:id/members
+// Adding someone else by user id, without an invitation they accept, is not
+// allowed. Kept as an explicit refusal until an invite flow exists.
+router.post('/:id/members', protect, (req, res) => {
+    res.status(501).json({
+        success: false,
+        code: 'INVITES_NOT_AVAILABLE',
+        message: 'Adding members is not available yet.',
+    });
 });
 
-// ---------------------------------------------------------------------------
-// @route   POST /api/groups/:id/expenses
-// @desc    Add an expense to a group and record the splits
-// @access  Protected (must be a group member)
-// ---------------------------------------------------------------------------
+// @route POST /api/groups/:id/expenses — record a shared expense among members
 router.post('/:id/expenses', protect, async (req, res) => {
-    const { description, amount, splitAmong } = req.body;
+    const parsed = z.object({
+        description: z.string().trim().min(1, 'Description is required').max(200),
+        amount: money,
+        splitAmong: z.array(uuid).max(100).optional(),
+    }).strict().safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+
     const groupId = req.params.id;
-
-    if (!description || !amount || isNaN(amount) || Number(amount) <= 0) {
-        return res.status(400).json({ success: false, message: 'Valid description and amount are required' });
-    }
-
     if (!(await requireMembership(groupId, req.user.id, res))) return;
 
-    // 1. Insert the group expense
+    const { data: allMembers, error: membersError } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+    if (membersError || !allMembers) {
+        return res.status(500).json({ success: false, message: 'Could not load group members' });
+    }
+    const memberIds = allMembers.map((m) => m.user_id);
+
+    // splitAmong comes from the client, so it is intersected with real membership.
+    let splitUserIds = memberIds;
+    if (parsed.data.splitAmong && parsed.data.splitAmong.length > 0) {
+        splitUserIds = [...new Set(parsed.data.splitAmong)].filter((id) => memberIds.includes(id));
+        if (splitUserIds.length !== new Set(parsed.data.splitAmong).size) {
+            return res.status(400).json({ success: false, message: 'splitAmong may only contain members of this group' });
+        }
+    }
+
     const { data: groupExpense, error: expenseError } = await supabase
         .from('group_expenses')
-        .insert({
-            group_id: groupId,
-            description,
-            amount: parseFloat(amount),
-            paid_by: req.user.id
-        })
+        .insert({ group_id: groupId, description: parsed.data.description, amount: parsed.data.amount, paid_by: req.user.id })
         .select()
         .single();
 
     if (expenseError) {
-        console.error('Error adding group expense:', expenseError);
+        console.error('Error adding group expense:', expenseError.message);
         return res.status(500).json({ success: false, message: 'Server error adding expense' });
     }
 
-    // 2. Determine who the expense is split among.
-    //    `splitAmong` arrives from the client, so it is intersected with the
-    //    real membership list — never trusted as-is.
-    const { data: allMembers } = await supabase
-        .from('group_members')
-        .select('user_id')
-        .eq('group_id', groupId);
-
-    const memberIds = allMembers ? allMembers.map(m => m.user_id) : [req.user.id];
-
-    let splitUserIds = memberIds;
-    if (Array.isArray(splitAmong) && splitAmong.length > 0) {
-        splitUserIds = splitAmong.filter(uid => memberIds.includes(uid));
-        if (splitUserIds.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'splitAmong must contain at least one member of this group',
-            });
-        }
-    }
-
-    // 3. Insert split records
-    const splitRows = splitUserIds.map(uid => ({
-        group_expense_id: groupExpense.id,
-        user_id: uid
-    }));
-
     const { error: splitError } = await supabase
         .from('group_expense_splits')
-        .insert(splitRows);
+        .insert(splitUserIds.map((uid) => ({ group_expense_id: groupExpense.id, user_id: uid })));
 
     if (splitError) {
-        console.error('Error inserting expense splits:', splitError);
-        return res.status(500).json({ success: false, message: 'Expense added but splits failed to save' });
+        console.error('Error inserting expense splits:', splitError.message);
+        await supabase.from('group_expenses').delete().eq('id', groupExpense.id);
+        return res.status(500).json({ success: false, message: 'Server error adding expense' });
     }
 
-    res.json({ success: true, expense: groupExpense, splitAmong: splitUserIds });
+    res.status(201).json({ success: true, expense: groupExpense, splitAmong: splitUserIds });
 });
 
-// ---------------------------------------------------------------------------
-// @route   GET /api/groups/:id/expenses
-// @desc    Get all expenses for a group
-// @access  Protected (must be a group member)
-// ---------------------------------------------------------------------------
+// @route GET /api/groups/:id/expenses
 router.get('/:id/expenses', protect, async (req, res) => {
     const groupId = req.params.id;
-
     if (!(await requireMembership(groupId, req.user.id, res))) return;
 
     const { data: expenses, error } = await supabase
         .from('group_expenses')
         .select(`
-            *,
-            profiles!paid_by(id, full_name),
-            group_expense_splits(user_id, profiles(id, full_name))
+            id, group_id, description, amount, paid_by, created_at,
+            payer:profiles!paid_by(full_name),
+            group_expense_splits(user_id, profiles(full_name))
         `)
         .eq('group_id', groupId)
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error('Error fetching group expenses:', error);
+        console.error('Error fetching group expenses:', error.message);
         return res.status(500).json({ success: false, message: 'Server error fetching expenses' });
     }
 
     res.json({ success: true, expenses });
 });
 
-// ---------------------------------------------------------------------------
-// @route   POST /api/groups/:id/snapshot
-// @desc    Save the current local pool state (members & spent totals)
-// @access  Protected
-// ---------------------------------------------------------------------------
-router.post('/:id/snapshot', protect, async (req, res) => {
-    const { pool_state } = req.body;
-    const groupId = req.params.id;
-
-    if (!(await requireMembership(groupId, req.user.id, res))) return;
-
-    const { error: updateError } = await supabase
-        .from('groups')
-        .update({ pool_state: pool_state || [] })
-        .eq('id', groupId);
-
-    if (updateError) {
-        console.error('Error saving pool snapshot:', updateError);
-        return res.status(500).json({ success: false, message: 'Server error saving snapshot' });
-    }
-
-    res.json({ success: true, message: 'Pool state saved successfully' });
-});
-
-// ---------------------------------------------------------------------------
-// @route   POST /api/groups/:id/settle
-// @desc    Record a settlement payment and award +5 Karma to the payer
-// @access  Protected
-// ---------------------------------------------------------------------------
+// @route POST /api/groups/:id/settle — record a payment between two members
 router.post('/:id/settle', protect, async (req, res) => {
-    const { toUserId, amount } = req.body;
-    const groupId = req.params.id;
+    const parsed = z.object({ toUserId: uuid, amount: money }).strict().safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
 
-    if (!toUserId || !amount || isNaN(amount) || Number(amount) <= 0) {
-        return res.status(400).json({ success: false, message: 'Valid toUserId and amount are required' });
-    }
+    const { toUserId, amount } = parsed.data;
+    const groupId = req.params.id;
 
     if (toUserId === req.user.id) {
         return res.status(400).json({ success: false, message: 'Cannot settle with yourself' });
     }
-
     if (!(await requireMembership(groupId, req.user.id, res))) return;
-
-    // The payee must also be a member of this group, otherwise a caller could
-    // manufacture settlements against arbitrary accounts.
     if (!(await requireMembership(groupId, toUserId, res))) return;
 
     const { data: settlement, error } = await supabase
         .from('settlements')
-        .insert({
-            group_id: groupId,
-            from_user_id: req.user.id,
-            to_user_id: toUserId,
-            amount: parseFloat(amount)
-        })
+        .insert({ group_id: groupId, from_user_id: req.user.id, to_user_id: toUserId, amount })
         .select()
         .single();
 
     if (error) {
-        console.error('Error recording settlement:', error);
+        console.error('Error recording settlement:', error.message);
         return res.status(500).json({ success: false, message: 'Server error recording settlement' });
     }
 
-    // Award +5 Karma for settling up
-    await awardKarma(req.user.id, 5);
-
-    res.json({
-        success: true,
-        settlement,
-        message: 'Settled! +5 Karma awarded. 🎉'
-    });
+    // No karma is awarded for settlements: two cooperating members could
+    // otherwise record unlimited fake settlements to farm points.
+    res.status(201).json({ success: true, settlement });
 });
 
 module.exports = router;

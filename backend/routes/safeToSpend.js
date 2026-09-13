@@ -3,6 +3,11 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 const appTime = require('../lib/appTime');
+const { z } = require('zod');
+const { validationError } = require('../lib/validation');
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const VALID_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
 // ---------------------------------------------------------------------------
 // @route   GET /api/safe-to-spend
@@ -113,31 +118,25 @@ router.get('/bills', protect, async (req, res) => {
 // @desc    Add a recurring bill
 // @access  Protected
 // ---------------------------------------------------------------------------
+const billSchema = z.object({
+    name: z.string().trim().min(1, 'Name is required').max(100),
+    amount: z.coerce.number().positive('Amount must be positive').max(10_000_000),
+    due_day: z.coerce.number().int().min(1, 'due_day must be between 1 and 31').max(31, 'due_day must be between 1 and 31'),
+    category: z.enum(VALID_CATEGORIES).optional().default('Other'),
+}).strict();
+
 router.post('/bills', protect, async (req, res) => {
-    const { name, amount, due_day, category } = req.body;
-
-    if (!name || !amount || !due_day) {
-        return res.status(400).json({ success: false, message: 'name, amount, and due_day are required' });
-    }
-
-    if (due_day < 1 || due_day > 31) {
-        return res.status(400).json({ success: false, message: 'due_day must be between 1 and 31' });
-    }
+    const parsed = billSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
 
     const { data: bill, error } = await supabase
         .from('recurring_bills')
-        .insert({
-            user_id: req.user.id,
-            name: name.trim(),
-            amount: parseFloat(amount),
-            due_day: parseInt(due_day),
-            category: category || 'Other',
-        })
+        .insert({ user_id: req.user.id, ...parsed.data })
         .select()
         .single();
 
     if (error) {
-        console.error('Error adding recurring bill:', error);
+        console.error('Error adding recurring bill:', error.message);
         return res.status(500).json({ success: false, message: 'Failed to add bill' });
     }
 
@@ -150,14 +149,23 @@ router.post('/bills', protect, async (req, res) => {
 // @access  Protected
 // ---------------------------------------------------------------------------
 router.delete('/bills/:id', protect, async (req, res) => {
-    const { error } = await supabase
+    if (!UUID_RE.test(String(req.params.id || ''))) {
+        return res.status(400).json({ success: false, message: 'Invalid bill id' });
+    }
+
+    const { data: deleted, error } = await supabase
         .from('recurring_bills')
         .delete()
         .eq('id', req.params.id)
-        .eq('user_id', req.user.id);
+        .eq('user_id', req.user.id)
+        .select('id')
+        .maybeSingle();
 
     if (error) {
         return res.status(500).json({ success: false, message: 'Failed to delete bill' });
+    }
+    if (!deleted) {
+        return res.status(404).json({ success: false, message: 'Bill not found' });
     }
 
     res.json({ success: true });

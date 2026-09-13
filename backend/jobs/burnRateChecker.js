@@ -1,124 +1,68 @@
 const cron = require('node-cron');
 const { supabase } = require('../config/supabase');
+const appTime = require('../lib/appTime');
+const { computeBurnRate } = require('../lib/burnRate');
 
 /**
- * burnRateChecker — Daily cron job that runs at 9:00 AM IST.
+ * burnRateChecker — daily count of users projected to overspend, at 09:00 IST.
  *
- * Checks all users' burn rates and logs warnings for users who will
- * run out of budget before month end. When FCM is configured, this
- * will send push notifications.
+ * STATUS: there are no push notifications yet, so this job only logs an
+ * aggregate count. It is OFF unless ENABLE_BURN_RATE_JOB=true, because a daily
+ * scan of every user's expenses costs database time for no user-visible result.
  *
- * Message format:
- *   "At this rate you'll be broke by the 18th. Cut Zomato by ₹300
- *    and you'll make it to payday."
+ * Fixed while disabling by default:
+ *   - the schedule '30 3 * * *' with timezone Asia/Kolkata ran at 03:30 IST,
+ *     not the documented 09:00;
+ *   - it selected a `fcm_token` column that exists in no migration, so the
+ *     query failed every day;
+ *   - it used the server's UTC clock for month boundaries.
  */
-function startBurnRateChecker() {
-    // Run daily at 9:00 AM IST (3:30 AM UTC)
-    cron.schedule('30 3 * * *', async () => {
-        console.log('[BurnRateChecker] Running daily check...');
 
-        try {
-            // 1. Get all users with budgets
-            const { data: profiles, error: profileError } = await supabase
-                .from('profiles')
-                .select('id, monthly_budget, fcm_token');
+const PAGE_SIZE = 500;
 
-            if (profileError || !profiles) {
-                console.error('[BurnRateChecker] Failed to load profiles:', profileError);
-                return;
-            }
+async function runOnce(now = new Date()) {
+    const monthStart = appTime.startOfMonth(now).toISOString();
+    let flagged = 0;
+    let checked = 0;
 
-            const now = new Date();
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            monthStart.setHours(0, 0, 0, 0);
-            const daysPassed = Math.max(1, now.getDate());
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            const daysRemaining = daysInMonth - daysPassed;
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+        const { data: profiles, error } = await supabase
+            .from('profiles')
+            .select('id, monthly_budget')
+            .order('id')
+            .range(offset, offset + PAGE_SIZE - 1);
 
-            let panicCount = 0;
-
-            for (const profile of profiles) {
-                try {
-                    const monthlyBudget = Number(profile.monthly_budget) || 5000;
-
-                    // 2. Get this month's expenses for user
-                    const { data: expenses, error: expError } = await supabase
-                        .from('expenses')
-                        .select('amount, category')
-                        .eq('user_id', profile.id)
-                        .gte('occurred_at', monthStart.toISOString());
-
-                    if (expError || !expenses || expenses.length === 0) continue;
-
-                    const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-                    const dailyBurnRate = totalSpent / daysPassed;
-                    const budgetRemaining = monthlyBudget - totalSpent;
-
-                    if (dailyBurnRate <= 0 || budgetRemaining < 0) continue;
-
-                    const daysUntilBroke = budgetRemaining / dailyBurnRate;
-
-                    // 3. Check if user will go broke before month end
-                    if (daysUntilBroke < daysRemaining) {
-                        panicCount++;
-                        const brokeDay = now.getDate() + Math.floor(daysUntilBroke);
-
-                        // Find highest non-essential category
-                        const categoryTotals = {};
-                        const NON_ESSENTIAL = ['Food', 'Entertainment', 'Shopping', 'Other'];
-                        for (const exp of expenses) {
-                            if (NON_ESSENTIAL.includes(exp.category)) {
-                                categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + Number(exp.amount);
-                            }
-                        }
-                        const topCategory = Object.entries(categoryTotals)
-                            .sort((a, b) => b[1] - a[1])[0];
-
-                        const cutSuggestion = topCategory
-                            ? `Cut ${topCategory[0]} by ₹${Math.round(topCategory[1] * 0.3).toLocaleString('en-IN')} and you'll make it to payday.`
-                            : 'Try reducing discretionary spending.';
-
-                        const message = `At this rate you'll be broke by the ${brokeDay}${getOrdinalSuffix(brokeDay)}. ${cutSuggestion}`;
-
-                        // TODO: When Firebase Admin is configured, send FCM push notification:
-                        //
-                        // if (profile.fcm_token) {
-                        //     await admin.messaging().send({
-                        //         token: profile.fcm_token,
-                        //         notification: {
-                        //             title: '⚠️ Spending Alert',
-                        //             body: message,
-                        //         },
-                        //         data: { type: 'burn_rate_alert' },
-                        //     });
-                        // }
-
-                        console.log('[BurnRateChecker] Spending alert queued');
-                    }
-                } catch {
-                    console.error('[BurnRateChecker] Error processing a profile');
-                }
-            }
-
-            console.log(`[BurnRateChecker] Done. ${panicCount}/${profiles.length} users flagged.`);
-        } catch (error) {
-            console.error('[BurnRateChecker] Fatal error:', error);
+        if (error) {
+            console.error('[BurnRateChecker] Failed to load profiles:', error.message);
+            return;
         }
-    }, {
-        timezone: 'Asia/Kolkata',
-    });
+        if (!profiles || profiles.length === 0) break;
 
-    console.log('📅 Burn-rate checker scheduled: daily at 9:00 AM IST');
-}
+        for (const profile of profiles) {
+            const { data: expenses, error: expError } = await supabase
+                .from('expenses')
+                .select('amount, category')
+                .eq('user_id', profile.id)
+                .gte('occurred_at', monthStart);
+            if (expError || !expenses || expenses.length === 0) continue;
 
-function getOrdinalSuffix(day) {
-    if (day >= 11 && day <= 13) return 'th';
-    switch (day % 10) {
-        case 1: return 'st';
-        case 2: return 'nd';
-        case 3: return 'rd';
-        default: return 'th';
+            checked++;
+            const forecast = computeBurnRate({ expenses, monthlyBudget: Number(profile.monthly_budget) || 5000, now });
+            if (forecast.willGoBroke) flagged++;
+        }
+        if (profiles.length < PAGE_SIZE) break;
     }
+
+    // Aggregate only — never log user ids or amounts.
+    console.log(`[BurnRateChecker] ${flagged}/${checked} active users projected to exceed budget.`);
 }
 
-module.exports = { startBurnRateChecker };
+function startBurnRateChecker() {
+    if (process.env.ENABLE_BURN_RATE_JOB !== 'true') return;
+    cron.schedule('0 9 * * *', () => {
+        runOnce().catch((e) => console.error('[BurnRateChecker] Fatal error:', e.message));
+    }, { timezone: appTime.APP_TIMEZONE });
+    console.log('Burn-rate checker scheduled: daily at 09:00', appTime.APP_TIMEZONE);
+}
+
+module.exports = { startBurnRateChecker, runOnce };

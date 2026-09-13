@@ -1,104 +1,70 @@
 const express = require('express');
 const router = express.Router();
-const { GoogleGenAI } = require('@google/genai');
+const { z } = require('zod');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const { proGate } = require('../middleware/proGate');
+const { aiLimiter } = require('../middleware/rateLimits');
+const gemini = require('../lib/gemini');
 const appTime = require('../lib/appTime');
 const { buildContext, describeContext } = require('../lib/financialContext');
+const { classifyIntent, educationalInvestingNote, sanitizeReply, EDUCATION_DISCLAIMER } = require('../lib/coachContent');
+const { validationError } = require('../lib/validation');
 
 /**
- * Route the question to the right kind of answer.
+ * Spendly's money coach.
  *
- * The previous prompt treated every message as an investment query, so
- * "why did I overspend on food?" came back as a SIP recommendation. Matching
- * intent first is what makes the coach answer the actual question.
+ * SCOPE (see FINANCIAL_CONTENT_REVIEW.md)
+ * The coach explains the user's own spending and offers general financial
+ * education. It does NOT recommend specific securities, mutual fund schemes,
+ * brokers, platforms or insurance products, does not link to them, and has no
+ * affiliate relationships. Personalised product recommendations are regulated
+ * investment advice in India and are out of scope until professionally reviewed.
+ *
+ * COST CONTROL
+ *   - authentication required
+ *   - per-user burst and hourly rate limits (aiLimiter)
+ *   - free tier: 10 messages per IST day, enforced by proGate (429 when exhausted)
+ *   - question capped at 500 characters, answer capped by maxOutputTokens
  */
-function classifyIntent(query) {
-    const q = String(query || '').toLowerCase();
-    if (/\b(can i afford|should i buy|worth buying|afford to|can i spend)\b/.test(q)) return 'affordability';
-    if (/\b(invest|sip|mutual fund|stock|share|equity|nifty|portfolio|returns)\b/.test(q)) return 'investing';
-    if (/\b(save|saving|cut|reduce|spend less|budget better)\b/.test(q)) return 'saving';
-    if (/\b(spent|spending|overspend|where did|why did|expense|category|this month|last month)\b/.test(q)) return 'spending';
-    return 'general';
-}
 
-let ai = null;
-if (process.env.GEMINI_API_KEY) ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-else console.warn('GEMINI_API_KEY not set — investment guide will use its personalised local plan.');
+const MAX_QUERY_CHARS = 500;
+const HISTORY_LIMIT = 100;
 
-const GOALS = new Set(['habit', 'passive growth', 'active learning']);
-const money = (value) => `₹${Math.round(Number(value) || 0).toLocaleString('en-IN')}`;
-const futureValue = (monthly, years, annual = 0.12) => {
-    const rate = annual / 12;
-    const months = years * 12;
-    return monthly * (((1 + rate) ** months - 1) / rate) * (1 + rate);
-};
-const sipDate = () => new Date() < new Date(new Date().getFullYear(), new Date().getMonth(), 5) ? 'the 5th of this month' : 'the 5th of next month';
-const futureTable = (amount) => [1, 3, 5].map((years) => {
-    const value = futureValue(amount, years);
-    const invested = amount * years * 12;
-    return `${years} year${years > 1 ? 's' : ''}: ${money(value)} (${money(value - invested)} returns on ${money(invested)} invested)`;
-}).join('\n');
+const adviceSchema = z.object({
+    query: z.string().trim().min(1, 'Please type a question.').max(MAX_QUERY_CHARS, `Questions can be at most ${MAX_QUERY_CHARS} characters.`),
+    // Accepted for compatibility with older app builds; no longer changes content.
+    goal: z.string().max(40).optional(),
+}).strict();
 
-function buildLocalPlan(context) {
-    const { surplus, totalSpent, budget, topCategory, topCategorySpend, goal, paisaScore } = context;
-    const greeting = paisaScore >= 600
-        ? `Your Paisa Score is solid at ${paisaScore} — let’s put that discipline to work.`
-        : `Your Paisa Score is ${paisaScore}. No drama — one clean money move this month changes the direction.`;
-
-    if (surplus <= 0) {
-        const over = Math.abs(surplus);
-        const categoryCut = Math.max(50, Math.round((topCategorySpend || budget * 0.2) * 0.2));
-        return `${greeting}\n\n### Your investable amount this month\nYou're actually ${money(over)} over budget this month. Let's fix the leaks first before we talk investing. You spent ${money(totalSpent)} against a ${money(budget)} budget.\n\n### Your plan: Leak Plug Sprint\n1. Cut ${money(categoryCut)} from ${topCategory} this month — one fewer delivery/order a week.\n2. Move ${money(Math.max(50, Math.round(over / 3)))} into a separate savings pocket on ${sipDate()}.\n3. Cap your next non-essential spend at ${money(Math.max(100, Math.round(over / 2)))}.\n\n### What this grows into\nFirst target: get back to a positive ${money(200)} surplus next month. That is the real first investment.\n\n### One thing to know\nInvesting budget-overrun money is like paying for a gym membership to avoid exercise — it looks productive but solves nothing.\n\n### This month's money win\nQuick win: You spent ${money(topCategorySpend)} on ${topCategory} this month. Cutting it by 20% = ${money(categoryCut)} extra to invest.`;
-    }
-    if (surplus < 100) {
-        return `${greeting}\n\n### Your investable amount this month\nBased on your spending this month, you have ${money(surplus)} that's genuinely safe to invest — not your full salary, not a guess, your actual leftover.\n\n### Your plan: Buffer Before Boost\n${money(surplus)} is tight this month — and that's okay. Build a ${money(500)} emergency buffer first: park ${money(surplus)} in your savings account on ${sipDate()}. Then target a ${money(200)} surplus next month.\n\n### What this grows into\nYour first ${money(500)} buffer buys you the ability to handle a surprise without reaching for credit.\n\n### One thing to know\nA small emergency buffer beats a tiny SIP that you have to break at the first unexpected expense.\n\n### This month's money win\nQuick win: You spent ${money(topCategorySpend)} on ${topCategory} this month. Cutting it by 20% = ${money(Math.round(topCategorySpend * 0.2))} toward your buffer.`;
-    }
-
-    const sip = Math.max(100, Math.floor(surplus / 100) * 100);
-    let plan;
-    if (goal === 'active learning') {
-        const stock = Math.floor((sip * 0.3) / 100) * 100;
-        const index = sip - stock;
-        plan = stock
-            ? `### Your plan: Learn Without Gambling\nWHAT: Start a ${money(index)}/month SIP in UTI Nifty 50 Index Fund Direct Growth, then use up to ${money(stock)} to buy one share of TCS or HDFC Bank.\nHOW MUCH: ${money(sip)} total this month; direct stocks stay capped at ${money(stock)}.\nWHERE: Set the SIP on Kuvera, then use Zerodha for the one-stock learning buy.\nWHEN: Set the SIP for ${sipDate()}; buy the one share after reading its latest quarterly results.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nDirect stocks are a school, not a shortcut. Buy one share, track it for 30 days, read one earnings report — that’s your MBA in markets.`
-            : `### Your plan: Learn Without Gambling\nWHAT: Start a ${money(sip)}/month SIP in UTI Nifty 50 Index Fund Direct Growth.\nHOW MUCH: ${money(sip)} this month; wait until your surplus reaches ${money(400)} before buying a direct stock, so it stays below the 30% beginner cap.\nWHERE: Set the SIP on Kuvera; use Zerodha later for the one-stock learning buy.\nWHEN: Set the SIP for ${sipDate()}.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nDirect stocks are a school, not a shortcut. Your SIP runs in parallel — not after you get bored of tracking one share.`;
-    } else if (goal === 'passive growth') {
-        const fund = sip < 1000 ? 'UTI Nifty 50 Index Fund Direct Growth' : sip <= 5000 ? 'Parag Parikh Flexi Cap Fund Direct Growth' : 'UTI Nifty 50 Index Fund Direct Growth and Parag Parikh Flexi Cap Fund Direct Growth';
-        const split = sip > 5000 ? `${money(Math.floor(sip / 2 / 100) * 100)} in each fund` : money(sip);
-        plan = `### Your plan: Quiet Growth Engine\nWHAT: Start a SIP in ${fund}.\nHOW MUCH: ${split} each month.\nWHERE: Set it up on Kuvera or INDmoney — both make it easy to track direct funds.\nWHEN: ${sipDate()}, right after money lands in your account.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nYou’re hiring a fund manager to do the work. Your only job is to not panic-sell when the market gets noisy.`;
-    } else {
-        plan = `### Your plan: Set-and-Forget Nifty Start\nWHAT: Start a SIP in UTI Nifty 50 Index Fund Direct Growth.\nHOW MUCH: ${money(sip)}/month.\nWHERE: Open Groww or Kuvera, search the exact fund name, and choose the Direct Growth option.\nWHEN: Set the auto-debit for ${sipDate()}.\n\n### What this grows into\n${futureTable(sip)}\n\n### One thing to know\nAutomation is the strategy. Set it, forget it, thank yourself in 5 years. A market dip is when your SIP works hardest — don’t stop it.`;
-    }
-    const cut = Math.round(topCategorySpend * 0.2);
-    const disclaimer = `\n\n---\n⚠️ *This is financial education only, not SEBI-regulated investment advice. Historical averages used for projections — actual returns may vary. Consult a certified financial advisor before investing.*`;
-    return `${greeting}\n\n### Your investable amount this month\nBased on your spending this month, you have ${money(surplus)} that's genuinely safe to invest — not your full salary, not a guess, your actual leftover.\n\n${plan}\n\n### This month's money win\nQuick win: You spent ${money(topCategorySpend)} on ${topCategory} this month. Cutting it by 20% = ${money(cut)} extra to invest. In 5 years, that extra SIP could add about ${money(futureValue(cut, 5) - cut * 60)} in returns.${disclaimer}`;
-}
-
-// @route GET /api/ai/history
-// @desc Get chat history for the user
+// @route GET /api/ai/history — the signed-in user's recent chat
 router.get('/history', protect, async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('ai_chat_history')
-            .select('id, role, content, chips, created_at')
-            .eq('user_id', req.user.id)
-            .order('created_at', { ascending: true });
+    const { data, error } = await supabase
+        .from('ai_chat_history')
+        .select('id, role, content, created_at')
+        .eq('user_id', req.user.id)
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT);
 
-        if (error) throw error;
-        res.json({ success: true, history: data });
-    } catch (error) {
-        console.error('Error fetching AI history:', error);
-        res.status(500).json({ success: false, message: 'Could not fetch chat history.' });
+    if (error) {
+        console.error('Error fetching AI history:', error.message);
+        return res.status(500).json({ success: false, message: 'Could not fetch chat history.' });
     }
+    res.json({ success: true, history: (data || []).reverse() });
 });
 
-// @route POST /api/ai/invest-advice
-// @desc Personalised investment guidance based on the signed-in user's live spending data
-router.post('/invest-advice', protect, async (req, res) => {
-    const query = String(req.body?.query || '').trim();
-    const goal = GOALS.has(req.body?.goal) ? req.body.goal : 'habit';
-    if (!query) return res.status(400).json({ success: false, message: 'Missing query parameter.' });
+/** Validate before the quota is charged, so a bad request costs nothing. */
+function validateAdvice(req, res, next) {
+    const parsed = adviceSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    req.adviceQuery = parsed.data.query;
+    return next();
+}
+
+// @route POST /api/ai/invest-advice — coach answer grounded in the user's data
+router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_message'), async (req, res) => {
+    const query = req.adviceQuery;
+
     try {
         const now = new Date();
         const monthStart = appTime.startOfMonth(now);
@@ -112,9 +78,9 @@ router.post('/invest-advice', protect, async (req, res) => {
         ] = await Promise.all([
             supabase.from('profiles')
                 .select('monthly_budget, investment_target, karma_score, paisa_score')
-                .eq('id', req.user.id).single(),
+                .eq('id', req.user.id).maybeSingle(),
             supabase.from('expenses')
-                .select('amount, category, description, occurred_at')
+                .select('amount, category, occurred_at')
                 .eq('user_id', req.user.id)
                 .gte('occurred_at', monthStart.toISOString()),
             supabase.from('expenses')
@@ -131,90 +97,65 @@ router.post('/invest-advice', protect, async (req, res) => {
             throw profileError || expensesError || new Error('Profile unavailable');
         }
 
-        const ctx = buildContext({
-            thisMonth: monthRows || [],
-            lastMonth: prevRows || [],
-            bills: bills || [],
-            profile,
-            now,
-        });
-
+        const ctx = buildContext({ thisMonth: monthRows || [], lastMonth: prevRows || [], bills: bills || [], profile, now });
         const grounding = describeContext(ctx);
         const intent = classifyIntent(query);
 
-        // Investment questions keep the existing calculated plan, which does
-        // the projection maths deterministically. Everything else gets a
-        // coach that answers what was actually asked.
-        const legacyContext = {
-            budget: ctx.budget,
-            totalSpent: ctx.spentThisMonth,
-            surplus: ctx.budget - ctx.spentThisMonth,
-            topCategory: ctx.topCategories[0]?.category || 'Other',
-            topCategorySpend: ctx.topCategories[0]?.amount || 0,
-            goal,
-            paisaScore: ctx.paisaScore,
-        };
         const fallback = intent === 'investing'
-            ? buildLocalPlan(legacyContext)
+            ? `${grounding}\n\n${educationalInvestingNote(ctx)}\n\n${EDUCATION_DISCLAIMER}`
             : grounding;
 
-        if (!ai) {
-            await supabase.from('ai_chat_history').insert([
-                { user_id: req.user.id, role: 'user', content: query },
-                { user_id: req.user.id, role: 'bot', content: fallback, chips: [] }
-            ]);
-            return res.json({ success: true, reply: fallback, context: ctx });
-        }
+        let reply = fallback;
+        if (gemini.isConfigured()) {
+            const instruction = `You are Spendly's money coach for a user in India. Warm, direct, plain language.
 
-        const instruction = `You are Spendly's money coach for an Indian user. Warm, direct, and specific.
+WHAT YOU MAY DO
+- Explain the user's own spending using the figures below.
+- Answer affordability questions using their safe-to-spend and upcoming bills.
+- Suggest realistic ways to save, based on their actual categories.
+- Give GENERAL financial education: emergency funds, budgeting, how SIPs work, what diversification and risk mean, the difference between asset classes, compounding with clearly stated assumptions.
 
-ANSWER THE QUESTION THAT WAS ASKED.
-The user's question is classified as: ${intent}
-- "spending"      -> explain their spending using the figures below. Name the category and the rupee amount that drives it.
-- "affordability" -> answer yes or no first, then justify it with their safe-to-spend and upcoming bills.
-- "saving"        -> identify where the money could realistically come from, using their actual categories.
-- "investing"     -> use the CALCULATED PLAN verbatim for any numbers, funds, or projections.
-- "general"       -> answer plainly and briefly.
-Do NOT steer a spending or budgeting question toward investing. If they asked why they overspent, tell them why.
+WHAT YOU MUST NEVER DO
+- Never name or recommend a specific stock, mutual fund scheme, ETF, bond, insurance policy, bank product, broker, trading app or investment platform.
+- Never tell the user to buy, sell or hold any particular security.
+- Never include links or referral codes.
+- Never promise or predict returns. If you illustrate compounding, state the assumed rate as an assumption, not a forecast.
+- Never recommend derivatives (F&O), crypto, chit funds, or unregulated schemes.
+- Never state a number that is not in the data below.
 
-GROUNDING — these are the user's real numbers. Use them; never invent others:
-${JSON.stringify(ctx, null, 2)}
+The question is classified as: ${intent}. Answer the question that was asked; do not steer spending questions toward investing.
 
-Plain-language summary of the same data:
+USER DATA (confidence: "${ctx.confidence}")
+${JSON.stringify(ctx)}
+
+Summary of the same data:
 ${grounding}
 
-HONESTY RULES (non-negotiable):
-1. Data confidence is "${ctx.confidence}".
-   - "insufficient" -> say you do not have enough data yet and ask them to log a week of spending. Do not analyse habits.
-   - "limited"      -> answer, but say the picture is rough.
-2. Never state a number that is not in the grounding data above. No estimates dressed as facts.
-3. If the question cannot be answered from this data, say so and name what is missing.
-4. Never recommend F&O, crypto, penny stocks, chit funds, or unregulated products.
-5. If the user has no surplus, do not suggest investing. Fix the leak first.
+If confidence is "insufficient", say you need about a week of logged spending before commenting on habits.
+Keep it to two or three short paragraphs. Rupee amounts as ₹1,234. No emoji.
+${intent === 'investing' ? `End with exactly: "${EDUCATION_DISCLAIMER}"` : ''}`;
 
-STYLE:
-- Lead with the answer in one sentence. Detail after.
-- Two or three short paragraphs. No headings unless the answer is a multi-step plan.
-- Rupee amounts as ₹1,234. Be concrete: "cut one Swiggy order a week" beats "reduce discretionary spending".
-- No emoji, no hype, no filler openers.
+            try {
+                const text = await gemini.generateText(`${instruction}\n\nUser question: ${query}`, { maxOutputTokens: 700 });
+                if (text.trim()) reply = sanitizeReply(text, { intent });
+            } catch (e) {
+                console.error('Coach AI call failed:', e.code || e.name);
+                // Fall back to the deterministic summary rather than failing.
+            }
+        }
 
-${intent === 'investing' ? `CALCULATED PLAN — reproduce its numbers, funds and projections exactly; you may only adjust tone:\n${buildLocalPlan(legacyContext)}\n\nEnd investment answers with: "⚠️ This is financial education, not SEBI-registered investment advice. Projections use historical averages and are not guarantees. Consult a certified financial adviser before investing."` : ''}`;
-
-        const response = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: `${instruction}\n\nUser question: ${query}` });
-        const finalReply = response.text || fallback;
-        
-        // Save to database
         const { error: insertError } = await supabase.from('ai_chat_history').insert([
             { user_id: req.user.id, role: 'user', content: query },
-            { user_id: req.user.id, role: 'bot', content: finalReply, chips: [] }
+            { user_id: req.user.id, role: 'bot', content: reply, chips: [] },
         ]);
-        if (insertError) console.error('Error saving chat history:', insertError);
+        if (insertError) console.error('Error saving chat history:', insertError.message);
 
-        res.json({ success: true, reply: finalReply, context: ctx });
+        res.json({ success: true, reply, context: ctx, quota: res.locals.quota || null });
     } catch (error) {
-        console.error('Investment guide error:', error);
-        res.status(500).json({ success: false, message: 'Could not load your spending context for investment guidance.' });
+        console.error('Coach error:', error.message);
+        res.status(500).json({ success: false, message: 'Could not load your spending data right now. Please try again.' });
     }
 });
 
 module.exports = router;
+module.exports.MAX_QUERY_CHARS = MAX_QUERY_CHARS;

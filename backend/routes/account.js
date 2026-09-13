@@ -1,130 +1,134 @@
 const express = require('express');
 const router = express.Router();
+const { z } = require('zod');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const { validationError } = require('../lib/validation');
+
+/**
+ * Tables holding a user's data, all with ON DELETE CASCADE from profiles,
+ * which itself cascades from auth.users. Checked after deletion so the
+ * endpoint never reports success while financial data is left behind.
+ */
+const USER_TABLES = [
+    ['expenses', 'user_id'],
+    ['recurring_bills', 'user_id'],
+    ['streak_activities', 'user_id'],
+    ['paisa_scores', 'user_id'],
+    ['pdf_imports', 'user_id'],
+    ['ai_chat_history', 'user_id'],
+    ['group_members', 'user_id'],
+    ['profiles', 'id'],
+];
 
 // ---------------------------------------------------------------------------
 // @route   DELETE /api/account
-// @desc    Delete user account and all associated data
+// @desc    Permanently delete the account and all associated data
 // @access  Protected
 //
-// Play Store mandatory requirement: users must be able to delete their data.
-// This cascading delete removes:
-//   - All expenses
-//   - All group memberships
-//   - All recurring bills
-//   - All streak activities
-//   - All paisa scores
-//   - All PDF import records
-//   - Profile
-//   - Auth user
+// Order matters. The auth user is deleted FIRST:
+//   - it revokes every refresh token, so no device can obtain a new session;
+//   - any still-unexpired access token fails `protect`, which re-checks the
+//     user with Supabase Auth on every request;
+//   - the cascade removes the profile and all user rows.
+// The previous order (profile first, then auth user) could leave a live login
+// with no profile if the second step failed, while reporting success.
+//
+// Groups the user created are deleted with them (groups.created_by cascades),
+// including other members' shared entries in those groups.
 // ---------------------------------------------------------------------------
 router.delete('/', protect, async (req, res) => {
-    const { confirmation } = req.body;
-
-    if (confirmation !== 'DELETE_MY_ACCOUNT') {
+    if (req.body?.confirmation !== 'DELETE_MY_ACCOUNT') {
         return res.status(400).json({
             success: false,
             message: 'Please send { confirmation: "DELETE_MY_ACCOUNT" } to confirm.',
         });
     }
 
-    try {
-        const userId = req.user.id;
+    const userId = req.user.id;
 
-        // All tables have ON DELETE CASCADE from profiles, so deleting
-        // the profile row cascades to expenses, recurring_bills, etc.
-
-        // 1. Delete profile (cascades to all user data)
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .delete()
-            .eq('id', userId);
-
-        if (profileError) {
-            console.error('Error deleting profile:', profileError);
-            return res.status(500).json({ success: false, message: 'Failed to delete account data' });
-        }
-
-        // 2. Delete auth user via Supabase Admin API
-        const { createClient } = require('@supabase/supabase-js');
-        const supabaseAdmin = createClient(
-            process.env.SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
-        if (authError) {
-            console.error('Error deleting auth user:', authError);
-            // Profile is already deleted, so the user is effectively gone
-            // The auth record will be orphaned but harmless
-        }
-
-        res.json({
-            success: true,
-            message: 'Account and all associated data have been permanently deleted.',
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    if (authError) {
+        console.error('Account deletion: auth user delete failed:', authError.message);
+        return res.status(500).json({
+            success: false,
+            message: 'We could not delete your account. Nothing was removed. Please try again or contact support.',
         });
-    } catch (error) {
-        console.error('Account Deletion Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to delete account' });
     }
+
+    // Belt and braces: remove anything a missing cascade left behind, then verify.
+    const leftovers = [];
+    for (const [table, column] of USER_TABLES) {
+        const { error: delError } = await supabase.from(table).delete().eq(column, userId);
+        if (delError) {
+            leftovers.push(table);
+            continue;
+        }
+        const { data: remaining, error: checkError } = await supabase.from(table).select(column).eq(column, userId).limit(1);
+        if (checkError || (remaining && remaining.length > 0)) leftovers.push(table);
+    }
+
+    if (leftovers.length > 0) {
+        // The login is already gone; data cleanup needs attention.
+        console.error(`Account deletion: data remains in ${leftovers.join(', ')} for a deleted user`);
+        return res.status(500).json({
+            success: false,
+            code: 'PARTIAL_DELETION',
+            message: 'Your login has been removed, but some data could not be deleted automatically. Our team has been alerted; contact support to confirm removal.',
+        });
+    }
+
+    res.json({
+        success: true,
+        message: 'Your account and all associated data have been permanently deleted.',
+    });
 });
 
 // ---------------------------------------------------------------------------
 // @route   PUT /api/account/budget
-// @desc    Update monthly budget
-// @access  Protected
 // ---------------------------------------------------------------------------
-router.put('/budget', protect, async (req, res) => {
-    const { monthly_budget } = req.body;
+const budgetSchema = z.object({
+    monthly_budget: z.coerce.number().int('Budget must be a whole number of rupees').min(500, 'Budget must be at least ₹500').max(10_000_000, 'Budget cannot exceed ₹1,00,00,000'),
+}).strict();
 
-    if (!monthly_budget || isNaN(monthly_budget) || monthly_budget < 500 || monthly_budget > 10000000) {
-        return res.status(400).json({
-            success: false,
-            message: 'monthly_budget must be between ₹500 and ₹1,00,00,000',
-        });
-    }
+router.put('/budget', protect, async (req, res) => {
+    const parsed = budgetSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
 
     const { data, error } = await supabase
         .from('profiles')
-        .update({ monthly_budget: parseInt(monthly_budget) })
+        .update({ monthly_budget: parsed.data.monthly_budget })
         .eq('id', req.user.id)
         .select('monthly_budget')
-        .single();
+        .maybeSingle();
 
-    if (error) {
+    if (error || !data) {
         return res.status(500).json({ success: false, message: 'Failed to update budget' });
     }
-
     res.json({ success: true, monthly_budget: data.monthly_budget });
 });
 
 // ---------------------------------------------------------------------------
 // @route   PUT /api/account/investment-target
-// @desc    Update investment target for Safe-to-Spend calculation
-// @access  Protected
 // ---------------------------------------------------------------------------
-router.put('/investment-target', protect, async (req, res) => {
-    const { investment_target } = req.body;
+const targetSchema = z.object({
+    investment_target: z.coerce.number().int('Target must be a whole number of rupees').min(0).max(10_000_000),
+}).strict();
 
-    if (investment_target === undefined || isNaN(investment_target) || investment_target < 0) {
-        return res.status(400).json({
-            success: false,
-            message: 'investment_target must be a non-negative number',
-        });
-    }
+router.put('/investment-target', protect, async (req, res) => {
+    const parsed = targetSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
 
     const { data, error } = await supabase
         .from('profiles')
-        .update({ investment_target: parseInt(investment_target) })
+        .update({ investment_target: parsed.data.investment_target })
         .eq('id', req.user.id)
         .select('investment_target')
-        .single();
+        .maybeSingle();
 
-    if (error) {
-        return res.status(500).json({ success: false, message: 'Failed to update investment target' });
+    if (error || !data) {
+        return res.status(500).json({ success: false, message: 'Failed to update target' });
     }
-
     res.json({ success: true, investment_target: data.investment_target });
 });
 

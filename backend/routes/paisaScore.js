@@ -3,137 +3,93 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 const appTime = require('../lib/appTime');
+const { computePaisaScore, weekStartKey } = require('../lib/paisaScore');
 
-// ---------------------------------------------------------------------------
-// @route   GET /api/paisa-score
-// @desc    Calculate and return the user's Paisa Score (0-850)
-// @access  Protected
-//
-// Formula:
-//   savings_rate_score = (1 - totalSpent/monthlyBudget) × 250  [max 250]
-//   investment_score = hasInvestmentTarget ? 200 : 0            [max 200]
-//   budget_adherence = (daysUnderBudget / totalDays) × 200      [max 200]
-//   no_zombie_subs = hasZombieSubscriptions ? 0 : 100           [max 100]
-//   streak_bonus = Math.min(currentStreak × 2, 100)             [max 100]
-//
-// NOT a credit score. Must label as:
-// "Spendly financial wellness score, not affiliated with CIBIL, Experian,
-//  or any credit bureau"
-// ---------------------------------------------------------------------------
+const DISCLAIMER = 'Spendly spending-discipline score based only on your Spendly data. Not a credit score and not affiliated with CIBIL, Experian, Equifax, CRIF or any credit bureau.';
+
+// @route GET /api/paisa-score — current score, component breakdown, weekly change
 router.get('/', protect, async (req, res) => {
     try {
-        // 1. Get profile
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('monthly_budget, investment_target, streak_current, paisa_score')
+            .select('monthly_budget, investment_target, streak_current')
             .eq('id', req.user.id)
-            .single();
+            .maybeSingle();
 
         if (profileError || !profile) {
             return res.status(500).json({ success: false, message: 'Could not load profile' });
         }
 
-        const monthlyBudget = Number(profile.monthly_budget) || 5000;
-        const investmentTarget = Number(profile.investment_target) || 0;
-        const streakCurrent = Number(profile.streak_current) || 0;
-
-        // 2. Get this month's expenses
         const now = new Date();
-        const monthStart = appTime.startOfMonth(now);
-
         const { data: expenses, error: expError } = await supabase
             .from('expenses')
             .select('amount, occurred_at')
             .eq('user_id', req.user.id)
-            .gte('occurred_at', monthStart.toISOString());
+            .gte('occurred_at', appTime.startOfMonth(now).toISOString());
 
         if (expError) {
             return res.status(500).json({ success: false, message: 'Could not load expenses' });
         }
 
-        const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-        const daysPassed = Math.max(1, appTime.dayOfMonth(now));
+        const score = computePaisaScore({
+            expenses: expenses || [],
+            monthlyBudget: profile.monthly_budget,
+            investmentTarget: profile.investment_target,
+            streakCurrent: profile.streak_current,
+            now,
+        });
 
-        // 3. Calculate each component
+        const weekStart = weekStartKey(now);
 
-        // Savings Rate Score (max 250)
-        const savingsRatio = 1 - (totalSpent / monthlyBudget);
-        const savingsRateScore = Math.max(0, Math.min(250, Math.round(savingsRatio * 250)));
+        // Weekly change compares with the most recent snapshot from an earlier
+        // week. With no earlier snapshot there is no change to report.
+        const { data: previous } = await supabase
+            .from('paisa_scores')
+            .select('score, week_start')
+            .eq('user_id', req.user.id)
+            .lt('week_start', weekStart)
+            .order('week_start', { ascending: false })
+            .limit(1);
+        const previousScore = previous && previous.length ? previous[0].score : null;
 
-        // Investment Score (max 200) — has an investment target set
-        const investmentScore = investmentTarget > 0 ? 200 : 0;
+        // Record (or refresh) this week's snapshot. Idempotent within a week.
+        const { error: snapshotError } = await supabase
+            .from('paisa_scores')
+            .upsert({
+                user_id: req.user.id,
+                week_start: weekStart,
+                score: score.total,
+                savings_rate: score.breakdown.pace,
+                budget_adherence: score.breakdown.dailyBudget,
+                streak_bonus: score.breakdown.consistency,
+                investment: score.breakdown.planning,
+                no_zombie_subs: 0,
+            }, { onConflict: 'user_id,week_start' });
+        if (snapshotError) console.error('Paisa score snapshot failed:', snapshotError.message);
 
-        // Budget Adherence (max 200) — how many days were under daily budget
-        const dailyBudget = monthlyBudget / appTime.daysInMonth(now);
-        const dailySpending = {};
-        for (const exp of expenses) {
-            const day = appTime.dayOfMonth(new Date(exp.occurred_at));
-            dailySpending[day] = (dailySpending[day] || 0) + Number(exp.amount);
-        }
-        let daysUnderBudget = 0;
-        for (let d = 1; d <= daysPassed; d++) {
-            if ((dailySpending[d] || 0) <= dailyBudget) daysUnderBudget++;
-        }
-        const budgetAdherence = Math.round((daysUnderBudget / daysPassed) * 200);
-
-        // No Zombie Subscriptions (max 100) — simplified check
-        // We check if there are any recurring patterns with >30 day gaps
-        const noZombieSubs = 100; // Default to 100 (no zombies), will be overridden if detected
-
-        // Streak Bonus (max 100)
-        const streakBonus = Math.min(streakCurrent * 2, 100);
-
-        // 4. Sum it up
-        const totalScore = Math.min(850, savingsRateScore + investmentScore + budgetAdherence + noZombieSubs + streakBonus);
-
-        // 5. Update profile with new score
-        await supabase
-            .from('profiles')
-            .update({ paisa_score: totalScore })
-            .eq('id', req.user.id);
-
-        // 6. Calculate percentile (simplified — compare against a baseline)
-        const percentile = Math.min(99, Math.max(1, Math.round(totalScore / 850 * 100)));
+        await supabase.from('profiles').update({ paisa_score: score.total }).eq('id', req.user.id);
 
         res.json({
             success: true,
             paisaScore: {
-                total: totalScore,
-                breakdown: {
-                    savingsRate: savingsRateScore,
-                    investment: investmentScore,
-                    budgetAdherence,
-                    noZombieSubs,
-                    streakBonus,
-                },
-                maxScores: {
-                    savingsRate: 250,
-                    investment: 200,
-                    budgetAdherence: 200,
-                    noZombieSubs: 100,
-                    streakBonus: 100,
-                },
-                percentile,
-                previousScore: Number(profile.paisa_score) || 0,
-                change: totalScore - (Number(profile.paisa_score) || 0),
-                disclaimer: 'Spendly financial wellness score. Not affiliated with CIBIL, Experian, or any credit bureau.',
-            }
+                ...score,
+                previousScore,
+                change: previousScore === null ? null : score.total - previousScore,
+                weekStart,
+                disclaimer: DISCLAIMER,
+            },
         });
     } catch (error) {
-        console.error('Paisa Score Error:', error);
+        console.error('Paisa score error:', error.message);
         res.status(500).json({ success: false, message: 'Failed to calculate Paisa Score' });
     }
 });
 
-// ---------------------------------------------------------------------------
-// @route   GET /api/paisa-score/history
-// @desc    Get Paisa Score history (weekly snapshots)
-// @access  Protected
-// ---------------------------------------------------------------------------
+// @route GET /api/paisa-score/history — last 12 weekly snapshots
 router.get('/history', protect, async (req, res) => {
     const { data, error } = await supabase
         .from('paisa_scores')
-        .select('*')
+        .select('score, week_start, savings_rate, budget_adherence, streak_bonus, investment')
         .eq('user_id', req.user.id)
         .order('week_start', { ascending: false })
         .limit(12);
@@ -141,7 +97,6 @@ router.get('/history', protect, async (req, res) => {
     if (error) {
         return res.status(500).json({ success: false, message: 'Failed to fetch score history' });
     }
-
     res.json({ success: true, history: data || [] });
 });
 

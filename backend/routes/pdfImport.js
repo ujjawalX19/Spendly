@@ -1,226 +1,167 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { GoogleGenAI } = require('@google/genai');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
+const { pdfImportLimiter } = require('../middleware/rateLimits');
+const gemini = require('../lib/gemini');
+const { applyProfileStats, roundupFor } = require('../lib/profileStats');
+const { validateTransactions, removeDuplicates } = require('../lib/statementImport');
 
-// Multer: store in memory, max 10MB
+/**
+ * POST /api/pdf-import — Pro only.
+ *
+ * The PDF is held in memory only for the duration of the request and is never
+ * written to disk or storage. Its extracted text (up to 15,000 characters) is
+ * sent to Google's Gemini API to identify debit transactions — this must be
+ * disclosed in the privacy policy and Data Safety form.
+ */
+
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'application/pdf') cb(null, true);
-        else cb(new Error('Only PDF files are allowed'), false);
+        else cb(Object.assign(new Error('Only PDF files are allowed'), { status: 415, expose: true }));
     },
 });
 
-let ai = null;
-if (process.env.GEMINI_API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+/** Multer errors become 4xx JSON instead of reaching the 500 handler. */
+function acceptPdf(req, res, next) {
+    upload.single('pdf')(req, res, (err) => {
+        if (!err) return next();
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ success: false, message: 'That file is larger than 10 MB.' });
+        }
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ success: false, message: 'Please upload a single PDF file.' });
+        }
+        return res.status(err.status || 400).json({ success: false, message: err.expose ? err.message : 'Invalid upload' });
+    });
 }
 
-// ---------------------------------------------------------------------------
-// @route   POST /api/pdf-import
-// @desc    Upload bank statement PDF, parse transactions, auto-categorize
-// @access  Protected (Pro-only — gated in frontend + middleware)
-//
-// Supported banks: SBI, HDFC, ICICI, Axis, Kotak, PNB
-// Uses pdf-parse for text extraction + Gemini for classification.
-// PDF data deleted after processing (privacy policy compliance).
-//
-// Play Store Compliance:
-//   ✅ No SMS permission needed
-//   ✅ No banking credentials collected
-//   ✅ File processed server-side, not shared with third parties
-//   ✅ Declared in Play Store data safety form
-// ---------------------------------------------------------------------------
-router.post('/', protect, proGate('pdf_import'), upload.single('pdf'), async (req, res) => {
+router.post('/', protect, pdfImportLimiter, proGate('pdf_import'), acceptPdf, async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No PDF file uploaded' });
+    }
+    // MIME type is client-controlled; check the file signature too.
+    if (req.file.buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+        return res.status(400).json({ success: false, message: 'Invalid PDF file' });
+    }
+    if (!gemini.isConfigured()) {
+        return res.status(503).json({ success: false, message: 'Statement import is temporarily unavailable.' });
+    }
+
     try {
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: 'No PDF file uploaded' });
-        }
-
-        // MIME type is client-controlled; verify the file signature before parsing.
-        if (req.file.buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
-            return res.status(400).json({ success: false, message: 'Invalid PDF file' });
-        }
-
-        if (!ai) {
-            return res.status(500).json({ success: false, message: 'AI service not configured' });
-        }
-
-        // Check Pro status
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('is_pro')
-            .eq('id', req.user.id)
-            .single();
-
-        if (!profile?.is_pro) {
-            return res.status(403).json({
-                success: false,
-                message: 'PDF import is a Pro feature. Upgrade to unlock.',
-                requiresPro: true,
-            });
-        }
-
-        // 1. Parse PDF text
         const pdfParse = require('pdf-parse');
-        const pdfData = await pdfParse(req.file.buffer);
-        const rawText = pdfData.text;
-
-        if (!rawText || rawText.trim().length < 50) {
-            return res.status(400).json({
+        const rawText = (await pdfParse(req.file.buffer)).text || '';
+        if (rawText.trim().length < 50) {
+            return res.status(422).json({
                 success: false,
-                message: 'Could not extract text from PDF. Please ensure it is a standard bank statement.',
+                message: 'Could not read text from this PDF. Scanned or password-protected statements are not supported.',
             });
         }
 
-        // 2. Send to Gemini for transaction extraction + categorization
-        const prompt = `You are a bank statement parser for Indian banks (SBI, HDFC, ICICI, Axis, Kotak, PNB).
+        const prompt = `Extract every DEBIT (money going out) transaction from this Indian bank statement text.
+Ignore credits, balances, and totals. Never output account numbers, card numbers, UPI IDs or PAN.
+Return ONLY raw JSON, no markdown:
+{"bankName": "name", "periodStart": "YYYY-MM-DD", "periodEnd": "YYYY-MM-DD",
+ "transactions": [{"date": "YYYY-MM-DD", "description": "payee", "amount": 123.45, "category": "Food|Transport|Shopping|Recharge|Entertainment|Rent|Other"}]}
 
-Extract ALL debit transactions from this bank statement text. For each transaction, determine:
-1. date (ISO format YYYY-MM-DD)
-2. description (merchant/payee name, cleaned up)
-3. amount (positive number, INR)
-4. category (one of: Food, Transport, Shopping, Recharge, Entertainment, Rent, Other)
+STATEMENT TEXT:
+${rawText.substring(0, 15000)}`;
 
-PRIVACY RULES (MANDATORY):
-- NEVER include credit card numbers, account numbers, CVV, UPI IDs, or PAN numbers
-- Only return transaction data (date, description, amount, category)
-- Ignore credit (incoming) transactions — only extract debits (outgoing)
-
-Return ONLY a valid JSON object:
-{
-  "bankName": "detected bank name",
-  "periodStart": "YYYY-MM-DD",
-  "periodEnd": "YYYY-MM-DD",
-  "transactions": [
-    {"date": "2025-01-05", "description": "Swiggy", "amount": 345.00, "category": "Food"},
-    {"date": "2025-01-06", "description": "Netflix", "amount": 649.00, "category": "Entertainment"}
-  ]
-}
-
-Do not include any markdown formatting, only the raw JSON.
-
-BANK STATEMENT TEXT:
-${rawText.substring(0, 15000)}`; // Limit to ~15K chars for API limits
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: prompt,
-        });
-
-        const replyText = response.text || '';
         let parsed;
         try {
-            const cleanJson = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
-            parsed = JSON.parse(cleanJson);
+            const replyText = await gemini.generateText(prompt, { maxOutputTokens: 8192, temperature: 0 });
+            parsed = JSON.parse(replyText.replace(/```json/g, '').replace(/```/g, '').trim());
         } catch (e) {
-            // AI output can contain statement data; never write it to server logs.
-            console.error('Failed to parse Gemini PDF output');
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to parse bank statement. Try a different format.',
-            });
+            // AI output can contain statement data; never log it.
+            console.error('PDF import parse failed:', e.code || e.name);
+            return res.status(502).json({ success: false, message: 'Could not read this statement. Try a different export format.' });
         }
 
-        if (!parsed.transactions || !Array.isArray(parsed.transactions) || parsed.transactions.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'No transactions found in the bank statement.',
-            });
+        const now = new Date();
+        const { valid, rejected } = validateTransactions(parsed?.transactions, now);
+        if (valid.length === 0) {
+            return res.status(422).json({ success: false, message: 'No valid debit transactions were found in this statement.' });
         }
 
-        // 3. Bulk insert transactions
-        const VALID_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
-
-        const expensesToInsert = parsed.transactions
-            .filter(t => t.amount && t.amount > 0)
-            .map(t => {
-                const amount = parseFloat(t.amount);
-                const remainder = amount % 5;
-                const roundupChillar = remainder === 0 ? 0 : parseFloat((5 - remainder).toFixed(2));
-
-                return {
-                    user_id: req.user.id,
-                    amount,
-                    category: VALID_CATEGORIES.includes(t.category) ? t.category : 'Other',
-                    description: (t.description || 'Bank Transaction').substring(0, 200),
-                    roundup_chillar: roundupChillar,
-                    source: 'ai_scan',
-                    // The statement's own date is the transaction date.
-                    // created_at stays as the import time so the two remain
-                    // distinguishable; occurred_at is what reports use.
-                    occurred_at: t.date ? new Date(t.date).toISOString() : new Date().toISOString(),
-                };
-            });
-
-        const { data: inserted, error: insertError } = await supabase
+        // Existing expenses in the statement's date range, for duplicate checks.
+        const times = valid.map((t) => new Date(t.occurredAt).getTime());
+        const from = new Date(Math.min(...times) - 24 * 60 * 60 * 1000).toISOString();
+        const to = new Date(Math.max(...times) + 24 * 60 * 60 * 1000).toISOString();
+        const { data: existing, error: existingError } = await supabase
             .from('expenses')
-            .insert(expensesToInsert)
-            .select();
-
-        if (insertError) {
-            console.error('Bulk insert error:', insertError);
-            return res.status(500).json({ success: false, message: 'Failed to save transactions' });
+            .select('occurred_at, amount, description')
+            .eq('user_id', req.user.id)
+            .gte('occurred_at', from)
+            .lte('occurred_at', to);
+        if (existingError) {
+            console.error('PDF import duplicate check failed:', existingError.message);
+            return res.status(500).json({ success: false, message: 'Failed to import transactions' });
         }
 
-        // 4. Record the import
+        const { fresh, duplicates } = removeDuplicates(valid, existing || []);
+
+        let inserted = [];
+        if (fresh.length > 0) {
+            const rows = fresh.map((t) => ({
+                user_id: req.user.id,
+                amount: t.amount,
+                category: t.category,
+                description: t.description,
+                roundup_chillar: roundupFor(t.amount),
+                source: 'pdf_import',
+                occurred_at: t.occurredAt,
+            }));
+            const { data, error: insertError } = await supabase.from('expenses').insert(rows).select('id, amount, roundup_chillar');
+            if (insertError) {
+                console.error('PDF import insert failed:', insertError.message);
+                return res.status(500).json({ success: false, message: 'Failed to save transactions' });
+            }
+            inserted = data || [];
+        }
+
+        const totalChillar = inserted.reduce((s, r) => s + Number(r.roundup_chillar || 0), 0);
+        if (totalChillar > 0) {
+            // Importing history does not count as today's logging activity.
+            await applyProfileStats(req.user.id, { chillar: totalChillar, advance: false });
+        }
+
+        const isDate = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
         await supabase.from('pdf_imports').insert({
             user_id: req.user.id,
-            bank_name: parsed.bankName || 'Unknown',
+            bank_name: String(parsed.bankName || 'Unknown').slice(0, 100),
             transactions_count: inserted.length,
-            period_start: parsed.periodStart || null,
-            period_end: parsed.periodEnd || null,
+            period_start: isDate(parsed.periodStart),
+            period_end: isDate(parsed.periodEnd),
             status: 'completed',
         });
-
-        // 5. Update total chillar
-        const totalNewChillar = expensesToInsert.reduce((s, e) => s + e.roundup_chillar, 0);
-        if (totalNewChillar > 0) {
-            const { data: currentProfile } = await supabase
-                .from('profiles')
-                .select('total_chillar')
-                .eq('id', req.user.id)
-                .single();
-
-            if (currentProfile) {
-                await supabase
-                    .from('profiles')
-                    .update({ total_chillar: parseFloat(currentProfile.total_chillar) + totalNewChillar })
-                    .eq('id', req.user.id);
-            }
-        }
-
-        // PDF buffer is garbage-collected after response — no persistent storage
 
         res.json({
             success: true,
             imported: inserted.length,
+            duplicatesSkipped: duplicates,
+            invalidRowsSkipped: rejected,
             bankName: parsed.bankName || 'Unknown',
-            periodStart: parsed.periodStart,
-            periodEnd: parsed.periodEnd,
-            totalAmount: Math.round(expensesToInsert.reduce((s, e) => s + e.amount, 0)),
-            totalChillar: Math.round(totalNewChillar * 100) / 100,
+            periodStart: isDate(parsed.periodStart),
+            periodEnd: isDate(parsed.periodEnd),
+            totalAmount: Math.round(inserted.reduce((s, r) => s + Number(r.amount || 0), 0)),
+            totalChillar: Math.round(totalChillar * 100) / 100,
         });
     } catch (error) {
-        console.error('PDF Import Error:', error);
+        console.error('PDF import error:', error.name);
         res.status(500).json({ success: false, message: 'Failed to process PDF' });
     }
 });
 
-// ---------------------------------------------------------------------------
-// @route   GET /api/pdf-import/history
-// @desc    Get PDF import history for the user
-// @access  Protected
-// ---------------------------------------------------------------------------
+// @route GET /api/pdf-import/history
 router.get('/history', protect, async (req, res) => {
     const { data, error } = await supabase
         .from('pdf_imports')
-        .select('*')
+        .select('id, bank_name, transactions_count, period_start, period_end, status, created_at')
         .eq('user_id', req.user.id)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -228,7 +169,6 @@ router.get('/history', protect, async (req, res) => {
     if (error) {
         return res.status(500).json({ success: false, message: 'Failed to fetch import history' });
     }
-
     res.json({ success: true, imports: data || [] });
 });
 

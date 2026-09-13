@@ -3,7 +3,8 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 const appTime = require('../lib/appTime');
-const { advanceStreak, streakStatus } = require('../lib/streak');
+const { streakStatus } = require('../lib/streak');
+const { applyProfileStats } = require('../lib/profileStats');
 
 // ---------------------------------------------------------------------------
 // @route   GET /api/streaks
@@ -103,25 +104,8 @@ router.post('/check-in', protect, async (req, res) => {
 
         if (actError) throw actError;
 
-        // Update streak (reuse the existing streak logic from expenses.js)
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('streak_current, streak_last_log, streak_longest')
-            .eq('id', req.user.id)
-            .single();
-
-        if (profile) {
-            const streak = advanceStreak(profile, new Date());
-
-            await supabase
-                .from('profiles')
-                .update({
-                    streak_current: streak.streak_current,
-                    streak_longest: streak.streak_longest,
-                    streak_last_log: streak.streak_last_log,
-                })
-                .eq('id', req.user.id);
-        }
+        // Same atomic streak update used when logging an expense.
+        await applyProfileStats(req.user.id, { chillar: 0, advance: true });
 
         res.json({ success: true, message: 'Activity recorded!', activity });
     } catch (error) {
@@ -139,35 +123,53 @@ router.post('/freeze', protect, async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('streak_freezes_remaining')
+            .select('streak_freezes_remaining, streak_last_log')
             .eq('id', req.user.id)
-            .single();
+            .maybeSingle();
 
         if (error || !profile) {
             return res.status(500).json({ success: false, message: 'Could not load profile' });
         }
 
-        if (profile.streak_freezes_remaining <= 0) {
+        const remaining = Number(profile.streak_freezes_remaining) || 0;
+        if (remaining <= 0) {
+            return res.status(400).json({ success: false, code: 'NO_FREEZES', message: 'You have no streak freezes left.' });
+        }
+
+        // A freeze covers exactly one missed day: the last activity was the day
+        // before yesterday. It cannot resurrect a streak broken days ago, and
+        // is not needed while the streak is still intact.
+        const now = new Date();
+        const gap = profile.streak_last_log ? appTime.calendarDaysBetween(new Date(profile.streak_last_log), now) : null;
+        if (gap !== 2) {
             return res.status(400).json({
                 success: false,
-                message: 'No streak freezes remaining. Purchase more from the store.',
-                requiresPurchase: true,
+                code: 'FREEZE_NOT_APPLICABLE',
+                message: gap !== null && gap < 2 ? 'Your streak is not broken, so no freeze is needed.' : 'A freeze can only cover a single missed day.',
             });
         }
 
-        // Use one freeze
-        await supabase
+        const { year, month, day } = appTime.zonedParts(now);
+        const yesterdayNoon = appTime.zonedTimeToUtc(year, month, day - 1, 12, 0, 0);
+
+        // Compare-and-set so two taps cannot spend one freeze twice.
+        const { data: updated, error: updateError } = await supabase
             .from('profiles')
-            .update({
-                streak_freezes_remaining: profile.streak_freezes_remaining - 1,
-                streak_last_log: new Date().toISOString(), // Treat as if they logged today
-            })
-            .eq('id', req.user.id);
+            .update({ streak_freezes_remaining: remaining - 1, streak_last_log: yesterdayNoon.toISOString() })
+            .eq('id', req.user.id)
+            .eq('streak_freezes_remaining', remaining)
+            .eq('streak_last_log', profile.streak_last_log)
+            .select('streak_freezes_remaining');
+
+        if (updateError) throw updateError;
+        if (!updated || updated.length !== 1) {
+            return res.status(409).json({ success: false, message: 'Your streak changed just now. Please refresh and try again.' });
+        }
 
         res.json({
             success: true,
-            message: 'Streak freeze used! Your streak is safe.',
-            freezesRemaining: profile.streak_freezes_remaining - 1,
+            message: 'Streak freeze used. Your streak is safe.',
+            freezesRemaining: updated[0].streak_freezes_remaining,
         });
     } catch (error) {
         console.error('Streak freeze error:', error);
