@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Wallet, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import SpendlyLogo from '../../components/SpendlyLogo';
 import { Link } from 'react-router-dom';
 
 const navLinks = [
@@ -41,7 +42,7 @@ export default function Navbar() {
           {/* Logo */}
           <a href="#" className="flex items-center gap-2 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400/10">
-              <Wallet className="h-5 w-5 text-lime-400 drop-shadow-[0_0_8px_rgba(132,204,22,0.5)]" />
+              <SpendlyLogo size={28} />
             </div>
             <span className="text-xl font-bold tracking-tight text-lime-400">
               Spendly

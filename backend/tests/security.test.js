@@ -147,13 +147,13 @@ test('a non-member cannot read or write a group, or add members', async () => {
     assert.equal(created.status, 201);
     const groupId = created.body.group.id;
 
-    assert.equal((await t.request('GET', `/api/groups/${groupId}/expenses`, { token: outsider.token })).status, 403);
+    assert.equal((await t.request('GET', `/api/groups/${groupId}`, { token: outsider.token })).status, 403);
     assert.equal((await t.request('POST', `/api/groups/${groupId}/expenses`, { token: outsider.token, body: { description: 'x', amount: 10 } })).status, 403);
     assert.equal((await t.request('POST', `/api/groups/${groupId}/settle`, { token: outsider.token, body: { toUserId: owner.id, amount: 10 } })).status, 403);
 
-    // Nobody can add another user without an invitation flow — not even the owner.
+    // Nobody can add another user directly — people join with the invite code.
     const add = await t.request('POST', `/api/groups/${groupId}/members`, { token: owner.token, body: { userId: outsider.id } });
-    assert.equal(add.status, 501);
+    assert.equal(add.status, 400);
     assert.ok(!t.db.tables.group_members.some((m) => m.user_id === outsider.id));
 
     const outsiderGroups = await t.request('GET', '/api/groups', { token: outsider.token });

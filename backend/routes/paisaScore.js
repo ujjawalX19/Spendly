@@ -5,76 +5,59 @@ const { protect } = require('../middleware/authMiddleware');
 const appTime = require('../lib/appTime');
 const { computePaisaScore, weekStartKey } = require('../lib/paisaScore');
 
-const DISCLAIMER = 'Spendly spending-discipline score based only on your Spendly data. Not a credit score and not affiliated with CIBIL, Experian, Equifax, CRIF or any credit bureau.';
+const DISCLAIMER = 'Spendly habits score based only on your Spendly data. Not a credit score and not affiliated with CIBIL, Experian, Equifax, CRIF or any credit bureau.';
 
-// @route GET /api/paisa-score — current score, component breakdown, weekly change
+// @route GET /api/paisa-score — score out of 100 with explained components
 router.get('/', protect, async (req, res) => {
     try {
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('monthly_budget, investment_target, streak_current')
-            .eq('id', req.user.id)
-            .maybeSingle();
-
-        if (profileError || !profile) {
-            return res.status(500).json({ success: false, message: 'Could not load profile' });
-        }
-
         const now = new Date();
-        const { data: expenses, error: expError } = await supabase
-            .from('expenses')
-            .select('amount, occurred_at')
-            .eq('user_id', req.user.id)
-            .gte('occurred_at', appTime.startOfMonth(now).toISOString());
+        const [{ data: profile, error: pErr }, { data: expenses, error: eErr }] = await Promise.all([
+            supabase.from('profiles').select('monthly_budget, streak_current').eq('id', req.user.id).maybeSingle(),
+            supabase.from('expenses')
+                .select('amount, occurred_at')
+                .eq('user_id', req.user.id)
+                .gte('occurred_at', appTime.startOfMonthsAgo(4, now).toISOString()),
+        ]);
+        if (pErr || !profile) return res.status(500).json({ success: false, message: 'Could not load profile' });
+        if (eErr) return res.status(500).json({ success: false, message: 'Could not load expenses' });
 
-        if (expError) {
-            return res.status(500).json({ success: false, message: 'Could not load expenses' });
-        }
-
-        const score = computePaisaScore({
-            expenses: expenses || [],
-            monthlyBudget: profile.monthly_budget,
-            investmentTarget: profile.investment_target,
-            streakCurrent: profile.streak_current,
-            now,
-        });
-
+        const score = computePaisaScore({ expenses: expenses || [], monthlyBudget: profile.monthly_budget, streakCurrent: profile.streak_current, now });
         const weekStart = weekStartKey(now);
 
-        // Weekly change compares with the most recent snapshot from an earlier
-        // week. With no earlier snapshot there is no change to report.
-        const { data: previous } = await supabase
-            .from('paisa_scores')
-            .select('score, week_start')
-            .eq('user_id', req.user.id)
-            .lt('week_start', weekStart)
-            .order('week_start', { ascending: false })
-            .limit(1);
-        const previousScore = previous && previous.length ? previous[0].score : null;
+        let previousScore = null;
+        if (score.total !== null) {
+            // A weekly change is only shown against a real earlier snapshot on the same 0–100 scale.
+            const { data: previous } = await supabase
+                .from('paisa_scores')
+                .select('score, week_start')
+                .eq('user_id', req.user.id)
+                .lt('week_start', weekStart)
+                .lte('score', 100)
+                .order('week_start', { ascending: false })
+                .limit(1);
+            previousScore = previous && previous.length ? previous[0].score : null;
 
-        // Record (or refresh) this week's snapshot. Idempotent within a week.
-        const { error: snapshotError } = await supabase
-            .from('paisa_scores')
-            .upsert({
+            const { error: snapErr } = await supabase.from('paisa_scores').upsert({
                 user_id: req.user.id,
                 week_start: weekStart,
                 score: score.total,
-                savings_rate: score.breakdown.pace,
-                budget_adherence: score.breakdown.dailyBudget,
-                streak_bonus: score.breakdown.consistency,
-                investment: score.breakdown.planning,
-                no_zombie_subs: 0,
+                savings_rate: score.components.savingsConsistency.score ?? 0,
+                budget_adherence: score.components.budgetDiscipline.score ?? 0,
+                streak_bonus: score.components.loggingHabit.score ?? 0,
+                investment: score.components.spendingStability.score ?? 0,
+                no_zombie_subs: score.components.dailyConsistency.score ?? 0,
             }, { onConflict: 'user_id,week_start' });
-        if (snapshotError) console.error('Paisa score snapshot failed:', snapshotError.message);
+            if (snapErr) console.error('Paisa score snapshot failed:', snapErr.message);
 
-        await supabase.from('profiles').update({ paisa_score: score.total }).eq('id', req.user.id);
+            await supabase.from('profiles').update({ paisa_score: score.total }).eq('id', req.user.id);
+        }
 
         res.json({
             success: true,
             paisaScore: {
                 ...score,
                 previousScore,
-                change: previousScore === null ? null : score.total - previousScore,
+                change: previousScore === null || score.total === null ? null : score.total - previousScore,
                 weekStart,
                 disclaimer: DISCLAIMER,
             },
@@ -85,18 +68,16 @@ router.get('/', protect, async (req, res) => {
     }
 });
 
-// @route GET /api/paisa-score/history — last 12 weekly snapshots
+// @route GET /api/paisa-score/history — last 12 weekly snapshots (0–100)
 router.get('/history', protect, async (req, res) => {
     const { data, error } = await supabase
         .from('paisa_scores')
-        .select('score, week_start, savings_rate, budget_adherence, streak_bonus, investment')
+        .select('score, week_start')
         .eq('user_id', req.user.id)
+        .lte('score', 100)
         .order('week_start', { ascending: false })
         .limit(12);
-
-    if (error) {
-        return res.status(500).json({ success: false, message: 'Failed to fetch score history' });
-    }
+    if (error) return res.status(500).json({ success: false, message: 'Failed to fetch score history' });
     res.json({ success: true, history: data || [] });
 });
 

@@ -85,12 +85,13 @@ const SEED = `
         ('${USERS.bob}',   'user', 'Bob private question');
 `;
 
-async function buildDatabase(migrations) {
+async function buildDatabase(migrations, { afterEach } = {}) {
     const db = new PGlite({ extensions: { moddatetime } });
     await db.exec(SUPABASE_SHIM);
     for (const file of migrations) {
         try {
             await db.exec(sql(file));
+            if (afterEach?.[file]) await db.exec(afterEach[file]);
         } catch (e) {
             throw new Error(`${file} failed to apply: ${e.message}`);
         }
@@ -121,6 +122,7 @@ const CURRENT = [
     'security_hardening.sql',
     'v1_1_launch_hardening.sql',
     'v1_2_security_p0.sql',
+    'v1_3_product_core.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -257,6 +259,46 @@ test('after v1_2_security_p0.sql', async (t) => {
             const r = await db.query(`select count(*)::int as n from public.${table} where ${col} = '${USERS.bob}'`);
             assert.equal(r.rows[0].n, 0, table);
         }
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('production-like database: partial v1 extension, v1_1 applied, no v1_2', async (t) => {
+    // Mirrors the read-only production check of 2026-09-13: ai_chat_history
+    // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
+    const db = await buildDatabase(
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql'],
+        { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
+    );
+
+    await t.test('v1_2 and v1_3 apply cleanly on the production-like schema', async () => {
+        const r = await db.query("select to_regclass('public.ai_chat_history') as a, to_regclass('public.cancelled_subscriptions') as c");
+        assert.ok(r.rows[0].a && r.rows[0].c);
+    });
+
+    await t.test('verify_production.sql passes afterwards', async () => {
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await t.test('clients cannot write the new tables', async () => {
+        assert.ok(denied(await asUser(db, USERS.carol, `insert into public.cancelled_subscriptions (user_id, normalized_name, merchant, monthly_amount) values ('${USERS.carol}', 'netflix', 'Netflix', 649)`)));
+        assert.ok(denied(await asUser(db, USERS.carol, `insert into public.ai_chat_history (user_id, role, content) values ('${USERS.carol}', 'user', 'x')`)));
+    });
+
+    await t.test('an outsider cannot read a group invite code', async () => {
+        await db.exec(`update public.groups set invite_code = 'SECRET42' where id = '${GROUP}'`);
+        const outsider = await asUser(db, USERS.carol, 'select invite_code from public.groups');
+        assert.deepEqual(outsider.rows, []);
+        const member = await asUser(db, USERS.bob, 'select invite_code from public.groups');
+        assert.equal(member.rows[0].invite_code, 'SECRET42');
+    });
+
+    await t.test('duplicate cancelled-subscription records are impossible', async () => {
+        await db.exec(`insert into public.cancelled_subscriptions (user_id, normalized_name, merchant, monthly_amount) values ('${USERS.alice}', 'netflix', 'Netflix', 649)`);
+        await assert.rejects(db.exec(`insert into public.cancelled_subscriptions (user_id, normalized_name, merchant, monthly_amount) values ('${USERS.alice}', 'netflix', 'NETFLIX.COM', 649)`), /duplicate key/);
     });
 
     await db.close();

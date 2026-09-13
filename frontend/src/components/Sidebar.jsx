@@ -1,9 +1,11 @@
-import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, Wallet, FileText, Repeat, Settings, Receipt } from 'lucide-react';
+import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, FileText, Repeat, Settings, Receipt, Users } from 'lucide-react';
+import SpendlyLogo from './SpendlyLogo';
 import { NavLink } from 'react-router-dom';
 
 const navigation = [
   { to: '/dash', label: 'Overview', icon: LayoutDashboard },
   { to: '/transactions', label: 'Transactions', icon: Receipt },
+  { to: '/pool', label: 'Group Pool', icon: Users },
   { to: '/bot', label: 'Spendly AI', icon: Bot },
   { to: '/wealth', label: 'Wealth', icon: TrendingUp },
   { to: '/graveyard', label: 'Recurring charges', icon: Repeat },
@@ -17,8 +19,8 @@ export default function Sidebar({ theme, toggleTheme, onLogout }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 select-none border-r border-white/10 bg-[#0c0f0c] p-4 md:flex md:flex-col" aria-label="App navigation">
       <NavLink to="/dash" className="mb-8 flex items-center gap-3 rounded-2xl px-2 py-2 no-underline" aria-label="Spendly overview">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-black shadow-lg shadow-lime-400/15"><Wallet className="h-5 w-5" /></span>
-        <span><span className="block text-lg font-extrabold tracking-tight text-white">Spendly</span><span className="block text-[10px] font-bold tracking-[.16em] text-lime-300">MONEY, SIMPLIFIED</span></span>
+        <SpendlyLogo size={40} />
+        <span><span className="block text-lg font-extrabold tracking-tight text-white">Spendly</span><span className="block text-[10px] font-bold tracking-[.16em] text-lime-300">YOUR MONEY&apos;S PULSE</span></span>
       </NavLink>
 
       <p className="mb-2 px-3 text-[10px] font-bold tracking-[.18em] text-zinc-500">YOUR SPACE</p>

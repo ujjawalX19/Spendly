@@ -4,6 +4,10 @@ const assert = require('node:assert/strict');
 const { detectSubscriptions, normalizeMerchant } = require('../lib/subscriptions');
 const { computeBurnRate } = require('../lib/burnRate');
 const { computePaisaScore, weekStartKey } = require('../lib/paisaScore');
+const { splitEqually, computeNetBalances, suggestSettlements } = require('../lib/groupBalances');
+const { buildFacts, composeAnswer, toText, classifyIntent: coachIntent, extractAmount, numbersAreGrounded } = require('../lib/financialInsights');
+const { computeWealth } = require('../lib/wealth');
+const { applyCancellations } = require('../lib/subscriptions');
 const { validateTransactions, removeDuplicates } = require('../lib/statementImport');
 const { classifyIntent, educationalInvestingNote, sanitizeReply } = require('../lib/coachContent');
 const { roundupFor } = require('../lib/roundup');
@@ -79,26 +83,44 @@ test('burn rate: under budget pace is not flagged; over budget is', () => {
 
 // ─── Paisa score ────────────────────────────────────────────────────────────
 
-test('paisa score has no constant or fabricated components', () => {
+test('paisa score is withheld, with reasons, when there is not enough data', () => {
     const now = ist('2026-09-15');
-    const empty = computePaisaScore({ expenses: [], monthlyBudget: 0, investmentTarget: 0, streakCurrent: 0, now });
-    assert.equal(empty.total, 0, 'a user with no budget and no activity scores 0');
+    const empty = computePaisaScore({ expenses: [], monthlyBudget: 0, streakCurrent: 0, now });
+    assert.equal(empty.total, null);
+    assert.equal(empty.status, 'insufficient_data');
+    assert.ok(empty.insufficientReasons.length >= 2);
     assert.equal(empty.percentile, undefined);
-    assert.equal(empty.confidence, 'low');
-
-    const good = computePaisaScore({ expenses: [{ amount: 100, occurred_at: now.toISOString() }], monthlyBudget: 30000, investmentTarget: 1000, streakCurrent: 30, now });
-    assert.equal(good.total, 850);
-    const sum = Object.values(good.breakdown).reduce((a, b) => a + b, 0);
-    assert.equal(sum, good.total);
+    assert.equal(empty.components.budgetDiscipline.available, false);
 });
 
-test('paisa score pace falls as spending outpaces the budget', () => {
+test('paisa score components are out of 100, explained, and combine into the total', () => {
     const now = ist('2026-09-15');
-    const base = { monthlyBudget: 30000, investmentTarget: 0, streakCurrent: 0, now };
-    const onPace = computePaisaScore({ ...base, expenses: [{ amount: 15000, occurred_at: ist('2026-09-01').toISOString() }] });
-    const double = computePaisaScore({ ...base, expenses: [{ amount: 30000, occurred_at: ist('2026-09-01').toISOString() }] });
-    assert.equal(onPace.breakdown.pace, 350);
-    assert.equal(double.breakdown.pace, 0);
+    const rows = [];
+    // Three prior months under a ₹30,000 budget, steady weekly spending.
+    for (let d = 0; d < 105; d += 3) {
+        rows.push({ amount: 800, occurred_at: new Date(now.getTime() - (d + 16) * 86400000).toISOString() });
+    }
+    for (let d = 1; d <= 14; d += 2) rows.push({ amount: 500, occurred_at: ist(`2026-09-${String(d).padStart(2, '0')}`).toISOString() });
+    const s = computePaisaScore({ expenses: rows, monthlyBudget: 30000, streakCurrent: 15, now });
+    assert.equal(s.status, 'ok');
+    assert.ok(s.total >= 0 && s.total <= 100);
+    for (const c of Object.values(s.components)) {
+        if (c.available) {
+            assert.ok(c.score >= 0 && c.score <= 100);
+            assert.ok(c.explanation.length > 10);
+        }
+    }
+    assert.equal(s.components.loggingHabit.score, 50);
+    assert.equal(s.components.budgetDiscipline.score, 100, 'well under pace');
+    assert.equal(s.components.savingsConsistency.score, 100);
+});
+
+test('paisa score budget discipline falls as spending outpaces the budget', () => {
+    const now = ist('2026-09-15');
+    const base = { monthlyBudget: 30000, streakCurrent: 0, now };
+    const at = (amount) => Array.from({ length: 5 }, () => ({ amount: amount / 5, occurred_at: ist('2026-09-02').toISOString() }));
+    assert.equal(computePaisaScore({ ...base, expenses: at(15000) }).components.budgetDiscipline.score, 100);
+    assert.equal(computePaisaScore({ ...base, expenses: at(30000) }).components.budgetDiscipline.score, 0);
 });
 
 test('weekly snapshots key on the IST Monday', () => {

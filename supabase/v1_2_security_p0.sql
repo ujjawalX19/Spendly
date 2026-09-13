@@ -29,6 +29,18 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 
 
+-- ─── 0. Tables this migration secures, in case an earlier file was only ───
+--        partly applied (production was missing ai_chat_history)
+create table if not exists public.ai_chat_history (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  role        text not null check (role in ('user', 'bot')),
+  content     text not null,
+  chips       jsonb default '[]'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
+
 -- ─── 1. Expense sources used by the backend ─────────────────────────────────
 alter type public.expense_source add value if not exists 'upi_auto';
 alter type public.expense_source add value if not exists 'pdf_import';

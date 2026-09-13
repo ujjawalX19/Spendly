@@ -51,7 +51,17 @@ function createApp() {
     app.use('/api/', ipLimiter);
     app.use('/api/', authFailureLimiter);
 
-    app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
+    app.get('/api/health', (req, res) => {
+        const body = { status: 'ok', timestamp: new Date(), version: process.env.RENDER_GIT_COMMIT ? process.env.RENDER_GIT_COMMIT.slice(0, 7) : undefined };
+        // ?diag=proxy shows how the server sees the caller's own address, so the
+        // TRUST_PROXY setting can be verified after deployment. It only ever
+        // reveals the requester's own IP back to them, plus proxy hop count.
+        if (req.query.diag === 'proxy') {
+            const xff = String(req.headers['x-forwarded-for'] || '');
+            body.proxy = { ipSeen: req.ip, xffHops: xff ? xff.split(',').length : 0, trustProxy: app.get('trust proxy') === undefined ? null : String(app.get('trust proxy')) };
+        }
+        res.json(body);
+    });
 
     app.use('/api/auth', require('./routes/auth'));
     app.use('/api/expenses', require('./routes/expenses'));
@@ -66,6 +76,7 @@ function createApp() {
     app.use('/api/streaks', require('./routes/streaks'));
     app.use('/api/pro', require('./routes/pro'));
     app.use('/api/account', require('./routes/account'));
+    app.use('/api/wealth', require('./routes/wealth'));
 
     // Unknown API routes are JSON 404s, never the SPA's index.html.
     app.use('/api', (req, res) => res.status(404).json({ success: false, message: 'Not found' }));
