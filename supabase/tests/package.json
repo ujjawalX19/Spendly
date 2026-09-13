@@ -1,0 +1,12 @@
+{
+  "name": "spendly-supabase-tests",
+  "private": true,
+  "type": "module",
+  "description": "RLS and privilege tests for the Supabase migrations, run against PGlite (Postgres in WebAssembly).",
+  "scripts": {
+    "test": "node --test rls.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8"
+  }
+}
