@@ -6,13 +6,10 @@ real Google sign-in.
 
 **Before you start**
 
-1. Run `supabase/v1_1_launch_hardening.sql` in the Supabase SQL Editor, then
-   its verification queries. The backend will error on every reporting endpoint
-   until this is done.
-2. Add `spendly://login-callback` to Supabase → Authentication → URL
-   Configuration → **Redirect URLs**. Without it, Google sign-in falls back to
-   the project's Site URL and dumps the user on the website — the exact bug
-   this release set out to fix.
+1. Run `supabase/v1_2_security_p0.sql`, then `supabase/v1_3_product_core.sql`, then
+   `supabase/tests/verify_production.sql` (all PASS).
+2. Add `spendly://login-callback` and `spendly://reset-password` to Supabase →
+   Authentication → URL Configuration → Redirect URLs.
 3. Build and install: `cd frontend && npm run build && npx cap sync android`
    then `cd android && ./gradlew assembleRelease` (or install the AAB via
    internal testing).
@@ -207,3 +204,17 @@ Device: ______________  Android: ______  Build: ______  Date: __________
 | Accessibility & rotation | | | |
 
 Do not ship with a failure in a **bold** section.
+
+
+## Added 2026-09-13
+
+- [ ] Forgot password: request link → open email on the phone → app opens reset screen → set new password → sign in with it
+- [ ] Reset link opened twice → second time shows "expired or already used"
+- [ ] Dashboard with notification access OFF: explanation card, Enable / Not now; settings never open by themselves
+- [ ] Force-stop Spendly, make a UPI payment, reopen → payment appears for confirmation
+- [ ] WhatsApp message "I paid ₹500" → nothing detected
+- [ ] Group Pool with two accounts: create, share code, join, add expense with a chosen payer/participants, balances, record payment, history
+- [ ] Recurring charges: open cancellation page (Custom Tab), mark cancelled, undo
+- [ ] Wealth: first open after the server has been idle → "waking the server" then figures (no false connection error)
+- [ ] Spendly AI: "Why did I overspend this month?", "Can I afford ₹3,000?", 11th question → daily limit message
+- [ ] Settings → Export → share sheet opens with a CSV

@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-09-13).** This document predates the P0 security and product work and contains claims that are no longer accurate. Use `LAUNCH_TODO.md`, `TEST_REPORT.md` and `RELEASE.md` instead.
+
 # Spendly — Launch Report
 
 **Date:** 12 September 2026

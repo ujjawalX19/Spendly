@@ -18,17 +18,16 @@ These were verified in the repo.
 | `allowBackup="false"` + backup/data-extraction rules | Done |
 | Signing config wired to git-ignored `keystore.properties` | Done — key itself is Part B |
 | No secrets in tracked files (full-history scan) | Done |
-| Permissions minimal: `INTERNET`, `POST_NOTIFICATIONS`, notification listener | Done |
+| Permissions minimal: `INTERNET` only (merged release manifest verified); notification listener service | Done |
 | Account deletion endpoint + UI | Done |
 | Data export (CSV) | Done |
 | Privacy Policy and Terms screens in-app | Done |
-| Deep link `spendly://login-callback` declared | Done |
+| Deep links `spendly://login-callback` and `spendly://reset-password` declared (PKCE) | Done |
 | ProGuard keeps for Capacitor plugins and the parser | Done |
-| Backend + parser unit tests | Done — 33 + 32 passing |
+| Tests | Done — backend 125, database 34, Android 48, frontend 6 (see TEST_REPORT.md) |
 | `versionCode` / `versionName` | `1` / `1.0.0` — bump `versionCode` on every upload |
 
-**Not verified here:** no Gradle build was run in this session (no Android SDK
-available), so the AAB has never been produced. That is the first thing to do.
+**Verified:** clean `assembleDebug` + `bundleRelease` succeed; the AAB is unsigned until the upload key exists.
 
 ---
 
@@ -85,7 +84,6 @@ Answer from the actual behaviour, not aspiration. `SECURITY.md` documents it.
       notifications for automatic expense entry, that it is opt-in via Android
       settings, and that notification content is never transmitted or logged.
       Attach a short screen recording of the permission flow.
-- [ ] `POST_NOTIFICATIONS` — budget and report alerts
 - [ ] Confirm **no** `READ_SMS` / `RECEIVE_SMS` anywhere in the manifest —
       Play restricts these heavily and a stray declaration will fail review
 
