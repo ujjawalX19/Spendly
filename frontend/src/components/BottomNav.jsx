@@ -8,11 +8,11 @@
 
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutGrid, Users, Bot, BarChart2, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutGrid, Receipt, Bot, BarChart2, Settings as SettingsIcon } from 'lucide-react';
 
 const tabs = [
   { id: '/dash',     label: 'Dashboard',  icon: LayoutGrid   },
-  { id: '/pool',     label: 'Group Pool', icon: Users         },
+  { id: '/transactions', label: 'History', icon: Receipt      },
   { id: '/bot',      label: 'Spendly AI', icon: Bot           },
   { id: '/wealth',   label: 'Wealth',     icon: BarChart2     },
   { id: '/settings', label: 'Settings',   icon: SettingsIcon  },

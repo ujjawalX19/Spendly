@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const appTime = require('../lib/appTime');
 
 // ---------------------------------------------------------------------------
 // @route   GET /api/safe-to-spend
@@ -28,16 +29,17 @@ router.get('/', protect, async (req, res) => {
         const monthlyBudget = Number(profile.monthly_budget) || 5000;
         const investmentTarget = Number(profile.investment_target) || 0;
 
-        // 2. Get total spent this month
+        // 2. Get total spent this month.
+        //    Boundaries are computed in the app timezone (IST), not the
+        //    server's UTC clock — see lib/appTime.js for why that matters.
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        monthStart.setHours(0, 0, 0, 0);
+        const monthStart = appTime.startOfMonth(now);
 
         const { data: expenses, error: expError } = await supabase
             .from('expenses')
             .select('amount')
             .eq('user_id', req.user.id)
-            .gte('created_at', monthStart.toISOString());
+            .gte('occurred_at', monthStart.toISOString());
 
         if (expError) {
             return res.status(500).json({ success: false, message: 'Could not load expenses' });
@@ -46,7 +48,7 @@ router.get('/', protect, async (req, res) => {
         const totalSpentThisMonth = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
         // 3. Get upcoming recurring bills (bills due on or after today this month)
-        const todayDay = now.getDate();
+        const todayDay = appTime.dayOfMonth(now);
 
         const { data: bills, error: billsError } = await supabase
             .from('recurring_bills')
@@ -63,8 +65,7 @@ router.get('/', protect, async (req, res) => {
 
         // 4. Calculate safe-to-spend
         const safeToSpendMonth = monthlyBudget - totalSpentThisMonth - upcomingBills - investmentTarget;
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const daysRemaining = daysInMonth - todayDay + 1; // Including today
+        const daysRemaining = appTime.daysRemainingInMonth(now); // Including today
         const safeToSpendDaily = Math.max(0, Math.round(safeToSpendMonth / daysRemaining));
         const safeToSpendTotal = Math.max(0, Math.round(safeToSpendMonth));
 

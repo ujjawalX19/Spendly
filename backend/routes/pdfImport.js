@@ -151,7 +151,10 @@ ${rawText.substring(0, 15000)}`; // Limit to ~15K chars for API limits
                     description: (t.description || 'Bank Transaction').substring(0, 200),
                     roundup_chillar: roundupChillar,
                     source: 'ai_scan',
-                    created_at: t.date ? new Date(t.date).toISOString() : new Date().toISOString(),
+                    // The statement's own date is the transaction date.
+                    // created_at stays as the import time so the two remain
+                    // distinguishable; occurred_at is what reports use.
+                    occurred_at: t.date ? new Date(t.date).toISOString() : new Date().toISOString(),
                 };
             });
 

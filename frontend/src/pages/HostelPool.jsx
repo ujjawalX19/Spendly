@@ -3,8 +3,10 @@ import { Users, Plus, X, Check, Loader2, TrendingUp, Trash2, UserPlus, ArrowRigh
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL as API_BASE_URL } from '../lib/apiConfig';
+import { friendlyError } from '../lib/errors';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const API_BASE = API_BASE_URL;
 
 // ─── Create Pool Modal ────────────────────────────────────────
 function CreatePoolModal({ onClose, onCreate }) {
@@ -380,7 +382,7 @@ export default function HostelPool() {
             setPools(groupsWithExpenses);
         } catch (err) {
             console.error('Error fetching pools:', err);
-            setError(err.response?.data?.message || err.message || 'Could not load pools.');
+            setError(friendlyError(err, 'Could not load your pools. Check your connection and try again.'));
         } finally {
             setLoading(false);
         }
@@ -415,7 +417,7 @@ export default function HostelPool() {
             setPools(prev => [newPool, ...prev]);
         } catch (err) {
             console.error('Error creating pool:', err);
-            setError(err.response?.data?.message || err.message || 'Could not create pool.');
+            setError(friendlyError(err, "We couldn't create that pool. Please try again."));
         }
     };
 

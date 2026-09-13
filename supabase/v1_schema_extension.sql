@@ -155,5 +155,40 @@ create policy "Users can insert own streak activities"
 
 
 -- ═══════════════════════════════════════════════════════════════
+-- TABLE: ai_chat_history
+-- Tracks the user's conversation history with Spendly AI.
+-- ═══════════════════════════════════════════════════════════════
+
+create table if not exists public.ai_chat_history (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  role        text not null check (role in ('user', 'bot')),
+  content     text not null,
+  chips       jsonb default '[]'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
+comment on table public.ai_chat_history is 'Chat history for Spendly AI.';
+
+create index if not exists idx_ai_chat_history_user on public.ai_chat_history (user_id, created_at asc);
+
+alter table public.ai_chat_history enable row level security;
+
+create policy "Users can view own chat history"
+  on public.ai_chat_history for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own chat history"
+  on public.ai_chat_history for insert
+  with check (auth.uid() = user_id);
+
+-- ═══════════════════════════════════════════════════════════════
+-- EXTEND GROUPS TABLE
+-- ═══════════════════════════════════════════════════════════════
+
+alter table public.groups
+  add column if not exists pool_state jsonb default '[]'::jsonb;
+
+-- ═══════════════════════════════════════════════════════════════
 -- DONE! v1 schema extensions applied.
 -- ═══════════════════════════════════════════════════════════════

@@ -47,7 +47,12 @@ router.delete('/', protect, async (req, res) => {
         }
 
         // 2. Delete auth user via Supabase Admin API
-        const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+        const { createClient } = require('@supabase/supabase-js');
+        const supabaseAdmin = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
         if (authError) {
             console.error('Error deleting auth user:', authError);

@@ -17,8 +17,10 @@ import {
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import InvestmentDisclaimer from '../components/InvestmentDisclaimer';
+import { API_URL as API_BASE_URL, apiFetch } from '../lib/apiConfig';
+import { friendlyError } from '../lib/errors';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const API_URL = API_BASE_URL;
 const money = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
 
 // SIP future value: M × {[(1+r)^n - 1] / r} × (1+r)
@@ -112,6 +114,8 @@ export default function Wealth() {
   const [safeToSpend, setSafeToSpend] = useState(null);
   const [burnRate, setBurnRate] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [waking, setWaking] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!session?.access_token) {
@@ -125,15 +129,20 @@ export default function Wealth() {
         if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
         return response.json();
       };
+      // The API sleeps on Render's free tier; the first request of the day
+      // gets a 502 while it wakes. Retry rather than blaming the network.
+      const onRetry = () => setWaking(true);
       const [stsRes, brRes] = await Promise.all([
-        fetch(`${API_URL}/safe-to-spend`, { headers }).then(parseResponse),
-        fetch(`${API_URL}/burn-rate`, { headers }).then(parseResponse),
+        apiFetch(`${API_URL}/safe-to-spend`, { headers }, { onRetry }).then(parseResponse),
+        apiFetch(`${API_URL}/burn-rate`, { headers }, { onRetry }).then(parseResponse),
       ]);
+      setWaking(false);
 
       if (stsRes.success) setSafeToSpend(stsRes.safeToSpend);
       if (brRes.success) setBurnRate(brRes.burnRate);
     } catch (err) {
       console.error('Wealth data fetch error:', err);
+      setLoadError(friendlyError(err, "We couldn't load your wealth figures. Check your connection and try again."));
     } finally {
       setLoading(false);
     }
@@ -151,7 +160,28 @@ export default function Wealth() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-lime-400 animate-spin mx-auto mb-3" />
-          <p className="text-zinc-500 text-sm">Loading your wealth data...</p>
+          <p className="text-zinc-500 text-sm">
+            {waking ? 'Waking the server up — this can take a moment…' : 'Loading your wealth data...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Showing zeros after a failed load would read as "you have no money
+  // tracked", which is a lie. Say what actually happened instead.
+  if (loadError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="max-w-sm rounded-2xl border border-red-500/25 bg-red-500/10 p-5 text-center">
+          <p role="alert" className="text-sm text-red-100">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded-xl bg-red-500/20 px-4 py-2.5 text-xs font-bold text-red-100"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );

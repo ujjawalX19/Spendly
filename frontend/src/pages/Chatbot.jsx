@@ -4,6 +4,7 @@ import { Send, Bot, User, TrendingUp, ShieldCheck, Banknote, Sparkles } from 'lu
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { Link } from 'react-router-dom';
+import { API_URL, apiFetch } from '../lib/apiConfig';
 
 const CHIPS = [
     {
@@ -35,19 +36,39 @@ const CHIPS = [
 export default function Chatbot() {
     const { session } = useAuth();
     const { canUse, getRemaining } = usePro();
-    const [messages, setMessages] = useState([
-        { 
-            id: 1, 
-            role: 'bot', 
-            content: "What’s up, boss? Ask me where to invest your money and I’ll use this month’s actual spending — no generic gyaan.",
-            chips: []
-        }
-    ]);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [goal, setGoal] = useState('habit');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef(null);
 
+    // Fetch history on mount
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const res = await apiFetch(`${API_URL}/ai/history`, {
+                    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.history && data.history.length > 0) {
+                        setMessages(data.history);
+                    } else {
+                        // Default greeting
+                        setMessages([{
+                            id: 1, 
+                            role: 'bot', 
+                            content: "What’s up, boss? Ask me where to invest your money and I’ll use this month’s actual spending — no generic gyaan.",
+                            chips: []
+                        }]);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch chat history:", err);
+            }
+        };
+        fetchHistory();
+    }, [session?.access_token]);
     // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -70,7 +91,7 @@ export default function Chatbot() {
         setIsLoading(true);
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api'}/ai/invest-advice`, {
+            const res = await apiFetch(`${API_URL}/ai/invest-advice`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,12 +1,13 @@
 {
   "name": "spendly-backend",
   "version": "1.0.0",
-  "description": "Spendly — AI-powered expense tracker & investment guide backend",
+  "description": "Spendly \u2014 AI-powered expense tracker & investment guide backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test \"tests/*.test.js\"",
+    "test:tz": "for tz in UTC Asia/Kolkata America/New_York; do echo \"== TZ=$tz ==\"; TZ=$tz node --test \"tests/*.test.js\" || exit 1; done"
   },
   "keywords": [],
   "author": "",

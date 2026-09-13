@@ -3,6 +3,8 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ---------------------------------------------------------------------------
 // Helper: Increment karma_score on public.profiles (clamped 0–1000)
 // ---------------------------------------------------------------------------
@@ -28,6 +30,46 @@ const awardKarma = async (userId, points) => {
     if (updateError) {
         console.error('Error updating karma score:', updateError);
     }
+};
+
+
+// ---------------------------------------------------------------------------
+// Helper: assert the authenticated user belongs to the group.
+//
+// The backend talks to Supabase with the SERVICE ROLE key, which bypasses RLS
+// entirely. Every group-scoped route must therefore prove membership itself —
+// the database will not do it for us.
+//
+// Returns true when the caller is a member; otherwise responds 403/404 and
+// returns false, so callers can simply `if (!(await requireMembership(...))) return;`
+// ---------------------------------------------------------------------------
+const requireMembership = async (groupId, userId, res) => {
+    if (!UUID_RE.test(String(groupId || ''))) {
+        res.status(400).json({ success: false, message: 'Invalid group id' });
+        return false;
+    }
+
+    const { data: membership, error } = await supabase
+        .from('group_members')
+        .select('user_id, role')
+        .eq('group_id', groupId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Group membership check failed:', error);
+        res.status(500).json({ success: false, message: 'Could not verify group access' });
+        return false;
+    }
+
+    if (!membership) {
+        // Deliberately identical to the "no such group" response so that a
+        // non-member cannot probe which group ids exist.
+        res.status(403).json({ success: false, message: 'Not a member of this group' });
+        return false;
+    }
+
+    return membership;
 };
 
 // ---------------------------------------------------------------------------
@@ -83,7 +125,7 @@ router.get('/', protect, async (req, res) => {
     // Fetch all group_ids for this user, then fetch group details with members
     const { data: memberships, error: memberError } = await supabase
         .from('group_members')
-        .select('group_id, role, groups(id, name, created_by, is_settled, created_at, updated_at)')
+        .select('group_id, role, groups(id, name, created_by, is_settled, pool_state, created_at, updated_at)')
         .eq('user_id', req.user.id);
 
     if (memberError) {
@@ -171,17 +213,7 @@ router.post('/:id/expenses', protect, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Valid description and amount are required' });
     }
 
-    // Verify the requester is a member
-    const { data: membership, error: memberCheckError } = await supabase
-        .from('group_members')
-        .select('user_id')
-        .eq('group_id', groupId)
-        .eq('user_id', req.user.id)
-        .single();
-
-    if (memberCheckError || !membership) {
-        return res.status(403).json({ success: false, message: 'Not a member of this group' });
-    }
+    if (!(await requireMembership(groupId, req.user.id, res))) return;
 
     // 1. Insert the group expense
     const { data: groupExpense, error: expenseError } = await supabase
@@ -200,17 +232,25 @@ router.post('/:id/expenses', protect, async (req, res) => {
         return res.status(500).json({ success: false, message: 'Server error adding expense' });
     }
 
-    // 2. Determine who the expense is split among
-    let splitUserIds = splitAmong && splitAmong.length > 0 ? splitAmong : null;
+    // 2. Determine who the expense is split among.
+    //    `splitAmong` arrives from the client, so it is intersected with the
+    //    real membership list — never trusted as-is.
+    const { data: allMembers } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
 
-    // If no specific split provided, split among all group members
-    if (!splitUserIds) {
-        const { data: allMembers } = await supabase
-            .from('group_members')
-            .select('user_id')
-            .eq('group_id', groupId);
+    const memberIds = allMembers ? allMembers.map(m => m.user_id) : [req.user.id];
 
-        splitUserIds = allMembers ? allMembers.map(m => m.user_id) : [req.user.id];
+    let splitUserIds = memberIds;
+    if (Array.isArray(splitAmong) && splitAmong.length > 0) {
+        splitUserIds = splitAmong.filter(uid => memberIds.includes(uid));
+        if (splitUserIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'splitAmong must contain at least one member of this group',
+            });
+        }
     }
 
     // 3. Insert split records
@@ -239,11 +279,13 @@ router.post('/:id/expenses', protect, async (req, res) => {
 router.get('/:id/expenses', protect, async (req, res) => {
     const groupId = req.params.id;
 
+    if (!(await requireMembership(groupId, req.user.id, res))) return;
+
     const { data: expenses, error } = await supabase
         .from('group_expenses')
         .select(`
             *,
-            profiles!paid_by(id, full_name, email),
+            profiles!paid_by(id, full_name),
             group_expense_splits(user_id, profiles(id, full_name))
         `)
         .eq('group_id', groupId)
@@ -255,6 +297,30 @@ router.get('/:id/expenses', protect, async (req, res) => {
     }
 
     res.json({ success: true, expenses });
+});
+
+// ---------------------------------------------------------------------------
+// @route   POST /api/groups/:id/snapshot
+// @desc    Save the current local pool state (members & spent totals)
+// @access  Protected
+// ---------------------------------------------------------------------------
+router.post('/:id/snapshot', protect, async (req, res) => {
+    const { pool_state } = req.body;
+    const groupId = req.params.id;
+
+    if (!(await requireMembership(groupId, req.user.id, res))) return;
+
+    const { error: updateError } = await supabase
+        .from('groups')
+        .update({ pool_state: pool_state || [] })
+        .eq('id', groupId);
+
+    if (updateError) {
+        console.error('Error saving pool snapshot:', updateError);
+        return res.status(500).json({ success: false, message: 'Server error saving snapshot' });
+    }
+
+    res.json({ success: true, message: 'Pool state saved successfully' });
 });
 
 // ---------------------------------------------------------------------------
@@ -273,6 +339,12 @@ router.post('/:id/settle', protect, async (req, res) => {
     if (toUserId === req.user.id) {
         return res.status(400).json({ success: false, message: 'Cannot settle with yourself' });
     }
+
+    if (!(await requireMembership(groupId, req.user.id, res))) return;
+
+    // The payee must also be a member of this group, otherwise a caller could
+    // manufacture settlements against arbitrary accounts.
+    if (!(await requireMembership(groupId, toUserId, res))) return;
 
     const { data: settlement, error } = await supabase
         .from('settlements')

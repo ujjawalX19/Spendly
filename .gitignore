@@ -51,3 +51,13 @@ android/capacitor.plugins.json
 
 # Typescript
 *.tsbuildinfo
+
+# Android signing — never commit keys or their passwords
+*.jks
+*.keystore
+keystore.properties
+frontend/android/keystore.properties
+frontend/android/app/google-services.json
+
+# Local git bundles (recovery artifacts, never commit)
+*.bundle

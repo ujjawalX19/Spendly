@@ -9,8 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, FileUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProGate from '../components/ProGate';
+import { API_URL as API_BASE_URL } from '../lib/apiConfig';
+import { friendlyError } from '../lib/errors';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const API_URL = API_BASE_URL;
 
 export default function PdfImport() {
   const { session } = useAuth();
@@ -60,7 +62,7 @@ export default function PdfImport() {
         setError(data.message || 'Failed to process PDF.');
       }
     } catch (err) {
-      setError('An error occurred during upload.');
+      setError(friendlyError(err, "We couldn't read that statement. Check it is a PDF and try again."));
     } finally {
       setLoading(false);
       setFile(null);

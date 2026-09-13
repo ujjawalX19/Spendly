@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const appTime = require('../lib/appTime');
 
 // ---------------------------------------------------------------------------
 // @route   GET /api/paisa-score
@@ -38,21 +39,20 @@ router.get('/', protect, async (req, res) => {
 
         // 2. Get this month's expenses
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        monthStart.setHours(0, 0, 0, 0);
+        const monthStart = appTime.startOfMonth(now);
 
         const { data: expenses, error: expError } = await supabase
             .from('expenses')
-            .select('amount, created_at')
+            .select('amount, occurred_at')
             .eq('user_id', req.user.id)
-            .gte('created_at', monthStart.toISOString());
+            .gte('occurred_at', monthStart.toISOString());
 
         if (expError) {
             return res.status(500).json({ success: false, message: 'Could not load expenses' });
         }
 
         const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-        const daysPassed = Math.max(1, now.getDate());
+        const daysPassed = Math.max(1, appTime.dayOfMonth(now));
 
         // 3. Calculate each component
 
@@ -64,10 +64,10 @@ router.get('/', protect, async (req, res) => {
         const investmentScore = investmentTarget > 0 ? 200 : 0;
 
         // Budget Adherence (max 200) — how many days were under daily budget
-        const dailyBudget = monthlyBudget / new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const dailyBudget = monthlyBudget / appTime.daysInMonth(now);
         const dailySpending = {};
         for (const exp of expenses) {
-            const day = new Date(exp.created_at).getDate();
+            const day = appTime.dayOfMonth(new Date(exp.occurred_at));
             dailySpending[day] = (dailySpending[day] || 0) + Number(exp.amount);
         }
         let daysUnderBudget = 0;

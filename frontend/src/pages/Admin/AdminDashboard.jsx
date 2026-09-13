@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_URL as API_BASE_URL } from '../../lib/apiConfig';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const API_BASE = API_BASE_URL;
 
 // ─── ANIMATION VARIANTS ───────────────────────────────────────
 const pageVariants = {

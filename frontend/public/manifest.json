@@ -1,14 +1,14 @@
 {
   "short_name": "Spendly",
-  "name": "Spendly Micro-FinTech",
+  "name": "Spendly — AI Budget Tracker",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "/spendly-logo.svg",
       "type": "image/svg+xml",
       "sizes": "192x192"
     },
     {
-      "src": "/vite.svg",
+      "src": "/spendly-logo.svg",
       "type": "image/svg+xml",
       "sizes": "512x512"
     }

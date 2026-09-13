@@ -3,6 +3,7 @@ const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const appTime = require('../lib/appTime');
 
 let ai = null;
 if (process.env.GEMINI_API_KEY) {
@@ -38,23 +39,23 @@ router.get('/', protect, async (req, res) => {
 
         // 2. Get this month's expenses with categories
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        monthStart.setHours(0, 0, 0, 0);
+        const monthStart = appTime.startOfMonth(now);
 
         const { data: expenses, error: expError } = await supabase
             .from('expenses')
-            .select('amount, category, created_at')
+            .select('amount, category, occurred_at')
             .eq('user_id', req.user.id)
-            .gte('created_at', monthStart.toISOString());
+            .gte('occurred_at', monthStart.toISOString());
 
         if (expError) {
             return res.status(500).json({ success: false, message: 'Could not load expenses' });
         }
 
         const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-        const daysPassed = Math.max(1, now.getDate()); // At least 1 to avoid division by zero
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const daysRemaining = daysInMonth - daysPassed;
+        const daysPassed = Math.max(1, appTime.dayOfMonth(now)); // At least 1 to avoid division by zero
+        const daysInMonth = appTime.daysInMonth(now);
+        // Days left after today, matching how `daysUntilBroke` is compared below.
+        const daysRemaining = Math.max(0, daysInMonth - daysPassed);
 
         // 3. Calculate burn rate
         const dailyBurnRate = totalSpent / daysPassed;

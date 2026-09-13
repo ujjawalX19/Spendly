@@ -19,6 +19,8 @@
 # resolves plugin classes by name via reflection.
 -keep class com.spendly.app.UpiNotificationPlugin { *; }
 -keep class com.spendly.app.PaymentNotificationListener { *; }
+-keep class com.spendly.app.PaymentNotificationParser { *; }
+-keep class com.spendly.app.PaymentNotificationParser$* { *; }
 -keep class com.spendly.app.MainActivity { *; }
 
 # ─── AndroidX / Support Libraries ────────────────────────────

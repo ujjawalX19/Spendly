@@ -46,7 +46,7 @@ function startBurnRateChecker() {
                         .from('expenses')
                         .select('amount, category')
                         .eq('user_id', profile.id)
-                        .gte('created_at', monthStart.toISOString());
+                        .gte('occurred_at', monthStart.toISOString());
 
                     if (expError || !expenses || expenses.length === 0) continue;
 

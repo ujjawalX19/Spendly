@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import PermissionBanner from '../components/PermissionBanner';
+import { API_URL } from '../lib/apiConfig';
 
 // ─── ANIMATION VARIANTS ───────────────────────────────────────
 const pageVariants = {
@@ -597,7 +598,17 @@ function PaisaScoreCard({ score }) {
 
 
 // ─── UPI TOAST ────────────────────────────────────────────────
+// Copy that matches what actually happened. The native parser classifies
+// each notification, so money received must never be announced as spending.
+const PAYMENT_COPY = {
+  EXPENSE: { title: 'Payment detected', action: 'Log it', verb: 'spent' },
+  INCOME: { title: 'Money received', action: 'Log it', verb: 'received' },
+  REFUND: { title: 'Refund received', action: 'Log it', verb: 'refunded' },
+};
+
 function PaymentToast({ payment, onAdd, onDismiss }) {
+  const copy = PAYMENT_COPY[payment.kind] || PAYMENT_COPY.EXPENSE;
+  const uncertain = payment.needsConfirmation;
   return (
     <motion.div
       initial={{ opacity: 0, y: -60, scale: 0.9 }}
@@ -613,10 +624,18 @@ function PaymentToast({ payment, onAdd, onDismiss }) {
           <Zap className="w-5 h-5 text-lime-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-zinc-100">UPI Payment Detected!</p>
-          <p className="text-xs text-zinc-400 mt-0.5 truncate">
-            {'\u20b9'}{payment.amount} · {payment.merchant || 'Unknown merchant'}
+          <p className="text-sm font-bold text-zinc-100">
+            {uncertain ? `${copy.title} — is this right?` : copy.title}
           </p>
+          <p className="text-xs text-zinc-400 mt-0.5 truncate">
+            {'\u20b9'}{Number(payment.amount).toLocaleString('en-IN')} {copy.verb}
+            {payment.merchant && payment.merchant !== 'Unknown' ? ` · ${payment.merchant}` : ''}
+          </p>
+          {uncertain && (
+            <p className="text-[11px] text-amber-400/90 mt-1">
+              We could not read this one confidently. Check the amount before saving.
+            </p>
+          )}
         </div>
         <button onClick={onDismiss} className="text-zinc-600 hover:text-zinc-400 p-1 transition-colors">
           <X className="w-4 h-4" />
@@ -625,7 +644,7 @@ function PaymentToast({ payment, onAdd, onDismiss }) {
       <div className="flex gap-2 mt-3">
         <motion.button whileTap={{ scale: 0.94 }} onClick={onAdd}
           className="flex-1 bg-lime-400 text-black text-xs font-black py-2 rounded-xl hover:bg-lime-300 transition-colors">
-          Log it {'\u2713'}
+          {copy.action} {'\u2713'}
         </motion.button>
         <motion.button whileTap={{ scale: 0.94 }} onClick={onDismiss}
           className="flex-1 bg-zinc-800 text-zinc-400 text-xs font-bold py-2 rounded-xl hover:bg-zinc-700 transition-colors">
@@ -662,7 +681,6 @@ export default function Dashboard() {
   const [scanToast, setScanToast]           = useState(null); // { type: 'success'|'error', message: string }
   const fileInputRef = useRef(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
 
   // ── UPI Notifications ──────────────────────────────────────
   const { isSupported, permissionGranted, requestPermission } = usePaymentNotifications({
@@ -711,7 +729,7 @@ export default function Dashboard() {
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ activity: 'check_safe_to_spend' }),
     }).catch(() => {});
-  }, [session, API_URL]);
+  }, [session]);
 
   // ── Derived Values ─────────────────────────────────────────
   const monthlyBudget = user?.monthly_budget || 5000;
@@ -763,7 +781,30 @@ export default function Dashboard() {
 
   const handleLogUpiPayment = async () => {
     if (!pendingPayment) return;
-    await addExpense(parseFloat(pendingPayment.amount) || 0, 'Other', pendingPayment.merchant || 'UPI Payment');
+
+    const amount = Number(pendingPayment.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPendingPayment(null);
+      return;
+    }
+
+    // Income and refunds are money coming in. Recording them as expenses
+    // would inflate every spending figure in the app, so until a dedicated
+    // income ledger exists they are acknowledged and not written.
+    if (pendingPayment.kind && pendingPayment.kind !== 'EXPENSE') {
+      setScanToast({
+        type: 'success',
+        message: `\u20b9${amount.toLocaleString('en-IN')} received — not counted as spending.`,
+      });
+      setPendingPayment(null);
+      return;
+    }
+
+    const merchant = pendingPayment.merchant && pendingPayment.merchant !== 'Unknown'
+      ? pendingPayment.merchant
+      : 'UPI Payment';
+
+    await addExpense(amount, 'Other', merchant);
     setPendingPayment(null);
   };
 

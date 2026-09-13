@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
@@ -113,18 +114,63 @@ export function AuthProvider({ children }) {
   };
 
 
+  /**
+   * Google sign-in.
+   *
+   * On the web this is an ordinary redirect. On Android it must NOT be:
+   * supabase-js defaults to assigning the provider URL to `window.location`,
+   * which navigates the Capacitor WebView itself to accounts.google.com. The
+   * app visibly turns into a website, and Google rejects OAuth performed in an
+   * embedded WebView ("disallowed_useragent") anyway.
+   *
+   * So on native we ask supabase-js for the URL without following it
+   * (`skipBrowserRedirect`) and hand it to a Chrome Custom Tab. The app stays
+   * running underneath; Google redirects to spendly://login-callback, which
+   * Android delivers back to us as an `appUrlOpen` event (handled in App.jsx),
+   * and that handler closes the tab.
+   *
+   * REQUIRED SUPABASE DASHBOARD CONFIG (Authentication -> URL Configuration):
+   *   Redirect URLs must include `spendly://login-callback`.
+   * If it is missing, Supabase silently falls back to the project's Site URL
+   * and the user lands on the Spendly website instead of back in the app.
+   */
   const loginWithGoogle = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        // Uses the active deployment origin for web redirects.
-        redirectTo: Capacitor.isNativePlatform() ? 'spendly://login-callback' : `${window.location.origin}/dash`,
-      },
-    });
-    if (error) {
-      return { success: false, message: error.message };
+    const isNative = Capacitor.isNativePlatform();
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+          redirectTo: isNative
+            ? 'spendly://login-callback'
+            : `${window.location.origin}/dash`,
+          // Native: take the URL, don't navigate the WebView to it.
+          skipBrowserRedirect: isNative,
+        },
+      });
+
+      if (error) {
+        return { success: false, message: error.message };
+      }
+
+      if (isNative) {
+        if (!data?.url) {
+          return { success: false, message: 'Could not start Google sign-in. Please try again.' };
+        }
+        await Browser.open({ url: data.url, presentationStyle: 'popover' });
+      }
+
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        message: err?.message || 'An unexpected error occurred during Google sign-in',
+      };
     }
-    return { success: true };
   };
 
   const logout = async () => {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const appTime = require('../lib/appTime');
 
 // ---------------------------------------------------------------------------
 // @route   GET /api/subscriptions/detect
@@ -18,15 +19,14 @@ const { protect } = require('../middleware/authMiddleware');
 router.get('/detect', protect, async (req, res) => {
     try {
         // Fetch last 4 months of expenses
-        const fourMonthsAgo = new Date();
-        fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+        const fourMonthsAgo = appTime.startOfMonthsAgo(4);
 
         const { data: expenses, error } = await supabase
             .from('expenses')
-            .select('id, amount, description, category, created_at')
+            .select('id, amount, description, category, occurred_at')
             .eq('user_id', req.user.id)
-            .gte('created_at', fourMonthsAgo.toISOString())
-            .order('created_at', { ascending: true });
+            .gte('occurred_at', fourMonthsAgo.toISOString())
+            .order('occurred_at', { ascending: true });
 
         if (error) {
             return res.status(500).json({ success: false, message: 'Failed to fetch expenses' });
@@ -52,7 +52,7 @@ router.get('/detect', protect, async (req, res) => {
             if (group.length < 2) continue;
 
             // Sort by date
-            group.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            group.sort((a, b) => new Date(a.occurred_at) - new Date(b.occurred_at));
 
             // Check for recurring pattern (28-35 day intervals, ±10% amount)
             const intervals = [];
@@ -62,7 +62,7 @@ router.get('/detect', protect, async (req, res) => {
             let isRecurring = true;
             for (let i = 1; i < group.length; i++) {
                 const daysDiff = Math.round(
-                    (new Date(group[i].created_at) - new Date(group[i - 1].created_at)) / (1000 * 60 * 60 * 24)
+                    (new Date(group[i].occurred_at) - new Date(group[i - 1].occurred_at)) / (1000 * 60 * 60 * 24)
                 );
                 intervals.push(daysDiff);
 
@@ -79,7 +79,7 @@ router.get('/detect', protect, async (req, res) => {
             if (!isRecurring || avgInterval < 25 || avgInterval > 38) continue;
 
             // Check if it's a "zombie" — last payment was 30+ days ago
-            const lastPayment = new Date(group[group.length - 1].created_at);
+            const lastPayment = new Date(group[group.length - 1].occurred_at);
             const daysSinceLastPayment = Math.round((now - lastPayment) / (1000 * 60 * 60 * 24));
             const isZombie = daysSinceLastPayment > 30;
 
@@ -93,7 +93,7 @@ router.get('/detect', protect, async (req, res) => {
                 monthlyAmount,
                 totalSpent: Math.round(totalSpent),
                 monthsDetected: group.length,
-                lastPayment: group[group.length - 1].created_at,
+                lastPayment: group[group.length - 1].occurred_at,
                 daysSinceLastPayment,
                 isZombie,
                 category: group[0].category,

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const appTime = require('../lib/appTime');
+const { advanceStreak, streakStatus } = require('../lib/streak');
 
 // ---------------------------------------------------------------------------
 // @route   GET /api/streaks
@@ -27,7 +29,7 @@ router.get('/', protect, async (req, res) => {
         }
 
         // Check today's completed activities
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const today = appTime.localDateKey(); // local YYYY-MM-DD, not UTC
 
         const { data: activities, error: actError } = await supabase
             .from('streak_activities')
@@ -45,22 +47,8 @@ router.get('/', protect, async (req, res) => {
 
         const anyCompleted = completedToday.length > 0;
 
-        // Check if streak should have broken (no activity yesterday + no freeze)
-        let streakStatus = 'active';
-        const now = new Date();
-        const lastLog = profile.streak_last_log ? new Date(profile.streak_last_log) : null;
-
-        if (lastLog) {
-            const lastLogDay = new Date(lastLog.getFullYear(), lastLog.getMonth(), lastLog.getDate());
-            const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const diffDays = Math.round((todayDay - lastLogDay) / (1000 * 60 * 60 * 24));
-
-            if (diffDays > 1) {
-                streakStatus = 'broken';
-            } else if (diffDays === 1 && !anyCompleted) {
-                streakStatus = 'at_risk';
-            }
-        }
+        // Streak health, evaluated in local calendar days.
+        const status = streakStatus(profile.streak_last_log, anyCompleted, new Date());
 
         res.json({
             success: true,
@@ -68,7 +56,7 @@ router.get('/', protect, async (req, res) => {
                 current: profile.streak_current,
                 longest: profile.streak_longest,
                 freezesRemaining: profile.streak_freezes_remaining,
-                status: streakStatus,
+                status,
                 todayCompleted: anyCompleted,
                 missions,
                 lastActivity: profile.streak_last_log,
@@ -96,7 +84,7 @@ router.post('/check-in', protect, async (req, res) => {
         });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = appTime.localDateKey();
 
     try {
         // Insert activity (unique constraint handles duplicates)
@@ -123,34 +111,14 @@ router.post('/check-in', protect, async (req, res) => {
             .single();
 
         if (profile) {
-            const now = new Date();
-            const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            let newStreak = profile.streak_current;
-
-            if (profile.streak_last_log) {
-                const lastLog = new Date(profile.streak_last_log);
-                const lastLogDay = new Date(lastLog.getFullYear(), lastLog.getMonth(), lastLog.getDate());
-                const diffDays = Math.round((todayDate - lastLogDay) / (1000 * 60 * 60 * 24));
-
-                if (diffDays === 0) {
-                    // Already logged today — streak unchanged
-                } else if (diffDays === 1) {
-                    newStreak = profile.streak_current + 1;
-                } else {
-                    newStreak = 1; // Streak broken
-                }
-            } else {
-                newStreak = 1;
-            }
-
-            const newLongest = Math.max(newStreak, profile.streak_longest);
+            const streak = advanceStreak(profile, new Date());
 
             await supabase
                 .from('profiles')
                 .update({
-                    streak_current: newStreak,
-                    streak_longest: newLongest,
-                    streak_last_log: now.toISOString(),
+                    streak_current: streak.streak_current,
+                    streak_longest: streak.streak_longest,
+                    streak_last_log: streak.streak_last_log,
                 })
                 .eq('id', req.user.id);
         }

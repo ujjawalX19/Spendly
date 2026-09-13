@@ -1,4 +1,44 @@
 const { supabase } = require('../config/supabase');
+const appTime = require('../lib/appTime');
+
+/**
+ * Free-tier allowances. Exported so the /api/pro/status endpoint reports the
+ * same numbers this middleware actually enforces.
+ */
+const PRO_ONLY_FEATURES = new Set(['pdf_import']);
+
+const FREE_LIMITS = {
+    receipt_scan: 3,   // per calendar month
+    chat_message: 10,  // per calendar day
+    add_expense: 20,   // per calendar day
+};
+
+
+/**
+ * Charge a quota only once the request has actually succeeded.
+ *
+ * The counter used to be incremented inside the middleware, before the
+ * handler ran. A receipt scan that failed because Gemini timed out, or an
+ * expense that failed validation, still consumed one of the user's three
+ * monthly scans — they were billed for nothing. Deferring the write to the
+ * response's `finish` event, and only for a 2xx, fixes that.
+ *
+ * The write is fire-and-forget: the response has already been sent, so a
+ * failure here is logged rather than surfaced. Under-counting a quota is a
+ * far better failure than charging for a request that errored.
+ */
+function chargeOnSuccess(res, userId, updates) {
+    res.once('finish', () => {
+        if (res.statusCode >= 400) return;
+        supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', userId)
+            .then(({ error }) => {
+                if (error) console.error('proGate quota charge failed:', error.message);
+            });
+    });
+}
 
 /**
  * proGate — Server-side rate-limiting middleware for Free vs Pro users.
@@ -23,12 +63,27 @@ function proGate(feature) {
 
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('is_pro, pro_expires_at, receipt_scans_this_month, chat_messages_today, chat_messages_reset_at, expenses_today, expenses_reset_at')
+                .select('is_pro, pro_expires_at, receipt_scans_this_month, receipt_scans_reset_month, chat_messages_today, chat_messages_reset_at, expenses_today, expenses_reset_at')
                 .eq('id', userId)
                 .single();
 
             if (error || !profile) {
-                // If we can't verify, let the request through (fail-open)
+                // Quota features fail OPEN: a database blip should not stop
+                // someone logging an expense, and the worst case is a few
+                // free requests.
+                //
+                // Pro-ONLY features fail CLOSED: the worst case there is
+                // giving away the paid product, so an unverifiable request is
+                // refused rather than granted.
+                console.error('proGate could not read profile:', error?.message || 'no profile');
+                if (PRO_ONLY_FEATURES.has(feature)) {
+                    return res.status(503).json({
+                        success: false,
+                        message: 'We could not verify your subscription just now. Please try again in a moment.',
+                        code: 'VERIFICATION_UNAVAILABLE',
+                        feature,
+                    });
+                }
                 return next();
             }
 
@@ -43,23 +98,30 @@ function proGate(feature) {
             // Pro users bypass all limits
             if (isPro) return next();
 
-            const today = new Date().toISOString().split('T')[0];
+            const today = appTime.localDateKey();
+            const thisMonth = appTime.localMonthKey();
 
             switch (feature) {
                 case 'receipt_scan': {
-                    if (profile.receipt_scans_this_month >= 3) {
+                    // Roll the monthly counter over lazily, keyed on the month
+                    // it belongs to, so it cannot get stuck across a month end.
+                    let scansUsed = profile.receipt_scans_this_month || 0;
+                    if (profile.receipt_scans_reset_month !== thisMonth) {
+                        scansUsed = 0;
+                    }
+
+                    if (scansUsed >= FREE_LIMITS.receipt_scan) {
                         return res.status(403).json({
                             success: false,
-                            message: 'Free tier: 3 receipt scans/month. Upgrade to Spendly Pro for unlimited scans.',
+                            message: `Free tier: ${FREE_LIMITS.receipt_scan} receipt scans/month. Upgrade to Spendly Pro for unlimited scans.`,
                             code: 'LIMIT_REACHED',
                             feature: 'receipt_scan',
                         });
                     }
-                    // Increment counter
-                    await supabase
-                        .from('profiles')
-                        .update({ receipt_scans_this_month: (profile.receipt_scans_this_month || 0) + 1 })
-                        .eq('id', userId);
+                    chargeOnSuccess(res, userId, {
+                        receipt_scans_this_month: scansUsed + 1,
+                        receipt_scans_reset_month: thisMonth,
+                    });
                     break;
                 }
 
@@ -74,19 +136,15 @@ function proGate(feature) {
                         }).eq('id', userId);
                     }
 
-                    if (used >= 10) {
+                    if (used >= FREE_LIMITS.chat_message) {
                         return res.status(403).json({
                             success: false,
-                            message: 'Free tier: 10 AI messages/day. Upgrade to Spendly Pro for unlimited access.',
+                            message: `Free tier: ${FREE_LIMITS.chat_message} AI messages/day. Upgrade to Spendly Pro for unlimited access.`,
                             code: 'LIMIT_REACHED',
                             feature: 'chat_message',
                         });
                     }
-                    // Increment counter
-                    await supabase
-                        .from('profiles')
-                        .update({ chat_messages_today: used + 1 })
-                        .eq('id', userId);
+                    chargeOnSuccess(res, userId, { chat_messages_today: used + 1 });
                     break;
                 }
 
@@ -100,18 +158,15 @@ function proGate(feature) {
                         }).eq('id', userId);
                     }
 
-                    if (used >= 20) {
+                    if (used >= FREE_LIMITS.add_expense) {
                         return res.status(403).json({
                             success: false,
-                            message: 'Free tier: 20 expenses/day. Upgrade to Spendly Pro for unlimited.',
+                            message: `Free tier: ${FREE_LIMITS.add_expense} expenses/day. Upgrade to Spendly Pro for unlimited.`,
                             code: 'LIMIT_REACHED',
                             feature: 'add_expense',
                         });
                     }
-                    await supabase
-                        .from('profiles')
-                        .update({ expenses_today: used + 1 })
-                        .eq('id', userId);
+                    chargeOnSuccess(res, userId, { expenses_today: used + 1 });
                     break;
                 }
 
@@ -138,4 +193,4 @@ function proGate(feature) {
     };
 }
 
-module.exports = { proGate };
+module.exports = { proGate, FREE_LIMITS, PRO_ONLY_FEATURES };

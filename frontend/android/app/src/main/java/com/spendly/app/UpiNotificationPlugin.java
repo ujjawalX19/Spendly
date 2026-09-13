@@ -53,7 +53,9 @@ public class UpiNotificationPlugin extends Plugin {
      * Fires a "paymentDetected" event to JavaScript listeners.
      */
     public static void notifyPayment(String appName, double amount,
-                                     String merchant, long timestamp) {
+                                     String merchant, long timestamp,
+                                     String kind, boolean needsConfirmation,
+                                     String fingerprint) {
         if (instance == null) {
             Log.w(TAG, "Plugin instance not ready — payment event dropped.");
             return;
@@ -65,9 +67,16 @@ public class UpiNotificationPlugin extends Plugin {
             payload.put("amount",    amount);
             payload.put("merchant",  merchant);
             payload.put("timestamp", timestamp);
+            // EXPENSE | INCOME | REFUND — the JS layer must not assume spending.
+            payload.put("kind",      kind);
+            // When true the UI has to ask the user before saving anything.
+            payload.put("needsConfirmation", needsConfirmation);
+            // Stable key so the JS layer can suppress repeats across restarts.
+            payload.put("fingerprint", fingerprint);
 
             instance.notifyListeners("paymentDetected", payload);
-            Log.d(TAG, "paymentDetected event fired: " + payload);
+            // The payload contains an amount and a payee name. Never log it.
+            Log.d(TAG, "paymentDetected event fired");
 
         } catch (Exception e) {
             Log.e(TAG, "Error notifying JS layer: " + e.getMessage(), e);

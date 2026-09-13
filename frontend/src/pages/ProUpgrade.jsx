@@ -10,6 +10,7 @@ import { Check, Sparkles, Zap, FileText, Skull, Lock, Loader2, ArrowLeft } from 
 import { useNavigate } from 'react-router-dom';
 import { usePro } from '../contexts/ProContext';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../lib/apiConfig';
 
 export default function ProUpgrade() {
   const navigate = useNavigate();
@@ -24,7 +25,6 @@ export default function ProUpgrade() {
       // Simulate purchase flow
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
       const token = session?.access_token;
       
       if (token) {

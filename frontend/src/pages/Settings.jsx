@@ -6,15 +6,34 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
-  ChevronRight, Loader2, AlertTriangle, Check, LogOut
+  ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
+  Users, Skull
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
+import { useExpenses } from '../hooks/useExpenses';
+import { friendlyError } from '../lib/errors';
+import { API_URL as API_BASE_URL } from '../lib/apiConfig';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const API_URL = API_BASE_URL;
+
+
+/**
+ * fetch() resolves on 4xx/5xx, so every call has to check `ok` itself.
+ * This turns a failed response into an Error carrying the status and the
+ * server's own message, which is what friendlyError reads.
+ */
+async function httpError(response) {
+  const body = await response.json().catch(() => ({}));
+  const err = new Error(body.message || `HTTP ${response.status}`);
+  err.status = response.status;
+  err.data = body;
+  return err;
+}
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -218,11 +237,30 @@ function DeleteAccountModal({ onClose, onDelete }) {
 }
 
 export default function Settings() {
+  const navigate = useNavigate();
   const { user, session, logout, updateProfile } = useAuth();
   const { isPro } = usePro();
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [banner, setBanner] = useState(null); // { type, message }
+  const [exportState, setExportState] = useState('idle'); // idle | working | done | error
+  const [exportError, setExportError] = useState('');
+  const { exportCsv } = useExpenses();
+
+  // Taking your data with you is a trust feature, so it is on the free tier.
+  const handleExport = async () => {
+    setExportState('working');
+    setExportError('');
+    const result = await exportCsv();
+    if (result.success) {
+      setExportState('done');
+      setTimeout(() => setExportState('idle'), 4000);
+    } else {
+      setExportState('error');
+      setExportError(result.message || 'Export failed.');
+    }
+  };
 
   const handleSaveBudget = async (newBudget) => {
     try {
@@ -234,12 +272,14 @@ export default function Settings() {
         },
         body: JSON.stringify({ monthly_budget: newBudget }),
       });
-      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+      if (!response.ok) throw await httpError(response);
       if (updateProfile) {
         await updateProfile({ monthly_budget: newBudget });
       }
+      setBanner({ type: 'success', message: 'Budget updated.' });
     } catch (err) {
       console.error('Failed to update budget:', err);
+      setBanner({ type: 'error', message: friendlyError(err, "We couldn't save your budget. Please try again.") });
     }
   };
 
@@ -253,12 +293,14 @@ export default function Settings() {
         },
         body: JSON.stringify({ investment_target: newTarget }),
       });
-      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+      if (!response.ok) throw await httpError(response);
       if (updateProfile) {
         await updateProfile({ investment_target: newTarget });
       }
+      setBanner({ type: 'success', message: 'Investment target updated.' });
     } catch (err) {
       console.error('Failed to update investment target:', err);
+      setBanner({ type: 'error', message: friendlyError(err, "We couldn't save your investment target. Please try again.") });
     }
   };
 
@@ -272,10 +314,11 @@ export default function Settings() {
         },
         body: JSON.stringify({ confirmation: 'DELETE_MY_ACCOUNT' }),
       });
-      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+      if (!response.ok) throw await httpError(response);
       await logout();
     } catch (err) {
       console.error('Failed to delete account:', err);
+      setBanner({ type: 'error', message: friendlyError(err, "We couldn't delete your account. Please try again.") });
     }
   };
 
@@ -290,6 +333,25 @@ export default function Settings() {
         <h1 className="text-2xl font-black text-white">Settings</h1>
         <p className="text-sm text-zinc-500 mt-1">{user?.email}</p>
       </motion.header>
+
+      {banner && (
+        <div
+          role={banner.type === 'error' ? 'alert' : 'status'}
+          className={`flex items-start gap-3 rounded-2xl border p-3.5 text-sm font-semibold ${
+            banner.type === 'error'
+              ? 'border-red-500/30 bg-red-500/10 text-red-200'
+              : 'border-lime-500/30 bg-lime-500/10 text-lime-200'
+          }`}
+        >
+          <span className="flex-1">{banner.message}</span>
+          <button
+            type="button" onClick={() => setBanner(null)} aria-label="Dismiss"
+            className="-my-1 shrink-0 px-2 text-lg leading-none opacity-70 hover:opacity-100"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Pro Status */}
       <motion.div variants={cardVariants}
@@ -324,9 +386,40 @@ export default function Settings() {
       </div>
 
       <div className="space-y-2">
+        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">More</p>
+        <SettingRow
+          icon={Users} label="Group Pool" value="Split expenses with friends"
+          color="text-sky-400" onClick={() => navigate('/pool')}
+        />
+        <SettingRow
+          icon={Skull} label="Subscriptions" value="Find what you forgot you pay for"
+          color="text-fuchsia-400" onClick={() => navigate('/graveyard')}
+        />
+        <SettingRow
+          icon={FileText} label="Statement Import" value="Import a bank PDF"
+          color="text-amber-400" onClick={() => navigate('/import')}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Your Data</p>
+        <SettingRow
+          icon={exportState === 'working' ? Loader2 : Download}
+          label={exportState === 'done' ? 'Export downloaded' : 'Export my expenses'}
+          value={
+            exportState === 'working' ? 'Preparing your file…'
+              : exportState === 'error' ? exportError
+                : 'Download everything as a CSV'
+          }
+          color={exportState === 'error' ? 'text-red-400' : 'text-lime-400'}
+          onClick={exportState === 'working' ? undefined : handleExport}
+        />
+      </div>
+
+      <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Legal</p>
-        <SettingRow icon={Shield} label="Privacy Policy" value="How we handle your data" onClick={() => window.open('/privacy', '_blank')} />
-        <SettingRow icon={FileText} label="Terms of Service" value="Usage agreement" onClick={() => window.open('/terms', '_blank')} />
+        <SettingRow icon={Shield} label="Privacy Policy" value="How we handle your data" onClick={() => navigate('/privacy')} />
+        <SettingRow icon={FileText} label="Terms of Service" value="Usage agreement" onClick={() => navigate('/terms')} />
       </div>
 
       <div className="space-y-2">

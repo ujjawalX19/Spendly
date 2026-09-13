@@ -11,8 +11,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Search, Ghost, Share2, AlertCircle, Loader2, Trash2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProGate from '../components/ProGate';
+import { API_URL as API_BASE_URL } from '../lib/apiConfig';
+import { friendlyError } from '../lib/errors';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const API_URL = API_BASE_URL;
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.96 },
@@ -139,7 +141,7 @@ export default function SubscriptionGraveyard() {
         if (json.success) setData(json);
         else setError(json.message);
       } catch (err) {
-        setError('Failed to scan subscriptions');
+        setError(friendlyError(err, "We couldn't scan for subscriptions right now. Please try again."));
       } finally {
         setLoading(false);
       }

@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { API_URL as API_BASE_URL } from '../lib/apiConfig';
 
 const ProContext = createContext();
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://spendly-t8s6.onrender.com/api';
+const API_URL = API_BASE_URL;
 
 export function ProProvider({ children }) {
   const { session } = useAuth();

@@ -3,6 +3,24 @@ const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
+const appTime = require('../lib/appTime');
+const { buildContext, describeContext } = require('../lib/financialContext');
+
+/**
+ * Route the question to the right kind of answer.
+ *
+ * The previous prompt treated every message as an investment query, so
+ * "why did I overspend on food?" came back as a SIP recommendation. Matching
+ * intent first is what makes the coach answer the actual question.
+ */
+function classifyIntent(query) {
+    const q = String(query || '').toLowerCase();
+    if (/\b(can i afford|should i buy|worth buying|afford to|can i spend)\b/.test(q)) return 'affordability';
+    if (/\b(invest|sip|mutual fund|stock|share|equity|nifty|portfolio|returns)\b/.test(q)) return 'investing';
+    if (/\b(save|saving|cut|reduce|spend less|budget better)\b/.test(q)) return 'saving';
+    if (/\b(spent|spending|overspend|where did|why did|expense|category|this month|last month)\b/.test(q)) return 'spending';
+    return 'general';
+}
 
 let ai = null;
 if (process.env.GEMINI_API_KEY) ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -57,6 +75,24 @@ function buildLocalPlan(context) {
     return `${greeting}\n\n### Your investable amount this month\nBased on your spending this month, you have ${money(surplus)} that's genuinely safe to invest — not your full salary, not a guess, your actual leftover.\n\n${plan}\n\n### This month's money win\nQuick win: You spent ${money(topCategorySpend)} on ${topCategory} this month. Cutting it by 20% = ${money(cut)} extra to invest. In 5 years, that extra SIP could add about ${money(futureValue(cut, 5) - cut * 60)} in returns.${disclaimer}`;
 }
 
+// @route GET /api/ai/history
+// @desc Get chat history for the user
+router.get('/history', protect, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('ai_chat_history')
+            .select('id, role, content, chips, created_at')
+            .eq('user_id', req.user.id)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        res.json({ success: true, history: data });
+    } catch (error) {
+        console.error('Error fetching AI history:', error);
+        res.status(500).json({ success: false, message: 'Could not fetch chat history.' });
+    }
+});
+
 // @route POST /api/ai/invest-advice
 // @desc Personalised investment guidance based on the signed-in user's live spending data
 router.post('/invest-advice', protect, async (req, res) => {
@@ -64,59 +100,117 @@ router.post('/invest-advice', protect, async (req, res) => {
     const goal = GOALS.has(req.body?.goal) ? req.body.goal : 'habit';
     if (!query) return res.status(400).json({ success: false, message: 'Missing query parameter.' });
     try {
-        const start = new Date();
-        start.setDate(1); start.setHours(0, 0, 0, 0);
-        const [{ data: profile, error: profileError }, { data: expenses, error: expensesError }] = await Promise.all([
-            supabase.from('profiles').select('monthly_budget, karma_score').eq('id', req.user.id).single(),
-            supabase.from('expenses').select('amount, category').eq('user_id', req.user.id).gte('created_at', start.toISOString()),
+        const now = new Date();
+        const monthStart = appTime.startOfMonth(now);
+        const prevStart = appTime.startOfMonthsAgo(1, now);
+
+        const [
+            { data: profile, error: profileError },
+            { data: monthRows, error: expensesError },
+            { data: prevRows },
+            { data: bills },
+        ] = await Promise.all([
+            supabase.from('profiles')
+                .select('monthly_budget, investment_target, karma_score, paisa_score')
+                .eq('id', req.user.id).single(),
+            supabase.from('expenses')
+                .select('amount, category, description, occurred_at')
+                .eq('user_id', req.user.id)
+                .gte('occurred_at', monthStart.toISOString()),
+            supabase.from('expenses')
+                .select('amount, category, occurred_at')
+                .eq('user_id', req.user.id)
+                .gte('occurred_at', prevStart.toISOString())
+                .lt('occurred_at', monthStart.toISOString()),
+            supabase.from('recurring_bills')
+                .select('amount, due_day, is_active')
+                .eq('user_id', req.user.id),
         ]);
-        if (profileError || expensesError || !profile) throw profileError || expensesError || new Error('Profile unavailable');
-        const totalSpent = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
-        const categories = expenses.reduce((all, item) => ({ ...all, [item.category]: (all[item.category] || 0) + Number(item.amount) }), {});
-        const [topCategory = 'Other', topCategorySpend = 0] = Object.entries(categories).sort((a, b) => b[1] - a[1])[0] || [];
-        const context = { budget: Number(profile.monthly_budget), totalSpent, surplus: Number(profile.monthly_budget) - totalSpent, topCategory, topCategorySpend, goal, paisaScore: Number(profile.karma_score) };
-        const fallback = buildLocalPlan(context);
-        if (!ai) return res.json({ success: true, reply: fallback, context });
-        const instruction = `You are Spendly's AI Investment Guide — a warm, direct, and knowledgeable Indian finance mentor.
 
-PERSONALITY:
-- Speak like a trusted older brother/sister who genuinely cares about the user's financial future
-- Be specific and actionable — never generic. Use exact rupee amounts, named funds/stocks, platforms, and timing
-- Keep it conversational but structured with clear headings
+        if (profileError || expensesError || !profile) {
+            throw profileError || expensesError || new Error('Profile unavailable');
+        }
 
-RULES (NON-NEGOTIABLE):
-1. Never recommend F&O, crypto, penny stocks, chit funds, or unregulated instruments
-2. Do not invent data — use only the LIVE CONTEXT numbers provided below
-3. For zero/negative surplus, recommend spending cuts ONLY — do not suggest investing money the user doesn't have
-4. Preserve all numbers and financial recommendations from the CALCULATED PLAN below; you may refine the tone but never alter the math
-5. Always use the headings from the supplied plan
+        const ctx = buildContext({
+            thisMonth: monthRows || [],
+            lastMonth: prevRows || [],
+            bills: bills || [],
+            profile,
+            now,
+        });
 
-RESPONSE STRUCTURE:
-- Start with the user's actual surplus/deficit amount
-- Give a specific, step-by-step action plan with exact amounts
-- Include platform recommendations (Kuvera, Groww, Zerodha, INDmoney) with timing
-- Show projected growth using the calculated numbers
-- End with one quick win the user can execute today
+        const grounding = describeContext(ctx);
+        const intent = classifyIntent(query);
 
-AFFILIATE MONETIZATION — IMPORTANT:
-When the user asks about stocks, mutual funds, ETFs, SIPs, or investing in general, you MUST include a "Ready to Start?" section at the end with these exact links:
----
-### 🚀 Ready to Start?
-- **Open a Zerodha account** (India's #1 broker): https://zerodha.com/?ref=SPENDLY
-- **Try Groww** (beginner-friendly): https://groww.in/refer/SPENDLY
-- **Use Kuvera** (direct MF plans, zero commission): https://kuvera.in/refer/SPENDLY
----
-Only include this section when the conversation involves investment products. Do NOT include it for pure budgeting/spending questions.
+        // Investment questions keep the existing calculated plan, which does
+        // the projection maths deterministically. Everything else gets a
+        // coach that answers what was actually asked.
+        const legacyContext = {
+            budget: ctx.budget,
+            totalSpent: ctx.spentThisMonth,
+            surplus: ctx.budget - ctx.spentThisMonth,
+            topCategory: ctx.topCategories[0]?.category || 'Other',
+            topCategorySpend: ctx.topCategories[0]?.amount || 0,
+            goal,
+            paisaScore: ctx.paisaScore,
+        };
+        const fallback = intent === 'investing'
+            ? buildLocalPlan(legacyContext)
+            : grounding;
 
-MANDATORY DISCLAIMER — Always end EVERY response with:
-"⚠️ This is financial education only, not SEBI-regulated investment advice. Historical averages used for projections — actual returns may vary. Consult a certified financial advisor before investing."
+        if (!ai) {
+            await supabase.from('ai_chat_history').insert([
+                { user_id: req.user.id, role: 'user', content: query },
+                { user_id: req.user.id, role: 'bot', content: fallback, chips: [] }
+            ]);
+            return res.json({ success: true, reply: fallback, context: ctx });
+        }
 
-LIVE CONTEXT: ${JSON.stringify(context)}
+        const instruction = `You are Spendly's money coach for an Indian user. Warm, direct, and specific.
 
-CALCULATED PLAN:
-${fallback}`;
+ANSWER THE QUESTION THAT WAS ASKED.
+The user's question is classified as: ${intent}
+- "spending"      -> explain their spending using the figures below. Name the category and the rupee amount that drives it.
+- "affordability" -> answer yes or no first, then justify it with their safe-to-spend and upcoming bills.
+- "saving"        -> identify where the money could realistically come from, using their actual categories.
+- "investing"     -> use the CALCULATED PLAN verbatim for any numbers, funds, or projections.
+- "general"       -> answer plainly and briefly.
+Do NOT steer a spending or budgeting question toward investing. If they asked why they overspent, tell them why.
+
+GROUNDING — these are the user's real numbers. Use them; never invent others:
+${JSON.stringify(ctx, null, 2)}
+
+Plain-language summary of the same data:
+${grounding}
+
+HONESTY RULES (non-negotiable):
+1. Data confidence is "${ctx.confidence}".
+   - "insufficient" -> say you do not have enough data yet and ask them to log a week of spending. Do not analyse habits.
+   - "limited"      -> answer, but say the picture is rough.
+2. Never state a number that is not in the grounding data above. No estimates dressed as facts.
+3. If the question cannot be answered from this data, say so and name what is missing.
+4. Never recommend F&O, crypto, penny stocks, chit funds, or unregulated products.
+5. If the user has no surplus, do not suggest investing. Fix the leak first.
+
+STYLE:
+- Lead with the answer in one sentence. Detail after.
+- Two or three short paragraphs. No headings unless the answer is a multi-step plan.
+- Rupee amounts as ₹1,234. Be concrete: "cut one Swiggy order a week" beats "reduce discretionary spending".
+- No emoji, no hype, no filler openers.
+
+${intent === 'investing' ? `CALCULATED PLAN — reproduce its numbers, funds and projections exactly; you may only adjust tone:\n${buildLocalPlan(legacyContext)}\n\nEnd investment answers with: "⚠️ This is financial education, not SEBI-registered investment advice. Projections use historical averages and are not guarantees. Consult a certified financial adviser before investing."` : ''}`;
+
         const response = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: `${instruction}\n\nUser question: ${query}` });
-        res.json({ success: true, reply: response.text || fallback, context });
+        const finalReply = response.text || fallback;
+        
+        // Save to database
+        const { error: insertError } = await supabase.from('ai_chat_history').insert([
+            { user_id: req.user.id, role: 'user', content: query },
+            { user_id: req.user.id, role: 'bot', content: finalReply, chips: [] }
+        ]);
+        if (insertError) console.error('Error saving chat history:', insertError);
+
+        res.json({ success: true, reply: finalReply, context: ctx });
     } catch (error) {
         console.error('Investment guide error:', error);
         res.status(500).json({ success: false, message: 'Could not load your spending context for investment guidance.' });

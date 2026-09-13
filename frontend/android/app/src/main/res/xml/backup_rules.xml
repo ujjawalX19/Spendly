@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and below (android:fullBackupContent).
+
+  Spendly's Supabase session tokens live in the WebView's localStorage, under
+  the app's shared_prefs and databases. Allowing those into a backup means a
+  logged-in session can be extracted with `adb backup` on a debuggable device,
+  or restored onto a different phone. For a finance app that is an account
+  takeover, so everything is excluded and the user simply signs in again after
+  a restore.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="root" path="." />
+</full-backup-content>
