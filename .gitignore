@@ -61,3 +61,6 @@ frontend/android/app/google-services.json
 
 # Local git bundles (recovery artifacts, never commit)
 *.bundle
+
+# Built app artifacts (never commit)
+release-artifacts/

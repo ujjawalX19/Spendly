@@ -1,34 +1,34 @@
 # Releasing Spendly
 
-## 0. Migration first — not optional
+## 0. Database migrations first — not optional
 
-```sql
--- Supabase SQL Editor
-\i supabase/v1_1_launch_hardening.sql
+Run in the Supabase SQL Editor, **in this order**, before deploying the backend:
+
+1. `supabase/v1_1_launch_hardening.sql` — adds `expenses.occurred_at` (the backend queries it).
+2. `supabase/v1_2_security_p0.sql` — removes all client write privileges, fixes
+   group RLS, adds `upi_auto`/`pdf_import` expense sources (the backend writes them).
+3. `supabase/tests/verify_production.sql` — read-only; **every row must be PASS**.
+   Review the "is_pro = true" and "Admin accounts" rows manually.
+
+Both migrations are idempotent and change no user data. Deploying the backend
+first makes reporting endpoints and UPI/statement inserts fail until they run.
+
+The migrations are tested locally against real Postgres:
+
+```bash
+cd supabase/tests && npm ci && npm test   # 28 tests
 ```
 
-The backend queries `expenses.occurred_at`, which this migration creates. If
-you deploy the backend first, every reporting endpoint returns an error until
-the migration runs. Then run the two verification queries at the bottom of that
-file and confirm:
+## 1. Supabase dashboard (manual)
 
-- every table in `public` reports `rowsecurity = true`
-- `authenticated` holds `UPDATE` on exactly `full_name`, `investment_target`,
-  `monthly_budget` — **nothing else**, and in particular not `is_pro` or `role`
-
-## 1. Supabase dashboard
-
-Authentication → URL Configuration → Redirect URLs must include:
+See `AUTH_DEEP_LINKS.md` → *MANUAL BLOCKERS*. At minimum, Redirect URLs:
 
 ```
 spendly://login-callback
-https://spendly-iota.vercel.app/dash
-http://localhost:5173/dash
+spendly://reset-password
+https://<site>/auth/callback
+https://<site>/reset-password
 ```
-
-Without the custom-scheme entry, Supabase ignores the Android `redirectTo` and
-falls back to the Site URL — which is why Google sign-in used to dump users on
-the website instead of returning to the app.
 
 ## 2. Create the upload keystore (once, ever)
 
@@ -38,23 +38,13 @@ keytool -genkeypair -v \
   -keystore spendly-upload.jks \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -alias spendly-upload
-```
-
-```bash
 cp keystore.properties.example keystore.properties
 # edit keystore.properties with the real passwords
+git check-ignore -v keystore.properties spendly-upload.jks
 ```
 
-Both files are git-ignored. Verify:
-
-```bash
-git check-ignore -v frontend/android/keystore.properties frontend/android/spendly-upload.jks
-```
-
-**Back up `spendly-upload.jks` and its passwords somewhere you will still have
-in two years.** Without Play App Signing enrolment, losing this key means you
-can never publish an update to the app. Enrol in Play App Signing — it makes
-key loss recoverable.
+**Back up `spendly-upload.jks` and its passwords.** Enrol in Play App Signing so
+upload-key loss is recoverable.
 
 ## 3. Build
 
@@ -62,60 +52,47 @@ key loss recoverable.
 cd frontend
 npm ci
 npm run lint
-npm run build
+npm test
+npm run build            # needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_API_URL
 npx cap sync android
 
 cd android
-./gradlew testDebugUnitTest      # runs PaymentNotificationParserTest
+./gradlew testDebugUnitTest   # 48 tests: parser, privacy allowlist, dedupe, queue
 ./gradlew bundleRelease
-```
-
-Output: `frontend/android/app/build/outputs/bundle/release/app-release.aab`
-
-Verify the signature before uploading:
-
-```bash
 jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
 ```
 
-If `keystore.properties` is absent the build still succeeds but produces an
-**unsigned** bundle, which Play will reject. That is deliberate — a missing key
-should not break CI or a debug build.
+Without `keystore.properties` the build succeeds but the bundle is **unsigned**
+and Play rejects it.
 
-## 4. Backend
+## 4. Backend (Render)
 
 ```bash
 cd backend
 npm ci
-npm test        # 33 unit tests
-npm run test:tz # the same tests under three server timezones
+npm test                 # 94 tests incl. security regression and rate limits
 ```
-
-Required environment variables in production (Render):
 
 | Variable | Notes |
 |---|---|
 | `SUPABASE_URL` | |
-| `SUPABASE_SERVICE_ROLE_KEY` | Bypasses RLS. Server only, never in the app. |
-| `GEMINI_API_KEY` | |
-| `NODE_ENV` | `production` — suppresses stack traces in responses |
-| `FRONTEND_URL` | |
+| `SUPABASE_SERVICE_ROLE_KEY` | Bypasses RLS. Server only. |
+| `GEMINI_API_KEY` | Use a paid-tier key; set a Google Cloud budget alert. |
+| `GEMINI_MODEL` | Optional. Default `gemini-3.5-flash`. `gemini-2.0-flash` was shut down 2026-06-01; confirm the model is supported. |
+| `NODE_ENV` | `production` |
 | `ALLOWED_ORIGINS` | Comma-separated CORS allow-list |
-| `APP_TIMEZONE` | Optional; defaults to `Asia/Kolkata` |
+| `TRUST_PROXY` | Optional. Default `1` in production (Render). Must equal the number of proxies in front of the app, or rate limiting breaks. Never `true`. |
+| `APP_TIMEZONE` | Optional; default `Asia/Kolkata` |
+| `ENABLE_BURN_RATE_JOB` | Optional; default off (the job only logs) |
 
-`APP_TIMEZONE` is what makes month boundaries and daily quotas line up with the
-user's calendar rather than the server's. Leave it alone unless you are
-launching outside India.
+After deploying, confirm per-client rate limiting: two different networks must
+not share a rate-limit bucket (check `RateLimit` headers).
 
 ## 5. Versioning
 
-Bump `versionCode` in `frontend/android/app/build.gradle` for **every** upload
-to Play — Play rejects a duplicate. Bump `versionName` for anything users would
-notice.
+Bump `versionCode` in `frontend/android/app/build.gradle` for every Play upload.
 
 ## 6. Before you submit
 
-Work through `PLAY_STORE_CHECKLIST.md` and `DEVICE_TEST_CHECKLIST.md`. Run the
-device checklist against the **release** build, not a debug build: R8
-minification can break reflection-based Capacitor plugin loading, and a debug
-pass proves nothing about that.
+Work through `LAUNCH_TODO.md` (manual blockers), `PLAY_STORE_CHECKLIST.md` and
+`DEVICE_TEST_CHECKLIST.md` on the **release** build.
