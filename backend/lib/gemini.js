@@ -47,9 +47,20 @@ async function generateText(contents, { maxOutputTokens = 800, temperature } = {
         contents,
         config: {
             maxOutputTokens,
+            // Gemini 2.5+/3.x "think" before answering, and thinking tokens count
+            // against maxOutputTokens. With thinking on, short budgets came back
+            // empty (finishReason MAX_TOKENS), so every coach reply silently fell
+            // back to the same canned text. Our answers are drafted
+            // deterministically, so thinking adds cost without value.
+            thinkingConfig: { thinkingBudget: 0 },
             ...(temperature !== undefined ? { temperature } : {}),
         },
     });
+    const finish = response.candidates?.[0]?.finishReason;
+    if (finish === 'MAX_TOKENS') {
+        // A cut-off answer is worse than the deterministic fallback.
+        throw Object.assign(new Error('AI reply truncated'), { code: 'AI_TRUNCATED' });
+    }
     return response.text || '';
 }
 

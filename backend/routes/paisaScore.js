@@ -5,7 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 const appTime = require('../lib/appTime');
 const { computePaisaScore, weekStartKey } = require('../lib/paisaScore');
 
-const DISCLAIMER = 'Spendly habits score based only on your Spendly data. Not a credit score and not affiliated with CIBIL, Experian, Equifax, CRIF or any credit bureau.';
+const DISCLAIMER = 'Spend Score: a Spendly habits score based only on your Spendly data. Not a credit score and not affiliated with CIBIL, Experian, Equifax, CRIF or any credit bureau.';
 
 // @route GET /api/paisa-score — score out of 100 with explained components
 router.get('/', protect, async (req, res) => {
@@ -64,7 +64,7 @@ router.get('/', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Paisa score error:', error.message);
-        res.status(500).json({ success: false, message: 'Failed to calculate Paisa Score' });
+        res.status(500).json({ success: false, message: 'Failed to calculate Spend Score' });
     }
 });
 

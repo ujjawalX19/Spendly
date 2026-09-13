@@ -208,7 +208,7 @@ function DeleteAccountModal({ onClose, onDelete }) {
         <ul className="text-xs text-zinc-500 space-y-1 mb-4 list-disc pl-4">
           <li>Your login, and you will be signed out on every device</li>
           <li>All expenses, recurring bills and statement-import history</li>
-          <li>Your Paisa Score history, streaks and AI coach conversations</li>
+          <li>Your Spend Score history, streaks and AI coach conversations</li>
           <li>Group pools you created, and your membership of other pools</li>
         </ul>
         <p className="text-xs text-zinc-500 mb-4">This cannot be undone. Export your expenses first if you want a copy.</p>

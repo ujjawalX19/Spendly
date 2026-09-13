@@ -575,7 +575,7 @@ const SCORE_LABELS = {
   loggingHabit: 'Logging habit',
 };
 
-function PaisaScoreCard({ score }) {
+function SpendScoreCard({ score }) {
   const [open, setOpen] = useState(false);
   if (!score) return null;
   const hasScore = typeof score.total === 'number';
@@ -601,7 +601,7 @@ function PaisaScoreCard({ score }) {
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-white">Paisa Score <span className="text-[#71717a] font-semibold">/ {score.max || 100}</span></p>
+          <p className="text-sm font-bold text-white">Spend Score <span className="text-[#71717a] font-semibold">/ {score.max || 100}</span></p>
           <p className="text-xs text-[#a1a1aa] mt-0.5">
             {hasScore ? 'Tap to see why you got this score' : 'Not enough data for a score yet'}
           </p>
@@ -782,7 +782,7 @@ export default function Dashboard() {
       .then(d => { if (d.success) setBurnRate(d.burnRate); })
       .catch(() => {});
 
-    // Fetch Paisa Score
+    // Fetch Spend Score
     apiFetch(`${API_URL}/paisa-score`, { headers })
       .then(parseResponse)
       .then(d => { if (d.success) setPaisaScore(d.paisaScore); })
@@ -977,7 +977,7 @@ export default function Dashboard() {
         </div>
 
         {/* SPEND SCORE */}
-        <PaisaScoreCard score={paisaScore} />
+        <SpendScoreCard score={paisaScore} />
 
         {/* SCAN CTA */}
         <ScanBillCTA onScan={handleScanFile} loading={scanLoading} fileInputRef={fileInputRef} />

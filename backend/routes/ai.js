@@ -76,8 +76,43 @@ async function loadUserData(userId, now) {
 }
 
 const STYLE_BY_INTENT = {
-    education: 'Explain the concept simply in 2 short paragraphs. Do not use the user\'s numbers unless they are directly relevant.',
+    education: 'Explain the concept simply and concretely, with a short everyday Indian example that uses no rupee figures of its own.',
+    investing: 'Be genuinely useful: explain what fits their horizon and why, in plain language. You may explain asset classes and product types (FD, RD, PPF, NPS, debt fund, index fund, ELSS), but never a named scheme, company or platform.',
 };
+
+/** Last few turns of this user's chat, so follow-ups are answered in context. */
+async function recentConversation(userId) {
+    const { data } = await supabase
+        .from('ai_chat_history')
+        .select('role, content')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(6);
+    return (data || []).reverse().map((m) => `${m.role === 'user' ? 'User' : 'Spendly AI'}: ${String(m.content).slice(0, 400)}`).join('\n');
+}
+
+function buildPrompt({ intent, facts, draft, query, conversation, retryNote }) {
+    return `You are Spendly AI, a friendly, practical money coach for a user in India.
+
+Answer the user's question directly, using the DRAFT ANSWER as your source of truth. Write it in your own words, tailored to exactly what they asked; do not just repeat the draft. If the conversation shows a follow-up, answer the follow-up.
+
+STRICT RULES
+- Start with a one-sentence direct answer. Then use short sections with bold headings chosen from **Numbers**, **Why**, **What to do**, **Note** (skip any that are not useful).
+- Any rupee amount or percentage you write must appear in the draft or the facts. Never calculate, estimate or introduce a new figure.
+- Describe allocations and product types as what people commonly choose, never as "recommended" or "best" for this user.
+- Never name or recommend a specific stock, company, mutual fund scheme, ETF, insurance policy, broker, app or investment platform. Never include links. Never promise returns.
+- Income and bank balances are not tracked by Spendly; never assume them.
+- Under 200 words. No emoji. Rupee amounts as ₹1,234. Keep the draft's disclaimer note if it has one.
+${STYLE_BY_INTENT[intent] || ''}
+${retryNote ? `\nIMPORTANT: ${retryNote}\n` : ''}
+QUESTION TYPE: ${intent}
+FACTS (computed from the user's data): ${JSON.stringify(facts)}
+${conversation ? `\nRECENT CONVERSATION:\n${conversation}\n` : ''}
+DRAFT ANSWER:
+${draft}
+
+User question: ${query}`;
+}
 
 router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_message'), async (req, res) => {
     const query = req.adviceQuery;
@@ -93,41 +128,37 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
         let source = 'calculated';
 
         if (gemini.isConfigured()) {
-            const prompt = `You are Spendly AI, a money coach for a user in India.
-
-Rewrite the DRAFT ANSWER below so it reads naturally and warmly for this user's question.
-
-STRICT RULES
-- Keep this structure: first a one-sentence direct answer, then the sections **Numbers**, **Why**, **What to do**, and **Note** (omit a section if the draft has nothing for it).
-- Use ONLY numbers that appear in the draft or the facts. Do not calculate, estimate, round differently, or add any new figure. If unsure, copy the draft's number exactly.
-- Never name or recommend a specific stock, mutual fund, ETF, insurance product, bank product, broker or investment platform. Never include links.
-- Income is not tracked by Spendly; never assume the user's income.
-- Be concise: under 170 words. No emoji. Rupee amounts as ₹1,234.
-${STYLE_BY_INTENT[intent] || ''}
-
-QUESTION TYPE: ${intent}
-FACTS (computed from the user's data): ${JSON.stringify(facts)}
-
-DRAFT ANSWER:
-${deterministic}
-
-User question: ${query}`;
-
-            try {
-                const text = (await gemini.generateText(prompt, { maxOutputTokens: 600, temperature: 0.3 })).trim();
-                if (text && numbersAreGrounded(text, facts, deterministic, query)) {
-                    reply = text;
-                    source = 'ai';
-                } else if (text) {
-                    console.warn('Coach reply rejected: contained figures not in the computed facts');
+            const conversation = await recentConversation(req.user.id).catch(() => '');
+            let retryNote = null;
+            // Two attempts: if the first reply introduces a figure that is not in
+            // the computed facts, ask once more with that called out.
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const text = (await gemini.generateText(
+                        buildPrompt({ intent, facts, draft: deterministic, query, conversation, retryNote }),
+                        { maxOutputTokens: 900, temperature: 0.7 }
+                    )).trim();
+                    if (text && numbersAreGrounded(text, facts, deterministic, query)) {
+                        reply = text;
+                        source = 'ai';
+                        break;
+                    }
+                    if (text) {
+                        console.warn('Coach reply rejected: contained figures not in the computed facts');
+                        retryNote = 'Your previous reply used a rupee amount or percentage that is not in the draft or facts. Use only figures copied exactly from them.';
+                    } else {
+                        break;
+                    }
+                } catch (e) {
+                    console.error('Coach AI call failed:', e.code || e.name);
+                    break;
                 }
-            } catch (e) {
-                console.error('Coach AI call failed:', e.code || e.name);
             }
         }
 
-        reply = sanitizeReply(reply, { intent: intent === 'education' ? 'investing' : intent });
-        if (intent === 'education' && !reply.includes('not investment advice')) reply = `${reply}\n\n${EDUCATION_NOTE}`;
+        const investingLike = intent === 'education' || intent === 'investing';
+        reply = sanitizeReply(reply, { intent: investingLike ? 'investing' : intent });
+        if (investingLike && !reply.includes('not investment advice')) reply = `${reply}\n\n${EDUCATION_NOTE}`;
 
         const { error: insertError } = await supabase.from('ai_chat_history').insert([
             { user_id: req.user.id, role: 'user', content: query },

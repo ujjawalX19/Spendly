@@ -46,7 +46,7 @@ export default function PrivacyPolicy() {
 
           <Section title="2. Information created while you use Spendly">
             <ul className="list-disc space-y-1 pl-5">
-              <li>Round-up totals, logging streaks, weekly Paisa Score history and statement-import history (bank name, number of transactions, statement period).</li>
+              <li>Round-up totals, logging streaks, weekly Spend Score history and statement-import history (bank name, number of transactions, statement period).</li>
               <li>Usage counters for free-plan limits (for example, coach questions asked today).</li>
               <li>Basic server logs needed to run and secure the service, such as request time and error type. Logs do not contain expense amounts, descriptions or notification text.</li>
             </ul>

@@ -12,6 +12,7 @@
 
 const appTime = require('./appTime');
 const { detectSubscriptions } = require('./subscriptions');
+const { composeInvestingAnswer, composeConceptAnswer } = require('./investingGuide');
 
 const DISCRETIONARY = ['Food', 'Entertainment', 'Shopping', 'Other'];
 const r = (n) => Math.round(Number(n) || 0);
@@ -38,11 +39,13 @@ function median(values) {
 // ─── Intent ─────────────────────────────────────────────────────────────────
 
 const INTENTS = [
+    // Concept questions ("what is a SIP", "explain index funds").
+    ['education', /\b(what is|what are|what's|whats|meaning of|explain|difference between|how does .* work)\b/],
+    // Investing questions get a personalised, education-only plan, even when
+    // they also mention saving ("where should I invest my savings").
+    ['investing', /\b(invest|investing|investment|sip|sips|mutual funds?|index funds?|stocks?|shares|equity|etf|crypto|bitcoin|f&o|trading|gold|portfolio|returns|nifty|sensex|ppf|nps|elss|fd|fixed deposit|retire|retirement|save tax|tax saving|80c|lump ?sum|bonus|buy a (house|home|flat)|down ?payment|(house|home|flat|wedding|marriage|college) (in|by|within) \d+|saving for my (wedding|marriage|house|home))\b/],
     ['safe_to_spend', /\b(safe to spend|how much (can|do) i (spend|have)( left)?|left to spend|daily (limit|budget)|per day)\b/],
     ['affordability', /\b(can i afford|afford|should i buy|worth buying|can i spend|is it ok to (buy|spend))\b/],
-    // Investing questions always get general education plus the disclaimer,
-    // even when they also mention saving ("where should I invest my savings").
-    ['education', /\b(invest|investing|investment|sip|sips|mutual funds?|index funds?|stocks?|shares|equity|etf|crypto|bitcoin|gold|portfolio|returns|nifty|sensex)\b/],
     ['subscriptions', /\b(subscriptions?|recurring|autopay|mandate|netflix|spotify|prime|renewal|membership)\b/],
     ['unusual_spending', /\b(unusual|weird|strange|spike|suspicious|biggest|largest|highest (purchase|expense|payment)|out of (the )?ordinary)\b/],
     ['goal_planning', /\b(goal|save up|saving for|reach|target|how long (will it|to)|by (next|december|january|diwali)|emergency fund of)\b/],
@@ -50,7 +53,7 @@ const INTENTS = [
     ['spending_analysis', /\b(why did i|overspen[dt]|where (did|does) (my|the) money go|spent (so )?much|spending (more|less)|compared? (to|with) last month|increase|decrease|category|categories)\b/],
     ['budget_advice', /\b(budget|stick to|stay within|over budget|limit|allowance)\b/],
     ['savings_advice', /\b(save|saving|savings|cut (back|down)?|reduce|spend less|cheaper)\b/],
-    ['education', /\b(what is|what are|how does|how do|explain|meaning of|difference between|emergency fund|compound|inflation|credit score|fd|fixed deposit|ppf|nps)\b/],
+    ['education', /\b(how does|how do|emergency fund|compound|compounding|inflation|credit score)\b/],
 ];
 
 function classifyIntent(question) {
@@ -330,12 +333,10 @@ function composeAnswer(intent, f, question) {
                 note: 'Income is not tracked in Spendly, so this uses your budget rather than your bank balance.',
             });
         }
+        case 'investing':
+            return answer(composeInvestingAnswer(f, question, amount));
         case 'education':
-            return answer({
-                direct: 'Here is the general idea.',
-                reasoning: 'An emergency fund (often 3–6 months of essential expenses) comes before investments that can lose value. A SIP invests a fixed amount regularly; diversification spreads risk; costs and time horizon matter.',
-                note: EDUCATION_NOTE,
-            });
+            return answer(composeConceptAnswer(question));
         default:
             return answer({
                 direct: `So far this month you've spent ${inr(f.spentThisMonth)}${f.budget ? ` of a ${inr(f.budget)} budget` : ''}.`,

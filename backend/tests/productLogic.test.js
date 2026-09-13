@@ -85,7 +85,9 @@ test('intents cover every question type the coach supports', () => {
         'Give me a monthly summary': 'monthly_summary',
         'Can I afford ₹3,000 headphones?': 'affordability',
         'What is an emergency fund?': 'education',
-        'Where should I invest my savings?': 'education',
+        'Where should I invest my savings?': 'investing',
+        'What is a SIP?': 'education',
+        'How should I invest ₹5,000 a month for 10 years?': 'investing',
     };
     for (const [q, intent] of Object.entries(cases)) assert.equal(classifyIntent(q), intent, q);
 });
