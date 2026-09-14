@@ -123,6 +123,7 @@ const CURRENT = [
     'v1_1_launch_hardening.sql',
     'v1_2_security_p0.sql',
     'v1_3_product_core.sql',
+    'v1_4_admin_ops.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -245,6 +246,8 @@ test('after v1_2_security_p0.sql', async (t) => {
     });
 
     await t.test('verify_production.sql reports only PASS on the migrated database', async () => {
+        // Production has exactly one owner account (ADMIN_EMAIL); the check verifies that.
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
         const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
         const failures = r.rows.filter((row) => row.result !== 'PASS');
         assert.deepEqual(failures, []);
@@ -269,16 +272,18 @@ test('production-like database: partial v1 extension, v1_1 applied, no v1_2', as
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 
-    await t.test('v1_2 and v1_3 apply cleanly on the production-like schema', async () => {
+    await t.test('v1_2, v1_3 and v1_4 apply cleanly on the production-like schema', async () => {
         const r = await db.query("select to_regclass('public.ai_chat_history') as a, to_regclass('public.cancelled_subscriptions') as c");
         assert.ok(r.rows[0].a && r.rows[0].c);
     });
 
     await t.test('verify_production.sql passes afterwards', async () => {
+        // Production has exactly one owner account (ADMIN_EMAIL); the check verifies that.
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
         const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
         assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
     });
