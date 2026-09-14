@@ -1,9 +1,9 @@
 /**
- * appTime — timezone-correct date boundaries for Spendly's money math.
+ * appTime — timezone-correct date boundaries for Vittova's money math.
  *
  * WHY THIS EXISTS
  * ---------------
- * Spendly's backend runs on Render, whose containers are UTC. Its users are in
+ * Vittova's backend runs on Render, whose containers are UTC. Its users are in
  * India (UTC+05:30). Every financial boundary in the app — "this month's
  * spending", "days remaining", "did you log an expense today", "daily free-tier
  * quota" — is a *calendar* question, and calendar questions must be answered in

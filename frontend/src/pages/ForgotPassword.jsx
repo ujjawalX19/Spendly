@@ -11,7 +11,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * /reset-password (web) or spendly://reset-password (Android).
  *
  * The confirmation is identical whether or not the address has an account,
- * so this screen cannot be used to find out who uses Spendly.
+ * so this screen cannot be used to find out who uses Vittova.
  */
 export default function ForgotPassword() {
     const { requestPasswordReset } = useAuth();

@@ -1,7 +1,7 @@
 /**
  * paisaScore — a transparent spending-habits score out of 100.
  *
- * Not a credit score. Every component is measured from the user's own Spendly
+ * Not a credit score. Every component is measured from the user's own Vittova
  * data, scored 0–100, and returned with a sentence explaining the number.
  * Components that cannot be measured yet are marked unavailable rather than
  * guessed, and the overall score is withheld until there is enough data.

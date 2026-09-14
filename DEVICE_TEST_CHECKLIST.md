@@ -1,4 +1,4 @@
-# Spendly — Manual Device Test Checklist
+# Vittova — Manual Device Test Checklist
 
 Nothing in this file was verified by automation. Every item needs a physical
 Android phone; the emulator cannot exercise UPI notifications, Play Billing, or
@@ -23,8 +23,8 @@ Device: ______________  Android: ______  Build: ______  Date: __________
 ## 1. Install
 
 - [ ] App installs without a Play Protect warning
-- [ ] Launcher icon is Spendly branding, not the Capacitor default
-- [ ] App name reads "Spendly"
+- [ ] Launcher icon is Vittova branding, not the Capacitor default
+- [ ] App name reads "Vittova"
 
 ## 2. First launch
 
@@ -51,10 +51,10 @@ Device: ______________  Android: ______  Build: ______  Date: __________
 
 - [ ] Tapping "Continue with Google" opens a **Chrome Custom Tab**, not a full
       browser app, and **not** the app's own WebView
-- [ ] The Spendly app is still visible behind/underneath
+- [ ] The Vittova app is still visible behind/underneath
 - [ ] After choosing an account, the Custom Tab closes **by itself**
 - [ ] You land on the dashboard **inside the app**
-- [ ] At no point does the Spendly website appear
+- [ ] At no point does the Vittova website appear
 - [ ] Pressing back / dismissing the Custom Tab mid-flow returns to the login
       screen with "Google sign-in was cancelled" — no hang, no blank screen
 - [ ] Force-quit during the consent screen, then complete it: the app reopens
@@ -211,10 +211,10 @@ Do not ship with a failure in a **bold** section.
 - [ ] Forgot password: request link → open email on the phone → app opens reset screen → set new password → sign in with it
 - [ ] Reset link opened twice → second time shows "expired or already used"
 - [ ] Dashboard with notification access OFF: explanation card, Enable / Not now; settings never open by themselves
-- [ ] Force-stop Spendly, make a UPI payment, reopen → payment appears for confirmation
+- [ ] Force-stop Vittova, make a UPI payment, reopen → payment appears for confirmation
 - [ ] WhatsApp message "I paid ₹500" → nothing detected
 - [ ] Group Pool with two accounts: create, share code, join, add expense with a chosen payer/participants, balances, record payment, history
 - [ ] Recurring charges: open cancellation page (Custom Tab), mark cancelled, undo
 - [ ] Wealth: first open after the server has been idle → "waking the server" then figures (no false connection error)
-- [ ] Spendly AI: "Why did I overspend this month?", "Can I afford ₹3,000?", 11th question → daily limit message
+- [ ] Vittova AI: "Why did I overspend this month?", "Can I afford ₹3,000?", 11th question → daily limit message
 - [ ] Settings → Export → share sheet opens with a CSV

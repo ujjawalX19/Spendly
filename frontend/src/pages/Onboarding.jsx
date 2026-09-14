@@ -1,7 +1,7 @@
 /**
  * Onboarding.jsx — three screens, then the notification-access ask.
  *
- * The order here is the whole point. Spendly's best feature is automatic UPI
+ * The order here is the whole point. Vittova's best feature is automatic UPI
  * tracking, and it needs Notification Access — a permission Android presents
  * with a genuinely alarming warning screen. Asked cold on first launch, with
  * no explanation, most people decline, and a user who declines never sees the
@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import VittovaLogo from '../components/VittovaLogo';
 import { Capacitor } from '@capacitor/core';
 import { Zap, PieChart, TrendingUp, Bell, ShieldCheck, ArrowRight, Check } from 'lucide-react';
 
@@ -51,7 +52,7 @@ const SLIDES = [
     icon: Zap,
     tint: 'text-lime-400 bg-lime-400/15',
     title: 'Track without typing',
-    body: 'With your permission, Spendly spots payment notifications from supported UPI and bank apps and asks before adding them as expenses. Or add expenses yourself — both work.',
+    body: 'With your permission, Vittova spots payment notifications from supported UPI and bank apps and asks before adding them as expenses. Or add expenses yourself — both work.',
   },
   {
     icon: PieChart,
@@ -90,6 +91,14 @@ export default function Onboarding() {
     <div className="flex min-h-screen flex-col bg-black px-6 pb-8 pt-14 text-white">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
 
+        <div className="mb-6 flex items-center gap-2.5">
+          <VittovaLogo size={32} />
+          <span className="leading-tight">
+            <span className="block text-sm font-extrabold tracking-[.16em] text-white">VITTOVA</span>
+            <span className="block text-[10px] font-bold tracking-[.12em] text-lime-300">YOUR MONEY&apos;S PULSE</span>
+          </span>
+        </div>
+
         <div className="mb-10 flex items-center justify-between">
           <div className="flex gap-1.5" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={lastStep + 1}>
             {Array.from({ length: lastStep + 1 }).map((_, i) => (
@@ -121,16 +130,16 @@ export default function Onboarding() {
               </h1>
 
               <p className="mt-4 text-base leading-relaxed text-zinc-400">
-                To detect payments automatically, Spendly needs Android Notification Access. Android shows a
-                strong warning because this access is powerful, so here is exactly how Spendly uses it.
+                To detect payments automatically, Vittova needs Android Notification Access. Android shows a
+                strong warning because this access is powerful, so here is exactly how Vittova uses it.
               </p>
 
               <ul className="mt-6 space-y-3">
                 {[
                   'Only notifications from the supported payment and bank apps listed below are processed. Notifications from WhatsApp, messages, email, social and every other app are ignored.',
-                  'From a payment notification Spendly keeps only the amount, payee name, app name and time. The notification text itself is not stored or uploaded.',
-                  'Nothing is added to your account until you tap "Add expense". Then the amount, payee and time are saved to your Spendly account.',
-                  'Spendly does not read SMS, contacts, or anything you type. You can turn this off in Android settings at any time.',
+                  'From a payment notification Vittova keeps only the amount, payee name, app name and time. The notification text itself is not stored or uploaded.',
+                  'Nothing is added to your account until you tap "Add expense". Then the amount, payee and time are saved to your Vittova account.',
+                  'Vittova does not read SMS, contacts, or anything you type. You can turn this off in Android settings at any time.',
                 ].map(line => (
                   <li key={line} className="flex gap-3 text-sm leading-relaxed text-zinc-300">
                     <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-lime-400" />

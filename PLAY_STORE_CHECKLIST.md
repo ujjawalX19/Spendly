@@ -1,4 +1,4 @@
-# Spendly — Play Store Release Checklist
+# Vittova — Play Store Release Checklist
 
 Split by what this repository can settle and what only you can, with an account
 and a device in hand.
@@ -51,7 +51,7 @@ These were verified in the repo.
 
 ### Store listing
 
-- [ ] App name: **Spendly**
+- [ ] App name: **Vittova**
 - [ ] Short description (80 chars max)
 - [ ] Full description (4000 chars max) — describe automatic UPI tracking
       accurately; do not imply it reads SMS or bank accounts

@@ -1,7 +1,7 @@
 /**
  * wealth — the Wealth screen's figures, from the user's own data only.
  *
- * Spendly does not know the user's income, bank balance or investments, and
+ * Vittova does not know the user's income, bank balance or investments, and
  * this module never pretends to. It reports what is measurable: this month's
  * position against the budget, spending history, round-ups and the savings
  * target, plus the inputs for a clearly hypothetical projection.

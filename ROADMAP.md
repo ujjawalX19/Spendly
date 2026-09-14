@@ -1,7 +1,7 @@
-# Spendly Roadmap
+# Vittova Roadmap
 
 Ordered by what keeps people coming back, not by what is most interesting to
-build. Spendly does not need to be the biggest finance app in India before it
+build. Vittova does not need to be the biggest finance app in India before it
 launches. It needs to be simple, trustworthy, fast, and different enough to
 remember.
 
@@ -148,5 +148,5 @@ the entire moat.
 
 Lending, investment advice with specific recommendations, and payments. Each
 carries Indian regulatory obligations that a solo developer cannot absorb, and
-each would change what Spendly is. Keep investment content informational, and
+each would change what Vittova is. Keep investment content informational, and
 keep the disclaimer visible.

@@ -1,5 +1,5 @@
 /**
- * ProUpgrade.jsx — what Spendly Pro will include.
+ * ProUpgrade.jsx — what Vittova Pro will include.
  *
  * There is NO purchase flow. Google Play Billing and server-side purchase
  * verification are not implemented (see BILLING_ARCHITECTURE.md), so this page
@@ -43,7 +43,7 @@ export default function ProUpgrade() {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-black mb-2">Spendly Pro</h1>
+          <h1 className="text-3xl font-black mb-2">Vittova Pro</h1>
           {isPro ? (
             <p className="text-zinc-400">Pro features are active on your account.</p>
           ) : (

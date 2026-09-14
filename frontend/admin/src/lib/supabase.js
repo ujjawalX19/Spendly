@@ -21,6 +21,6 @@ export const supabase = createClient(url, anonKey, {
     detectSessionInUrl: true,
     persistSession: true,
     autoRefreshToken: true,
-    storageKey: 'spendly-admin-auth',
+    storageKey: 'vittova-admin-auth',
   },
 });

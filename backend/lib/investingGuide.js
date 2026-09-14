@@ -11,7 +11,7 @@
 const r = (n) => Math.round(Number(n) || 0);
 const inr = (n) => `₹${r(n).toLocaleString('en-IN')}`;
 
-const NOTE = 'General financial education, not investment advice. Spendly is not a SEBI-registered investment adviser; consider one for decisions about your situation.';
+const NOTE = 'General financial education, not investment advice. Vittova is not a SEBI-registered investment adviser; consider one for decisions about your situation.';
 
 /** "in 5 years", "for 18 months", "10 yr", "long term", "retirement" → years, or null. */
 function extractHorizonYears(question) {
@@ -159,7 +159,7 @@ const CONCEPTS = [
     [/\bppf\b/, 'PPF is a government-backed savings scheme with a 15-year lock-in, tax benefits under the old regime and an interest rate set by the government each quarter. It suits long-term, low-risk saving.'],
     [/\bnps\b/, 'NPS is a government-regulated retirement scheme mixing equity and debt. Money is largely locked until 60, and part of it must buy a pension at retirement.'],
     [/\b(fd|fixed deposit)\b/, 'A fixed deposit locks money with a bank for a set period at a fixed interest rate. It is predictable and low-risk, but interest is fully taxable and may not beat inflation after tax.'],
-    [/\bcredit score\b/, 'A credit score (300–900 in India) reflects how reliably you repay loans and cards. Paying on time and keeping card usage low raise it. Spendly\'s Spend Score is not a credit score.'],
+    [/\bcredit score\b/, 'A credit score (300–900 in India) reflects how reliably you repay loans and cards. Paying on time and keeping card usage low raise it. Vittova\'s Spend Score is not a credit score.'],
     [/\bmutual fund/, 'A mutual fund pools many investors\' money and invests it in stocks, bonds or both. Equity funds aim for growth with more risk; debt funds are steadier; costs (expense ratio) reduce your returns every year.'],
     [/\bgold\b/, 'Gold can diversify a portfolio because it often behaves differently from stocks, but it pays no interest or dividends. Many planners keep it to a small share, often 5–10%.'],
     [/\b(stock|share|equity)\b/, 'Buying a stock means owning a small part of a company. Single stocks can swing sharply; most beginners get equity exposure through diversified funds instead of picking individual companies.'],

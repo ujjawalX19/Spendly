@@ -8,7 +8,7 @@ import { UpiNotification } from '../plugins/UpiNotification';
  * notifications, waiting for the user to confirm or dismiss.
  *
  * WHY A QUEUE
- * Payments mostly happen while Spendly is closed. The Android listener service
+ * Payments mostly happen while Vittova is closed. The Android listener service
  * therefore stores each detection (amount, payee, app, time, kind — never the
  * raw notification text) in a small app-private queue, and this hook reads that
  * queue whenever the app is opened or resumed. Previously a detection was only

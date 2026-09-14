@@ -1,7 +1,7 @@
 {
   "name": "spendly-backend",
   "version": "1.0.0",
-  "description": "Spendly — AI-powered expense tracker & investment guide backend",
+  "description": "Vittova — AI-powered expense tracker & investment guide backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

@@ -144,7 +144,7 @@ function proGate(feature) {
                     success: false,
                     code: 'PRO_REQUIRED',
                     feature,
-                    message: 'This feature is part of Spendly Pro, which is not available yet.',
+                    message: 'This feature is part of Vittova Pro, which is not available yet.',
                 });
             }
 

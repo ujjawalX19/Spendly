@@ -176,10 +176,10 @@ function Shell({ owner, onSignOut, children }) {
 function Brand({ compact = false }) {
   return (
     <div className="flex items-center gap-2.5">
-      <img src="/spendly-logo.svg" alt="" className="h-8 w-8 rounded-lg" />
+      <img src="/vittova-logo.svg" alt="" className="h-8 w-8 rounded-lg" />
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-zinc-50">Spendly</p>
-        {!compact && <p className="flex items-center gap-1 text-[11px] text-lime-300/80"><ShieldCheck className="h-3 w-3" aria-hidden />Owner control</p>}
+        <p className="text-sm font-bold tracking-[.14em] text-zinc-50">VITTOVA</p>
+        {!compact && <p className="flex items-center gap-1 text-[11px] text-lime-300/80"><ShieldCheck className="h-3 w-3" aria-hidden />Owner Console</p>}
       </div>
     </div>
   );

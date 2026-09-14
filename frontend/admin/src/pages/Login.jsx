@@ -40,9 +40,9 @@ export default function Login({ denied, onClearDenied }) {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center gap-3">
-          <img src="/spendly-logo.svg" alt="" className="h-10 w-10 rounded-xl" />
+          <img src="/vittova-logo.svg" alt="" className="h-10 w-10 rounded-xl" />
           <div>
-            <h1 className="text-lg font-semibold text-zinc-50">Spendly Control</h1>
+            <h1 className="text-lg font-semibold text-zinc-50">Vittova Owner Console</h1>
             <p className="flex items-center gap-1 text-xs text-zinc-500"><ShieldCheck className="h-3 w-3" aria-hidden />Restricted to the app owner</p>
           </div>
         </div>

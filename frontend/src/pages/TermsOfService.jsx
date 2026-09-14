@@ -14,16 +14,16 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">1. Acceptance of Terms</h2>
           <p>
-            By using Spendly, you agree to these Terms of Service. If you do not agree, please do not use the app. We reserve the right to modify these terms at any time, with notification provided through the app.
+            By using Vittova, you agree to these Terms of Service. If you do not agree, please do not use the app. We reserve the right to modify these terms at any time, with notification provided through the app.
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-bold text-white mb-2">2. Not Financial Advice</h2>
           <p>
-            Spendly provides financial education, expense tracking, and spending pattern recognition.{' '}
+            Vittova provides financial education, expense tracking, and spending pattern recognition.{' '}
             <strong className="text-amber-400">We are not a SEBI-registered financial advisor, bank, NBFC, or any regulated financial entity.</strong>{' '}
-            Any compounding illustrations use assumed rates chosen for illustration; they are not forecasts, and real investments can lose value. Spendly is not a SEBI-registered investment adviser and does not recommend any security, fund, broker or platform. Consider consulting a SEBI-registered investment adviser before making investment decisions.
+            Any compounding illustrations use assumed rates chosen for illustration; they are not forecasts, and real investments can lose value. Vittova is not a SEBI-registered investment adviser and does not recommend any security, fund, broker or platform. Consider consulting a SEBI-registered investment adviser before making investment decisions.
           </p>
         </section>
 
@@ -35,9 +35,9 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">4. Spendly Pro</h2>
+          <h2 className="text-lg font-bold text-white mb-2">4. Vittova Pro</h2>
           <p>
-            Spendly Pro is not yet available and cannot be purchased. No subscription or payment is taken through the app. If paid plans are introduced, their price, billing and cancellation terms will be shown before purchase and these terms will be updated.
+            Vittova Pro is not yet available and cannot be purchased. No subscription or payment is taken through the app. If paid plans are introduced, their price, billing and cancellation terms will be shown before purchase and these terms will be updated.
           </p>
         </section>
 
@@ -70,7 +70,7 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">8. Limitation of Liability</h2>
           <p>
-            Spendly is provided "as is" without warranties of any kind. We are not liable for any financial losses resulting from reliance on the app's features, projections, or AI-generated suggestions. Our total liability shall not exceed the amount you paid for Spendly Pro in the preceding 12 months.
+            Vittova is provided "as is" without warranties of any kind. We are not liable for any financial losses resulting from reliance on the app's features, projections, or AI-generated suggestions. Our total liability shall not exceed the amount you paid for Vittova Pro in the preceding 12 months.
           </p>
         </section>
 

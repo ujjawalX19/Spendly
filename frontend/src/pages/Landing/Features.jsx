@@ -37,7 +37,7 @@ function AIChatMockup() {
             }`}
           >
             {m.from === 'ai' && (
-              <span className="text-emerald-400 font-bold block text-[9px] mb-0.5 uppercase tracking-wide">Spendly AI</span>
+              <span className="text-emerald-400 font-bold block text-[9px] mb-0.5 uppercase tracking-wide">Vittova AI</span>
             )}
             {m.text}
           </div>
@@ -140,7 +140,7 @@ function RoundUpMockup() {
     <div className="mt-4 space-y-2">
       <div className="flex items-center justify-between bg-zinc-900/60 border border-white/5 rounded-xl px-3 py-2">
         <div>
-          <p className="text-[10px] text-zinc-500">Invested via Round-Ups</p>
+          <p className="text-[10px] text-zinc-500">Spare change noted this month</p>
           <p className="text-base font-bold text-white">₹1,248</p>
         </div>
         <Coins className="h-8 w-8 text-lime-400 opacity-80" />
@@ -219,7 +219,7 @@ export default function Features() {
             </span>
           </h2>
           <p className="text-zinc-400 text-base max-w-xl mx-auto">
-            Four powerful features, one seamless experience. No spreadsheets. No stress.
+            Four features that work from the expenses you log. No spreadsheets.
           </p>
         </motion.div>
 
@@ -229,8 +229,8 @@ export default function Features() {
           <FeatureCard
             icon={Bot}
             iconColor="bg-emerald-500/15 text-emerald-400"
-            title="Spendly AI"
-            description="Chat with your money. Smart receipt scanning and instant categorization powered by AI."
+            title="Vittova AI"
+            description="Ask about your spending, budget and goals. Answers are built from your own numbers, and receipt scanning fills in expenses for you."
             className="lg:col-span-2"
             delay={0.05}
           >

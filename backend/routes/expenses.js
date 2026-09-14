@@ -141,7 +141,7 @@ router.get('/export.csv', protect, exportLimiter, async (req, res) => {
         if (data.length < PAGE) break;
     }
 
-    const filename = `spendly-expenses-${appTime.localDateKey()}.csv`;
+    const filename = `vittova-expenses-${appTime.localDateKey()}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('X-Row-Count', String(rows.length));

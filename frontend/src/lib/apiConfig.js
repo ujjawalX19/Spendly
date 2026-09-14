@@ -1,5 +1,5 @@
 /**
- * One place that knows where the Spendly API lives.
+ * One place that knows where the Vittova API lives.
  *
  * The base URL was previously copy-pasted into eleven files, each with its own
  * hardcoded production fallback. Changing the backend host meant finding all

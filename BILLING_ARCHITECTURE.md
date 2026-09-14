@@ -1,7 +1,7 @@
 # Premium entitlement and billing architecture
 
 Status (2026-09-13): **entitlement enforcement is implemented; billing is not.**
-Spendly Pro cannot be purchased. The app shows "coming soon" with no price and
+Vittova Pro cannot be purchased. The app shows "coming soon" with no price and
 no purchase button, and every purchase endpoint returns `501 BILLING_NOT_AVAILABLE`.
 
 ## Principle
@@ -35,7 +35,7 @@ client sends { is_pro: true } ──► accepted
    `spendly_pro_monthly`) with base plans and prices. *(Manual.)*
 2. **Android client:** integrate Google Play Billing Library (directly via a
    small Capacitor plugin, or a maintained plugin/RevenueCat SDK). Set
-   `obfuscatedAccountId` to a hash of the Spendly user id so purchases are tied
+   `obfuscatedAccountId` to a hash of the Vittova user id so purchases are tied
    to the account. The client sends only the **purchase token** to the backend.
 3. **Backend verification endpoint** (replace the 501 stub in
    `routes/pro.js`):

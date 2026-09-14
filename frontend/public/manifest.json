@@ -1,6 +1,7 @@
 {
-  "short_name": "Spendly",
-  "name": "Spendly — expense tracker",
+  "short_name": "Vittova",
+  "name": "Vittova — Your Money's Pulse",
+  "description": "Personal financial copilot: track expenses, safe-to-spend and shared bills.",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -21,7 +22,7 @@
       "purpose": "maskable"
     },
     {
-      "src": "/spendly-logo.svg",
+      "src": "/vittova-logo.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"

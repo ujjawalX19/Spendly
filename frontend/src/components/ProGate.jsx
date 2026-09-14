@@ -39,7 +39,7 @@ export default function ProGate({ feature, children, title = 'Pro Feature', desc
 
           <h3 className="text-xl font-black text-white mb-2">{title}</h3>
           <p className="text-sm text-zinc-400 mb-5">
-            {description || 'This is planned for Spendly Pro, which is not available yet.'}
+            {description || 'This is planned for Vittova Pro, which is not available yet.'}
           </p>
 
           <Link to="/pro">

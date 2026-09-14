@@ -2,7 +2,7 @@
 <!--
   Android 11 and below (android:fullBackupContent).
 
-  Spendly's Supabase session tokens live in the WebView's localStorage, under
+  Vittova's Supabase session tokens live in the WebView's localStorage, under
   the app's shared_prefs and databases. Allowing those into a backup means a
   logged-in session can be extracted with `adb backup` on a debuggable device,
   or restored onto a different phone. For a finance app that is an account

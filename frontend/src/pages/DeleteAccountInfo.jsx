@@ -14,15 +14,15 @@ export default function DeleteAccountInfo() {
         <div className="min-h-screen bg-[#09090b] px-6 py-12 text-zinc-300">
             <div className="mx-auto max-w-2xl">
                 <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300">
-                    <ArrowLeft className="h-4 w-4" /> Spendly
+                    <ArrowLeft className="h-4 w-4" /> Vittova
                 </Link>
-                <h1 className="text-3xl font-black text-white">Delete your Spendly account</h1>
-                <p className="mt-3 text-sm text-zinc-500">Applies to the Spendly Android app and web app.</p>
+                <h1 className="text-3xl font-black text-white">Delete your Vittova account</h1>
+                <p className="mt-3 text-sm text-zinc-500">Applies to the Vittova Android app and web app.</p>
 
                 <section className="mt-8 space-y-3 text-sm leading-7">
                     <h2 className="text-lg font-bold text-white">Option 1 — in the app (immediate)</h2>
                     <ol className="list-decimal space-y-1 pl-5">
-                        <li>Open Spendly and sign in.</li>
+                        <li>Open Vittova and sign in.</li>
                         <li>Go to <strong className="text-zinc-100">Settings → Delete account</strong>.</li>
                         <li>Confirm. Your account is deleted straight away and you are signed out on every device.</li>
                     </ol>
@@ -31,8 +31,8 @@ export default function DeleteAccountInfo() {
                 <section className="mt-8 space-y-3 text-sm leading-7">
                     <h2 className="text-lg font-bold text-white">Option 2 — by email (if you can't sign in)</h2>
                     <p>
-                        Email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}?subject=Delete%20my%20Spendly%20account`}>{SUPPORT_EMAIL}</a> from
-                        the address registered to your account, with the subject "Delete my Spendly account". We will verify the request
+                        Email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}?subject=Delete%20my%20Vittova%20account`}>{SUPPORT_EMAIL}</a> from
+                        the address registered to your account, with the subject "Delete my Vittova account". We will verify the request
                         comes from the account holder and complete deletion within 30 days, then confirm by email.
                     </p>
                 </section>
@@ -51,7 +51,7 @@ export default function DeleteAccountInfo() {
                 <section className="mt-8 space-y-3 text-sm leading-7">
                     <h2 className="text-lg font-bold text-white">What may remain</h2>
                     <ul className="list-disc space-y-1 pl-5">
-                        <li>Payment notifications are never stored by Spendly unless you logged them, so nothing remains on our servers from notification access.</li>
+                        <li>Payment notifications are never stored by Vittova unless you logged them, so nothing remains on our servers from notification access.</li>
                         <li>Encrypted database backups kept by our database provider may contain your data until they expire on their normal rotation schedule; they are not used to restore individual accounts.</li>
                         <li>Server logs contain no expense amounts or notification text, and are retained only for a limited period for security and debugging.</li>
                     </ul>

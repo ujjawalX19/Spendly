@@ -1,10 +1,10 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import SpendlyLogo from './SpendlyLogo';
+import VittovaLogo from './VittovaLogo';
 
 /**
  * Shared frame for sign-in, sign-up and password screens, following the
- * Spendly brand board: deep navy (#0B1220), flowing lime waves, the pulse app
- * icon, "Spendly — Your Money's Pulse".
+ * Vittova brand board: deep navy (#0B1220), flowing lime waves, the pulse app
+ * icon, "Vittova — Your Money's Pulse".
  *
  * Decorative only: no invented balances or statistics are shown here.
  */
@@ -59,10 +59,10 @@ export default function AuthLayout({ children }) {
             transition={{ type: 'spring', stiffness: 160, damping: 18 }}
             className="drop-shadow-[0_18px_40px_rgba(163,230,53,0.18)]"
           >
-            <SpendlyLogo size={112} animated className="lg:hidden" />
-            <SpendlyLogo size={168} animated className="hidden lg:block" />
+            <VittovaLogo size={112} animated className="lg:hidden" />
+            <VittovaLogo size={168} animated className="hidden lg:block" />
           </motion.div>
-          <h1 className="mt-5 font-['Poppins',_'Inter',_system-ui,_sans-serif] text-4xl font-bold tracking-tight lg:text-6xl">Spendly</h1>
+          <h1 className="mt-5 font-['Poppins',_'Inter',_system-ui,_sans-serif] text-4xl font-bold tracking-tight lg:text-6xl">Vittova</h1>
           <p className="mt-1 text-base font-medium tracking-[0.06em] text-zinc-200 lg:text-2xl">
             Your Money&apos;s <span className="text-[#A3E635]">Pulse</span>
           </p>

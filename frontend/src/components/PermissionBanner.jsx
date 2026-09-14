@@ -52,8 +52,8 @@ export default function PermissionBanner({ isSupported, permissionGranted, permi
         <div className="min-w-0 flex-1">
           <h2 id="notif-access-title" className="text-sm font-bold text-white">Automatically detect UPI payments</h2>
           <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-            Spendly can detect supported payment notifications from {SUPPORTED_APPS_SUMMARY} and ask you before adding them.
-            It needs Android Notification Access; Spendly ignores notifications from every other app, and does not read SMS.
+            Vittova can detect supported payment notifications from {SUPPORTED_APPS_SUMMARY} and ask you before adding them.
+            It needs Android Notification Access; Vittova ignores notifications from every other app, and does not read SMS.
           </p>
           <div className="mt-4 flex gap-2">
             <button type="button" onClick={onEnable} className="rounded-xl bg-lime-400 px-4 py-2 text-xs font-black text-black">

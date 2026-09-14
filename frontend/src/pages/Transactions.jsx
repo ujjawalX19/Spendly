@@ -285,7 +285,7 @@ export default function Transactions() {
             <>
               <p className="font-bold text-zinc-300">No expenses yet</p>
               <p className="mt-1 text-sm text-zinc-500">
-                Add one from the dashboard, or turn on notification access and Spendly will log your UPI payments for you.
+                Add one from the dashboard, or turn on notification access and Vittova will log your UPI payments for you.
               </p>
             </>
           )}

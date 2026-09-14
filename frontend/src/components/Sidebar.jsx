@@ -1,12 +1,12 @@
 import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, FileText, Repeat, Settings, Receipt, Users } from 'lucide-react';
-import SpendlyLogo from './SpendlyLogo';
+import VittovaLogo from './VittovaLogo';
 import { NavLink } from 'react-router-dom';
 
 const navigation = [
   { to: '/dash', label: 'Overview', icon: LayoutDashboard },
   { to: '/transactions', label: 'Transactions', icon: Receipt },
   { to: '/pool', label: 'Group Pool', icon: Users },
-  { to: '/bot', label: 'Spendly AI', icon: Bot },
+  { to: '/bot', label: 'Vittova AI', icon: Bot },
   { to: '/wealth', label: 'Wealth', icon: TrendingUp },
   { to: '/graveyard', label: 'Recurring charges', icon: Repeat },
   { to: '/import', label: 'Statement Import', icon: FileText },
@@ -18,9 +18,9 @@ export default function Sidebar({ theme, toggleTheme, onLogout }) {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 select-none border-r border-white/10 bg-[#0c0f0c] p-4 md:flex md:flex-col" aria-label="App navigation">
-      <NavLink to="/dash" className="mb-8 flex items-center gap-3 rounded-2xl px-2 py-2 no-underline" aria-label="Spendly overview">
-        <SpendlyLogo size={40} />
-        <span><span className="block text-lg font-extrabold tracking-tight text-white">Spendly</span><span className="block text-[10px] font-bold tracking-[.16em] text-lime-300">YOUR MONEY&apos;S PULSE</span></span>
+      <NavLink to="/dash" className="mb-8 flex items-center gap-3 rounded-2xl px-2 py-2 no-underline" aria-label="Vittova overview">
+        <VittovaLogo size={40} />
+        <span><span className="block text-lg font-extrabold tracking-tight text-white">Vittova</span><span className="block text-[10px] font-bold tracking-[.16em] text-lime-300">YOUR MONEY&apos;S PULSE</span></span>
       </NavLink>
 
       <p className="mb-2 px-3 text-[10px] font-bold tracking-[.18em] text-zinc-500">YOUR SPACE</p>

@@ -110,7 +110,7 @@ function SettleSheet({ group, suggestion, me, onClose, onSaved, session }) {
                     <input type="number" inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Amount"
                         className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 py-3 pl-8 pr-4 font-mono text-zinc-100 outline-none focus:border-lime-500/60" />
                 </div>
-                <p className="text-xs text-zinc-500">Spendly only records the payment. Pay each other through your usual UPI app.</p>
+                <p className="text-xs text-zinc-500">Vittova only records the payment. Pay each other through your usual UPI app.</p>
                 {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
                 <button type="submit" disabled={busy || !(Number(amount) > 0)} className="flex w-full items-center justify-center rounded-2xl bg-lime-400 py-3 text-sm font-black text-black disabled:opacity-50">
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record payment'}
@@ -149,11 +149,11 @@ export default function GroupDetail() {
     const saved = () => { setSheet(null); load(); };
 
     const shareCode = async () => {
-        const text = `Join my "${data.group.name}" group on Spendly with invite code ${data.group.inviteCode}`;
+        const text = `Join my "${data.group.name}" group on Vittova with invite code ${data.group.inviteCode}`;
         try {
             if (Capacitor.isNativePlatform()) {
                 const { Share } = await import('@capacitor/share');
-                await Share.share({ title: 'Spendly group invite', text });
+                await Share.share({ title: 'Vittova group invite', text });
             } else if (navigator.share) {
                 await navigator.share({ text });
             } else {

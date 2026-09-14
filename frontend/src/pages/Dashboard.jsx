@@ -1,5 +1,5 @@
 /**
- * Dashboard.jsx — Spendly
+ * Dashboard.jsx — Vittova
  * ─────────────────────────────────────────────────────────────
  * Pixel-perfect Figma-to-code conversion.
  * Stack: React 19 + Tailwind CSS 4 + Framer Motion + Lucide React

@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
-import SpendlyLogo from '../../components/SpendlyLogo';
-import { Link } from 'react-router-dom';
+import VittovaLogo from '../../components/VittovaLogo';
+import { Link, useNavigate } from 'react-router-dom';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
   { label: 'Security', href: '#security' },
-  { label: 'FAQ', href: '#faq' },
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -42,10 +42,10 @@ export default function Navbar() {
           {/* Logo */}
           <a href="#" className="flex items-center gap-2 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400/10">
-              <SpendlyLogo size={28} />
+              <VittovaLogo size={28} />
             </div>
             <span className="text-xl font-bold tracking-tight text-lime-400">
-              Spendly
+              Vittova
             </span>
           </a>
 
@@ -69,10 +69,10 @@ export default function Navbar() {
               Sign In
             </Link>
             <button
-              onClick={() => handleNavClick('#waitlist')}
+              onClick={() => { setMobileOpen(false); navigate('/signup'); }}
               className="rounded-xl bg-lime-400 px-5 py-2.5 text-sm font-bold text-black shadow-[0_0_15px_rgba(132,204,22,0.3)] transition-all hover:bg-lime-300"
             >
-              Get Early Access
+              Get started
             </button>
           </div>
 
@@ -115,10 +115,10 @@ export default function Navbar() {
               Sign In / Log In
             </Link>
             <button
-              onClick={() => handleNavClick('#waitlist')}
+              onClick={() => { setMobileOpen(false); navigate('/signup'); }}
               className="mt-2 w-full rounded-xl bg-lime-400 py-3 text-sm font-bold text-black transition-colors hover:bg-lime-300"
             >
-              Get Early Access
+              Get started
             </button>
           </motion.div>
         )}

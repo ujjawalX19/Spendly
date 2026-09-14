@@ -315,7 +315,7 @@ router.get('/users/:id', async (req, res) => {
             cancelledSubscriptions: cancelledSubs,
             subscriptions: recurringBills === null ? null : recurringBills + (cancelledSubs || 0),
             goals: Number(row.investment_target) > 0 ? 1 : 0,
-            // Not tracked by Spendly; null means "not available", never zero.
+            // Not tracked by Vittova; null means "not available", never zero.
             income: null,
             csvImports: null,
             upiDetections: null,
@@ -508,7 +508,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 //
 // Built from existing tables. Amounts, descriptions, merchants, bank names,
 // bill names and AI chat contents are never included; expenses and AI
-// questions are grouped per day. Events Spendly does not record are listed in
+// questions are grouped per day. Events Vittova does not record are listed in
 // `notTracked` rather than invented.
 router.get('/users/:id/timeline', async (req, res) => {
     if (!validId(req, res)) return;
@@ -588,7 +588,7 @@ router.get('/users/:id/timeline', async (req, res) => {
             'Login history (only the most recent sign-in is known)',
             'UPI detections that were not confirmed (they stay on the device)',
             'Goal creation dates (a savings target has no timestamp)',
-            'CSV imports (not a Spendly feature)',
+            'CSV imports (not a Vittova feature)',
         ],
     });
 });

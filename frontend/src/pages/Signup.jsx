@@ -208,7 +208,7 @@ export default function Signup() {
                 </p>
 
                 <p className="text-center text-sm text-zinc-400">
-                    Already using Spendly? <Link to="/login" className="font-bold text-lime-300 hover:text-lime-200 hover:underline">Log in</Link>
+                    Already using Vittova? <Link to="/login" className="font-bold text-lime-300 hover:text-lime-200 hover:underline">Log in</Link>
                 </p>
             </div>
         </AuthLayout>

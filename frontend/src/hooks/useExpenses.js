@@ -12,7 +12,7 @@ const API_URL = apiUrl('/expenses');
 const when = (e) => new Date(e.occurred_at || e.created_at);
 
 /**
- * useExpenses — the signed-in user's expenses, via the Spendly backend.
+ * useExpenses — the signed-in user's expenses, via the Vittova backend.
  *
  * All writes go through the API. Server-owned profile values that change as a
  * side effect (round-up savings, streak) are taken from the API response and
@@ -181,7 +181,7 @@ export function useExpenses() {
       return { success: false, message: friendlyError(err, "We couldn't prepare your export. Please try again.") };
     }
 
-    const filename = `spendly-expenses-${localDateKey(new Date())}.csv`;
+    const filename = `vittova-expenses-${localDateKey(new Date())}.csv`;
     const summary = Number.isFinite(rowCount) ? `${rowCount} expense${rowCount === 1 ? '' : 's'} exported` : undefined;
 
     if (Capacitor.isNativePlatform()) {
@@ -197,7 +197,7 @@ export function useExpenses() {
           encoding: Encoding.UTF8,
         });
         try {
-          await Share.share({ title: 'Spendly expenses', files: [written.uri], dialogTitle: 'Save or share your expenses' });
+          await Share.share({ title: 'Vittova expenses', files: [written.uri], dialogTitle: 'Save or share your expenses' });
         } catch (shareErr) {
           // Dismissing the share sheet rejects with a cancellation; that is not a failure.
           if (/cancel/i.test(shareErr?.message || '')) return { success: false, cancelled: true };

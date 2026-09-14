@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Persists {@link PendingPaymentQueue} in app-private SharedPreferences, so a
- * payment detected while Spendly is closed is still there when the user opens
+ * payment detected while Vittova is closed is still there when the user opens
  * the app.
  *
  * Private to the app sandbox and excluded from cloud backup and device

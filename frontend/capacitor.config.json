@@ -1,6 +1,6 @@
 {
   "appId": "com.spendly.app",
-  "appName": "Spendly",
+  "appName": "Vittova",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

@@ -9,7 +9,7 @@
  */
 
 const EDUCATION_DISCLAIMER =
-    'This is general financial education, not investment advice. Spendly is not a SEBI-registered investment adviser. Consider speaking to a SEBI-registered adviser before investing.';
+    'This is general financial education, not investment advice. Vittova is not a SEBI-registered investment adviser. Consider speaking to a SEBI-registered adviser before investing.';
 
 const money = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
 

@@ -1,5 +1,5 @@
 /**
- * Settings.jsx — Spendly v1
+ * Settings.jsx — Vittova
  * ─────────────────────────────────────────────────────────────
  * Settings page with budget editing, investment target,
  * account deletion, Pro management, and legal links.
@@ -374,8 +374,8 @@ export default function Settings() {
         <div className="flex items-center gap-3">
           <Crown className={`w-6 h-6 ${isPro ? 'text-amber-400' : 'text-zinc-600'}`} />
           <div>
-            <p className="text-sm font-bold text-white">{isPro ? 'Spendly Pro Active' : 'Free Plan'}</p>
-            <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'Spendly Pro is not available to buy yet'}</p>
+            <p className="text-sm font-bold text-white">{isPro ? 'Vittova Pro Active' : 'Free Plan'}</p>
+            <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'Vittova Pro is not available to buy yet'}</p>
           </div>
         </div>
       </motion.div>

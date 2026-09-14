@@ -1,19 +1,19 @@
 import { useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
-// The official Spendly pulse mark (see public/spendly-logo.svg). Two
+// The official Vittova pulse mark (see public/vittova-logo.svg). Two
 // interlocking strokes in the 1254×1254 artboard.
 const STROKE_UP = 'M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636';
 const STROKE_DOWN = 'M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998';
 
 /**
- * Spendly logo.
+ * Vittova logo.
  *
  * @param {number}  size      rendered width/height in px
  * @param {boolean} tile      draw the dark rounded app-icon tile behind the mark
  * @param {boolean} animated  draw the strokes in, then pulse the glow gently
  */
-export default function SpendlyLogo({ size = 40, tile = true, animated = false, className = '', title = 'Spendly' }) {
+export default function VittovaLogo({ size = 40, tile = true, animated = false, className = '', title = 'Vittova' }) {
   const id = useId().replace(/:/g, '');
   const reduce = useReducedMotion();
   const animate = animated && !reduce;

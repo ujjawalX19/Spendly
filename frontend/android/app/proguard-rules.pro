@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-# Spendly ProGuard Rules
+# Vittova ProGuard Rules
 # ═══════════════════════════════════════════════════════════════
 
 # ─── Capacitor Core ───────────────────────────────────────────
@@ -14,7 +14,7 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
-# ─── Custom Spendly Plugins ──────────────────────────────────
+# ─── Custom Vittova Plugins ──────────────────────────────────
 # UPI Notification Plugin — must not be obfuscated since Capacitor
 # resolves plugin classes by name via reflection.
 -keep class com.spendly.app.UpiNotificationPlugin { *; }

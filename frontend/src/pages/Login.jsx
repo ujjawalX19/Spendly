@@ -174,7 +174,7 @@ export default function Login() {
                 )}
 
                 <p className="text-center text-sm text-zinc-400">
-                    New to Spendly? <Link to="/signup" className="font-bold text-lime-300 hover:text-lime-200 hover:underline focus:outline-none focus:underline">Create an account</Link>
+                    New to Vittova? <Link to="/signup" className="font-bold text-lime-300 hover:text-lime-200 hover:underline focus:outline-none focus:underline">Create an account</Link>
                 </p>
             </div>
         </AuthLayout>

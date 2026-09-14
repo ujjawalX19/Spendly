@@ -13,7 +13,7 @@ const { validationError } = require('../lib/validation');
 const telemetry = require('../lib/opsTelemetry');
 
 /**
- * Spendly AI — a money coach grounded in the user's own data.
+ * Vittova AI — a money coach grounded in the user's own data.
  *
  * HOW AN ANSWER IS PRODUCED
  *   1. The backend loads the user's expenses (4 months), budget, savings target
@@ -89,11 +89,11 @@ async function recentConversation(userId) {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(6);
-    return (data || []).reverse().map((m) => `${m.role === 'user' ? 'User' : 'Spendly AI'}: ${String(m.content).slice(0, 400)}`).join('\n');
+    return (data || []).reverse().map((m) => `${m.role === 'user' ? 'User' : 'Vittova AI'}: ${String(m.content).slice(0, 400)}`).join('\n');
 }
 
 function buildPrompt({ intent, facts, draft, query, conversation, retryNote }) {
-    return `You are Spendly AI, a friendly, practical money coach for a user in India.
+    return `You are Vittova AI, a friendly, practical money coach for a user in India.
 
 Answer the user's question directly, using the DRAFT ANSWER as your source of truth. Write it in your own words, tailored to exactly what they asked; do not just repeat the draft. If the conversation shows a follow-up, answer the follow-up.
 
@@ -102,7 +102,7 @@ STRICT RULES
 - Any rupee amount or percentage you write must appear in the draft or the facts. Never calculate, estimate or introduce a new figure.
 - Describe allocations and product types as what people commonly choose, never as "recommended" or "best" for this user.
 - Never name or recommend a specific stock, company, mutual fund scheme, ETF, insurance policy, broker, app or investment platform. Never include links. Never promise returns.
-- Income and bank balances are not tracked by Spendly; never assume them.
+- Income and bank balances are not tracked by Vittova; never assume them.
 - Under 200 words. No emoji. Rupee amounts as ₹1,234. Keep the draft's disclaimer note if it has one.
 ${STYLE_BY_INTENT[intent] || ''}
 ${retryNote ? `\nIMPORTANT: ${retryNote}\n` : ''}

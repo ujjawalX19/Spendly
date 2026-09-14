@@ -4,7 +4,7 @@ const { audit } = require('../lib/adminAudit');
 /**
  * requireOwner — the only gate in front of /api/admin. Runs after `protect`.
  *
- * Spendly has exactly one operator: the app owner. A request is allowed only
+ * Vittova has exactly one operator: the app owner. A request is allowed only
  * when ALL of these hold, each checked server-side on every request:
  *
  *   1. ADMIN_EMAIL is configured on the server. If it is missing or malformed

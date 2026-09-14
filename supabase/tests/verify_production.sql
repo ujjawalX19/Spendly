@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- Spendly — production security verification (READ-ONLY)
+-- Vittova (formerly Spendly) — production security verification (READ-ONLY)
 --
 -- Paste into the Supabase SQL Editor after applying v1_2_security_p0.sql.
 -- Changes nothing. Every row should say PASS; investigate any FAIL before

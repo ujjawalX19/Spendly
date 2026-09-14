@@ -139,7 +139,7 @@ export function AuthProvider({ children }) {
   /**
    * Send a password-reset email. The response is deliberately the same
    * whether or not the address has an account, so the form cannot be used to
-   * discover who uses Spendly.
+   * discover who uses Vittova.
    */
   const requestPasswordReset = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: passwordResetRedirectUrl() });

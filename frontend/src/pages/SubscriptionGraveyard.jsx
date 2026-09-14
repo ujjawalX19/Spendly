@@ -1,7 +1,7 @@
 /**
  * Recurring charges — subscription intelligence.
  *
- * From payment data Spendly can tell whether a recurring charge is still
+ * From payment data Vittova can tell whether a recurring charge is still
  * happening, not whether the service is still used:
  *   active                — still charging: worth reviewing
  *   charged_after_cancel  — marked cancelled, but charged again (revoke the mandate)
@@ -204,7 +204,7 @@ export default function SubscriptionGraveyard() {
       ))}
 
       <p className="px-1 text-[11px] text-zinc-600">
-        Marking a charge cancelled only updates Spendly. Cancel with the service itself, and revoke any UPI AutoPay mandate in your UPI app.
+        Marking a charge cancelled only updates Vittova. Cancel with the service itself, and revoke any UPI AutoPay mandate in your UPI app.
       </p>
     </motion.div>
   );

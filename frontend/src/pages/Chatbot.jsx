@@ -52,11 +52,11 @@ function AnswerText({ text }) {
 const GREETING = {
     id: 'greeting',
     role: 'bot',
-    content: "Ask me about your money: why spending changed, what you can afford, how much is safe to spend, recurring charges, or how long a goal will take. Every number comes from your own Spendly data. I don't recommend specific investments.",
+    content: "Ask me about your money: why spending changed, what you can afford, how much is safe to spend, recurring charges, or how long a goal will take. Every number comes from your own Vittova data. I don't recommend specific investments.",
 };
 
 /**
- * Spendly money coach.
+ * Vittova money coach.
  *
  * Limits are enforced by the server (free plan: 10 questions a day, plus
  * short-term rate limits). The page shows what the server reports and never
@@ -156,7 +156,7 @@ export default function Chatbot() {
                     <Bot className="w-6 h-6 text-[var(--color-neon-green)]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Spendly AI</h1>
+                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Vittova AI</h1>
                     <p className="text-sm text-[var(--color-text)]/70">
                         {remaining !== null ? `${remaining} free question${remaining === 1 ? '' : 's'} left today` : 'Answers based on your own spending'}
                     </p>
@@ -191,7 +191,7 @@ export default function Chatbot() {
                                     {msg.role === 'bot' ? <AnswerText text={msg.content} /> : msg.content}
                                 </div>
                                 {msg.isLimitAlert && (
-                                    <Link to="/pro" className="text-xs font-bold text-amber-300 underline">See what Spendly Pro will include</Link>
+                                    <Link to="/pro" className="text-xs font-bold text-amber-300 underline">See what Vittova Pro will include</Link>
                                 )}
                             </div>
                         </motion.div>
@@ -247,7 +247,7 @@ export default function Chatbot() {
                 <div className="mt-2 flex items-start justify-between gap-3 text-[10px] text-zinc-500">
                     <p className="flex items-start gap-1">
                         <Info className="mt-px h-3 w-3 shrink-0" />
-                        General education, not investment advice. Spendly is not a SEBI-registered adviser. AI answers can be wrong.
+                        General education, not investment advice. Vittova is not a SEBI-registered adviser. AI answers can be wrong.
                     </p>
                     {input.length > MAX_CHARS * 0.8 && <span className="shrink-0">{input.length}/{MAX_CHARS}</span>}
                 </div>

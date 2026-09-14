@@ -1,5 +1,5 @@
 <#
-    build-apk.ps1 — build a debug APK of Spendly with this session's changes.
+    build-apk.ps1 — build a debug APK of Vittova with this session's changes.
 
     Run from the repo root:
 

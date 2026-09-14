@@ -13,7 +13,7 @@ import { LayoutGrid, Receipt, Bot, BarChart2, Settings as SettingsIcon } from 'l
 const tabs = [
   { id: '/dash',     label: 'Dashboard',  icon: LayoutGrid   },
   { id: '/transactions', label: 'History', icon: Receipt      },
-  { id: '/bot',      label: 'Spendly AI', icon: Bot           },
+  { id: '/bot',      label: 'Vittova AI', icon: Bot           },
   { id: '/wealth',   label: 'Wealth',     icon: BarChart2     },
   { id: '/settings', label: 'Settings',   icon: SettingsIcon  },
 ];

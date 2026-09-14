@@ -1,5 +1,5 @@
 /**
- * Apps whose notifications Spendly reads to detect payments.
+ * Apps whose notifications Vittova reads to detect payments.
  *
  * MUST stay identical to KNOWN_PACKAGES in
  * android/app/src/main/java/com/spendly/app/PaymentNotificationParser.java —

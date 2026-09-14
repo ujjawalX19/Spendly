@@ -11,7 +11,7 @@ export default function Hero() {
 
             <div className="glass-card max-w-2xl z-10 p-8 md:p-12 border border-[var(--color-neon-green)]/30 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="inline-block px-4 py-1.5 rounded-full border border-[var(--color-neon-green)]/30 text-[var(--color-neon-green)] text-xs font-bold tracking-widest uppercase mb-8 shadow-[0_0_10px_rgba(57,255,20,0.2)]">
-                    Spendly v1.0
+                    Vittova
                 </div>
 
                 <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight leading-tight">

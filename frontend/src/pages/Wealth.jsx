@@ -1,7 +1,7 @@
 /**
  * Wealth — what the user's own data says about their money, and nothing more.
  *
- * Spendly does not know income, bank balances or investments, so this screen
+ * Vittova does not know income, bank balances or investments, so this screen
  * never shows portfolio values or performance. Everything is from
  * GET /api/wealth; the only projection is labelled a hypothetical illustration
  * with an assumed rate the user picks. See FINANCIAL_CONTENT_REVIEW.md.
@@ -211,7 +211,7 @@ export default function Wealth() {
       <motion.header variants={cardVariants}>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">Wealth</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Where your money stands</h1>
-        <p className="mt-1 text-sm text-zinc-400">From the expenses and budget you've set in Spendly. Income, bank balances and investments aren't tracked.</p>
+        <p className="mt-1 text-sm text-zinc-400">From the expenses and budget you've set in Vittova. Income, bank balances and investments aren't tracked.</p>
       </motion.header>
 
       {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
@@ -251,7 +251,7 @@ export default function Wealth() {
         <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-bold"><PiggyBank className="h-4 w-4 text-lime-400" /> Round-ups</div>
           <p className="text-3xl font-extrabold">₹{wealth.roundUps.total.toLocaleString('en-IN')}</p>
-          <p className="mt-1 text-xs text-zinc-500">+₹{wealth.roundUps.thisMonth.toLocaleString('en-IN')} this month. Spare change to set aside yourself; Spendly doesn't move money.</p>
+          <p className="mt-1 text-xs text-zinc-500">+₹{wealth.roundUps.thisMonth.toLocaleString('en-IN')} this month. Spare change to set aside yourself; Vittova doesn't move money.</p>
         </motion.div>
         <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-bold"><Target className="h-4 w-4 text-sky-400" /> Monthly target</div>
@@ -265,7 +265,7 @@ export default function Wealth() {
       <motion.div variants={cardVariants}>
         <Link to="/bot" className="flex items-center justify-between rounded-2xl bg-lime-400 p-4 font-bold text-black">
           <div>
-            <p className="text-sm font-black">Ask Spendly AI</p>
+            <p className="text-sm font-black">Ask Vittova AI</p>
             <p className="text-xs font-bold text-black/60">"How long to save ₹50,000?" · "Can I afford ₹3,000?"</p>
           </div>
           <ArrowUpRight className="h-5 w-5" />

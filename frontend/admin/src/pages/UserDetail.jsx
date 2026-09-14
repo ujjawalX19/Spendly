@@ -80,7 +80,7 @@ export default function UserDetail({ currentOwnerId }) {
                 <MetricGrid>
                   <Metric label="Expenses, all time" metric={nullMetric(data.usage.expensesTotal)} />
                   <Metric label="Expenses, 30 days" metric={nullMetric(data.usage.expenses30d)} />
-                  <Metric label="Income" metric={nullMetric(data.usage.income, 'Spendly does not track income')} />
+                  <Metric label="Income" metric={nullMetric(data.usage.income, 'Vittova does not track income')} />
                   <Metric label="Goals" metric={nullMetric(data.usage.goals)} hint="Savings target set (one per user)" />
                   <Metric label="Subscriptions" metric={nullMetric(data.usage.subscriptions)} hint={data.usage.subscriptions === null ? undefined : `${data.usage.recurringBills ?? 0} bills, ${data.usage.cancelledSubscriptions ?? 0} cancelled`} />
                   <Metric label="Group Pools" metric={nullMetric(data.usage.groupPools)} />
@@ -90,7 +90,7 @@ export default function UserDetail({ currentOwnerId }) {
                   <Metric label="UPI confirmations, 30d" metric={nullMetric(data.usage.upiConfirmations30d)} />
                   <Metric label="Receipt scans, 30d" metric={nullMetric(data.usage.receiptScans30d)} />
                   <Metric label="PDF imports" metric={nullMetric(data.usage.pdfImports)} />
-                  <Metric label="CSV imports" metric={nullMetric(data.usage.csvImports, 'Not a Spendly feature')} />
+                  <Metric label="CSV imports" metric={nullMetric(data.usage.csvImports, 'Not a Vittova feature')} />
                 </MetricGrid>
               </Card>
 
@@ -186,7 +186,7 @@ function Timeline({ state }) {
           )}
           {data.truncated && <p className="mt-3 text-xs text-zinc-500">Very active user: only the most recent 1,000 expenses and questions were scanned.</p>}
           <details className="mt-4 text-xs text-zinc-500">
-            <summary className="cursor-pointer select-none hover:text-zinc-300">Not recorded by Spendly</summary>
+            <summary className="cursor-pointer select-none hover:text-zinc-300">Not recorded by Vittova</summary>
             <ul className="mt-2 list-disc space-y-1 pl-5">{data.notTracked.map((n) => <li key={n}>{n}</li>)}</ul>
           </details>
         </>

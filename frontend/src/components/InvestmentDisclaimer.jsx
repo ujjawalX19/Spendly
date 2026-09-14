@@ -3,14 +3,14 @@ import { AlertTriangle } from 'lucide-react';
 /**
  * Education disclaimer for any screen that discusses saving or investing.
  *
- * Wording is deliberately factual. Do not claim Spendly is "SEBI-compliant":
+ * Wording is deliberately factual. Do not claim Vittova is "SEBI-compliant":
  * that has not been professionally verified (see FINANCIAL_CONTENT_REVIEW.md).
  */
 export default function InvestmentDisclaimer({ compact = false }) {
   if (compact) {
     return (
       <p className="text-[10px] text-zinc-500 mt-3 leading-relaxed">
-        General financial education, not investment advice. Spendly is not a SEBI-registered investment adviser.
+        General financial education, not investment advice. Vittova is not a SEBI-registered investment adviser.
       </p>
     );
   }
@@ -21,7 +21,7 @@ export default function InvestmentDisclaimer({ compact = false }) {
       <div className="text-xs text-zinc-400 leading-relaxed">
         <p className="font-bold text-amber-400 mb-1">Not investment advice</p>
         <p>
-          Spendly tracks spending and offers general financial education. It does not recommend any
+          Vittova tracks spending and offers general financial education. It does not recommend any
           security, fund, or platform, and it is not a SEBI-registered investment adviser. Investments
           can lose value; illustrations use assumed rates, not predictions. Consider speaking to a
           SEBI-registered investment adviser before investing.

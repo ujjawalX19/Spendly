@@ -1,4 +1,4 @@
-# Releasing Spendly
+# Releasing Vittova
 
 ## 0. Database migrations first — not optional
 
@@ -35,15 +35,15 @@ https://<site>/reset-password
 ```bash
 cd frontend/android
 keytool -genkeypair -v \
-  -keystore spendly-upload.jks \
+  -keystore vittova-upload.jks \
   -keyalg RSA -keysize 2048 -validity 10000 \
-  -alias spendly-upload
+  -alias vittova-upload
 cp keystore.properties.example keystore.properties
 # edit keystore.properties with the real passwords
-git check-ignore -v keystore.properties spendly-upload.jks
+git check-ignore -v keystore.properties vittova-upload.jks
 ```
 
-**Back up `spendly-upload.jks` and its passwords.** Enrol in Play App Signing so
+**Back up `vittova-upload.jks` and its passwords.** Enrol in Play App Signing so
 upload-key loss is recoverable.
 
 ## 3. Build

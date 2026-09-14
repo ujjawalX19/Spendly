@@ -1,9 +1,9 @@
 # Financial content review
 
-Date: 2026-09-13. Scope: everything in the Spendly app, API and marketing site
+Date: 2026-09-13. Scope: everything in the Vittova app, API and marketing site
 that discusses investing, returns, financial products or advice.
 
-> **This is an engineering review, not legal advice.** Spendly has **not** been
+> **This is an engineering review, not legal advice.** Vittova has **not** been
 > reviewed by a lawyer or a SEBI-registered professional. Do not describe the
 > app as "SEBI compliant" or "SEBI approved" anywhere until that has actually
 > happened. The items under *Needs professional review* must be signed off
@@ -31,7 +31,7 @@ that discusses investing, returns, financial products or advice.
 1. **Personalised product recommendations.** Recommending a named fund or
    stock, sized to an individual's finances, with a platform and timing, is
    the core of what the SEBI (Investment Advisers) Regulations, 2013 regulate.
-   Spendly is not a registered investment adviser.
+   Vittova is not a registered investment adviser.
 2. **Referral / affiliate links.** Linking recommendations to brokers,
    especially with referral codes, adds a conflict of interest and could look
    like undisclosed paid promotion. SEBI's 2024–25 rules restricting
@@ -61,7 +61,7 @@ that discusses investing, returns, financial products or advice.
 | Broker/gold chips and invented referral codes removed; "goal" selector that steered toward stocks/funds removed; placeholder text changed from "Where should I invest 5000 rs?" to spending questions. | `frontend/src/pages/Chatbot.jsx` |
 | Unused affiliate chatbot route deleted. | `backend/routes/chatbot.js` (removed) |
 | Wealth: "Safe to invest" badge and index-return claim removed; projection is now "How regular saving compounds", an illustration with a **user-chosen assumed rate** (4/6/8/10%, default 6%), showing amount put in rather than "returns", with a footnote that it is not a forecast or recommendation and real investments can lose value. | `frontend/src/pages/Wealth.jsx` |
-| Disclaimer wording: "General financial education, not investment advice. Spendly is not a SEBI-registered investment adviser." No "SEBI-compliant" claims remain in code or copy. | `InvestmentDisclaimer.jsx`, `Chatbot.jsx`, `PrivacyPolicy.jsx`, `TermsOfService.jsx`, `coachContent.js` |
+| Disclaimer wording: "General financial education, not investment advice. Vittova is not a SEBI-registered investment adviser." No "SEBI-compliant" claims remain in code or copy. | `InvestmentDisclaimer.jsx`, `Chatbot.jsx`, `PrivacyPolicy.jsx`, `TermsOfService.jsx`, `coachContent.js` |
 | Burn-rate AI tip: prompt forbids brand/product names and links; output links stripped. | `backend/routes/burnRate.js` |
 | Paisa Score: fake percentile removed; every component is computed from the user's data and explained; labelled as not a credit score. | `backend/lib/paisaScore.js` |
 | Landing copy: no "auto-investing"; round-ups described as a figure to set aside yourself. | `Landing/Features.jsx` |

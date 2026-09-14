@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 // ── Floating orbs background ──
 function GlowOrb({ className }) {
@@ -43,8 +44,8 @@ function AppMockup() {
           {/* Top bar */}
           <div className="flex items-center justify-between mb-2">
             <div>
-              <p className="text-[10px] text-zinc-500">Total Balance</p>
-              <p className="text-2xl font-bold text-white tracking-tight">₹1,24,800</p>
+              <p className="text-[10px] text-zinc-500">Spent this month · example</p>
+              <p className="text-2xl font-bold text-white tracking-tight">₹18,420</p>
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-400 text-xs font-bold text-black">
               AK
@@ -53,8 +54,8 @@ function AppMockup() {
 
           {/* Spending Card */}
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
-            <p className="mb-1 text-[10px] font-semibold text-lime-400">↑ Saved this month</p>
-            <p className="text-lg font-bold text-white">₹3,240</p>
+            <p className="mb-1 text-[10px] font-semibold text-lime-400">Safe to spend</p>
+            <p className="text-lg font-bold text-white">₹11,780 <span className="text-[10px] font-medium text-zinc-500">left this month</span></p>
             <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
               <motion.div
                 className="h-full rounded-full bg-lime-400 shadow-[0_0_10px_rgba(132,204,22,0.5)]"
@@ -70,8 +71,8 @@ function AppMockup() {
           {[
             { name: 'Swiggy', cat: 'Food', amt: '-₹320', color: 'text-rose-400', icon: '🍕' },
             { name: 'Netflix', cat: 'Entertainment', amt: '-₹199', color: 'text-purple-400', icon: '🎬' },
-            { name: 'Salary', cat: 'Income', amt: '+₹45,000', color: 'text-emerald-400', icon: '💼' },
-            { name: 'Round-Up', cat: 'Savings', amt: '+₹48', color: 'text-emerald-400', icon: '🪙' },
+            { name: 'Auto', cat: 'Transport', amt: '-₹54', color: 'text-sky-400', icon: '🛺' },
+            { name: 'Groceries', cat: 'Food', amt: '-₹640', color: 'text-rose-400', icon: '🛒' },
           ].map((t, i) => (
             <motion.div
               key={t.name}
@@ -100,8 +101,8 @@ function AppMockup() {
           >
             <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lime-400" />
             <p className="text-[10px] text-zinc-400 leading-tight">
-              <span className="font-semibold text-lime-400">AI Insight: </span>
-              You spend 23% less on food this week. Keep it up! 🎉
+              <span className="font-semibold text-lime-400">Vittova AI: </span>
+              Food is ₹1,200 higher than this point last month.
             </p>
           </motion.div>
         </div>
@@ -115,20 +116,6 @@ function AppMockup() {
 
 // ── Hero ──
 export default function Hero() {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 1200);
-  };
-
   const fadeUp = (delay = 0) => ({
     initial: { opacity: 0, y: 30 },
     animate: { opacity: 1, y: 0 },
@@ -157,8 +144,8 @@ export default function Hero() {
         <div className="flex-1 text-center lg:text-left max-w-xl">
           {/* Badge */}
           <motion.div {...fadeUp(0)} className="inline-flex items-center gap-2 mb-6">
-            <span className="rounded-full border border-lime-500/30 bg-lime-950/40 px-4 py-1.5 text-xs font-semibold text-lime-400">
-              🚀 Now in Early Access
+            <span className="rounded-full border border-lime-500/30 bg-lime-950/40 px-4 py-1.5 text-xs font-semibold tracking-[.18em] text-lime-400">
+              PERSONAL FINANCIAL COPILOT
             </span>
           </motion.div>
 
@@ -167,13 +154,9 @@ export default function Hero() {
             {...fadeUp(0.1)}
             className="text-5xl md:text-6xl xl:text-7xl font-extrabold leading-[1.05] tracking-tight text-white mb-5"
           >
-            Master Your Money.
+            VITTOVA
             <br />
-            <span className="text-lime-400">
-              Split the Bills.
-            </span>
-            <br />
-            Zero Stress.
+            <span className="text-lime-400">Your Money&apos;s Pulse</span>
           </motion.h1>
 
           {/* Subheadline */}
@@ -181,75 +164,30 @@ export default function Hero() {
             {...fadeUp(0.2)}
             className="text-base md:text-lg text-zinc-400 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0"
           >
-            Spendly is the ultimate financial companion. Track expenses effortlessly with{' '}
-            <span className="font-semibold text-lime-400">Spendly AI</span>, automate your{' '}
-            <span className="font-semibold text-lime-400">Round-Ups</span>, and settle{' '}
-            <span className="font-semibold text-lime-400">Group Splits</span> instantly.
+            Track expenses, see what you can safely spend this month, split shared bills with friends, and ask{' '}
+            <span className="font-semibold text-lime-400">Vittova AI</span> questions answered from your own numbers.
           </motion.p>
 
-          {/* Waitlist Form */}
-          <motion.div {...fadeUp(0.3)} id="waitlist">
-            {!submitted ? (
-              <form
-                onSubmit={handleSubmit}
-                className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto lg:mx-0"
-              >
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 transition-colors focus:border-lime-400 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-lime-400 px-6 py-3 font-bold text-black transition-colors hover:bg-lime-300 disabled:opacity-70"
-                >
-                  <span className="flex items-center gap-2">
-                    {loading ? (
-                      <span className="w-4 h-4 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Join the Waitlist
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </span>
-                </button>
-              </form>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-5 py-4 max-w-md mx-auto lg:mx-0"
-              >
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                <p className="text-sm text-emerald-300 font-medium">
-                  You're on the list! We'll notify you at <strong>{email}</strong>
-                </p>
-              </motion.div>
-            )}
+          {/* Calls to action */}
+          <motion.div {...fadeUp(0.3)} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto lg:mx-0">
+            <Link
+              to="/signup"
+              className="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-lime-400 px-6 py-3 font-bold text-black transition-colors hover:bg-lime-300"
+            >
+              Create a free account
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/login"
+              className="flex items-center justify-center rounded-xl border border-zinc-800 px-6 py-3 font-bold text-zinc-200 transition-colors hover:border-lime-400"
+            >
+              Sign in
+            </Link>
           </motion.div>
 
-          {/* Social proof */}
-          <motion.div
-            {...fadeUp(0.4)}
-            className="mt-6 flex items-center gap-3 justify-center lg:justify-start text-xs text-zinc-500"
-          >
-            <div className="flex -space-x-2">
-              {['A', 'R', 'S', 'M'].map((l) => (
-                <div
-                  key={l}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-black bg-lime-400 text-[9px] font-bold text-black"
-                >
-                  {l}
-                </div>
-              ))}
-            </div>
-            <span>2,400+ people already on the waitlist</span>
-          </motion.div>
+          <motion.p {...fadeUp(0.4)} className="mt-6 text-xs text-zinc-500">
+            Android app in early access. General financial education, not investment advice.
+          </motion.p>
         </div>
 
         {/* Right: App Mockup */}

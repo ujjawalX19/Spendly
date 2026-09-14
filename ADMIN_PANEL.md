@@ -1,4 +1,4 @@
-# Spendly Owner Control Center
+# Vittova Owner Control Center
 
 A private operations panel for the app owner. It is a **separate web app**
 (`frontend/admin`) that talks to the existing backend's owner-only API
@@ -23,7 +23,7 @@ A private operations panel for the app owner. It is a **separate web app**
 1. **Database** — in the Supabase SQL editor, run `supabase/v1_4_admin_ops.sql`
    (after `v1_3_product_core.sql`), then `supabase/tests/verify_production.sql`
    and confirm the new checks pass.
-2. **Owner account** — sign up / sign in to Spendly with the owner address and
+2. **Owner account** — sign up / sign in to Vittova with the owner address and
    confirm the email. Then, in the SQL editor:
    ```sql
    update public.profiles set role = 'admin' where email = '<owner email>';
@@ -58,7 +58,7 @@ exist, the panel shows an explained dash, never zero or an estimate:
 | Pro source | Every entitlement is a manual grant. Grants before the audit log existed show "manual (before audit log)". |
 | Active users | Last authenticated API request (`profiles.last_active_at`), written at most every 10 minutes per user. Tracking starts when v1.4 is deployed. |
 | Goals | No goals table; counts users with a savings target set. |
-| Income | Not tracked by Spendly. |
+| Income | Not tracked by Vittova. |
 | UPI detections | Stay on the Android device until the user confirms; only confirmations reach the server. |
 | CSV imports | Not a feature (CSV export only). |
 | Deletions | Accounts are hard-deleted; counted from telemetry since v1.4. Expense deletions are not logged. |

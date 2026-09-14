@@ -59,7 +59,7 @@ router.get('/status', protect, async (req, res) => {
 const billingUnavailable = (req, res) => res.status(501).json({
     success: false,
     code: 'BILLING_NOT_AVAILABLE',
-    message: 'Spendly Pro is not available for purchase yet.',
+    message: 'Vittova Pro is not available for purchase yet.',
 });
 
 // Reserved for a future server-verified Google Play purchase flow. They never

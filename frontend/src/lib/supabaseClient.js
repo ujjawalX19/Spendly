@@ -11,7 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /**
  * Supabase client — authentication and reading the user's own profile only.
  *
- * All data writes go through the Spendly backend; the database grants this
+ * All data writes go through the Vittova backend; the database grants this
  * (anon-key) client SELECT on the user's own rows and nothing else.
  *
  * flowType 'pkce': OAuth, email confirmation and password-reset links return a

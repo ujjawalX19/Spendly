@@ -24,14 +24,14 @@ export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-[#09090b] px-6 py-12 text-zinc-300">
       <div className="mx-auto max-w-3xl">
-        <Link to="/" className="text-sm text-zinc-500 hover:text-zinc-300">← Spendly</Link>
+        <Link to="/" className="text-sm text-zinc-500 hover:text-zinc-300">← Vittova</Link>
         <h1 className="mt-6 text-3xl font-black text-white">Privacy Policy</h1>
         <p className="mt-2 text-sm text-zinc-500">Last updated: {POLICY_LAST_UPDATED}</p>
 
         <div className="mt-8 space-y-8 text-sm leading-7">
           <p>
-            This policy explains what information the Spendly Android app and web app collect, why, who processes it, how long
-            it is kept, and how to delete it. Spendly is an expense tracker. It does not move money, connect to your bank
+            This policy explains what information the Vittova Android app and web app collect, why, who processes it, how long
+            it is kept, and how to delete it. Vittova is an expense tracker. It does not move money, connect to your bank
             account, or sell your data.
           </p>
 
@@ -44,7 +44,7 @@ export default function PrivacyPolicy() {
             </ul>
           </Section>
 
-          <Section title="2. Information created while you use Spendly">
+          <Section title="2. Information created while you use Vittova">
             <ul className="list-disc space-y-1 pl-5">
               <li>Round-up totals, logging streaks, weekly Spend Score history and statement-import history (bank name, number of transactions, statement period).</li>
               <li>Usage counters for free-plan limits (for example, coach questions asked today).</li>
@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
 
           <Section title="3. Payment notifications (Android, optional)">
             <p>
-              If you turn on Android <strong className="text-zinc-100">Notification Access</strong> for Spendly, the app can
+              If you turn on Android <strong className="text-zinc-100">Notification Access</strong> for Vittova, the app can
               detect payments from these supported apps only:
             </p>
             <p className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs leading-6 text-zinc-400">
@@ -63,9 +63,9 @@ export default function PrivacyPolicy() {
             </p>
             <ul className="list-disc space-y-1 pl-5">
               <li>Notifications from every other app (for example WhatsApp, SMS/messages, email and social apps) are ignored and not read.</li>
-              <li>A supported notification is analysed on your phone. If it describes a completed payment, Spendly keeps only the amount, payee name, app name, time and payment type in a private queue on your device for up to 7 days. The notification text itself is not saved or uploaded.</li>
+              <li>A supported notification is analysed on your phone. If it describes a completed payment, Vittova keeps only the amount, payee name, app name, time and payment type in a private queue on your device for up to 7 days. The notification text itself is not saved or uploaded.</li>
               <li>Nothing is sent to our servers unless you tap <em>Add expense</em>. Only then are the amount, payee name and time saved to your account as an expense.</li>
-              <li>Spendly does not request SMS permission and does not read SMS.</li>
+              <li>Vittova does not request SMS permission and does not read SMS.</li>
               <li>You can turn Notification Access off at any time in Android settings.</li>
             </ul>
           </Section>
@@ -97,12 +97,12 @@ export default function PrivacyPolicy() {
           <Section title="6. Service providers">
             <ul className="list-disc space-y-1 pl-5">
               <li><strong className="text-zinc-100">Supabase:</strong> authentication and database hosting.</li>
-              <li><strong className="text-zinc-100">Render:</strong> hosting for the Spendly API server.</li>
-              <li><strong className="text-zinc-100">Vercel:</strong> hosting for the Spendly website.</li>
+              <li><strong className="text-zinc-100">Render:</strong> hosting for the Vittova API server.</li>
+              <li><strong className="text-zinc-100">Vercel:</strong> hosting for the Vittova website.</li>
               <li><strong className="text-zinc-100">Google:</strong> Google Sign-In (if you choose it) and the Gemini API (section 4).</li>
             </ul>
             <p>These providers process data on our behalf and may store it on servers outside India.</p>
-            <p>Spendly does not currently offer in-app purchases or subscriptions, and does not send push notifications.</p>
+            <p>Vittova does not currently offer in-app purchases or subscriptions, and does not send push notifications.</p>
           </Section>
 
           <Section title="7. Security">
@@ -133,18 +133,18 @@ export default function PrivacyPolicy() {
             <ul className="list-disc space-y-1 pl-5">
               <li><strong className="text-zinc-100">Access and portability:</strong> export your expenses as a CSV file from Settings.</li>
               <li><strong className="text-zinc-100">Correction:</strong> edit or delete any expense in the app.</li>
-              <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">spendly account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score and streak history, import history and coach conversations, and the group pools you created.</li>
+              <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">Vittova account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score and streak history, import history and coach conversations, and the group pools you created.</li>
               <li><strong className="text-zinc-100">Withdraw consent:</strong> turn off Notification Access in Android settings, or stop using AI features.</li>
             </ul>
             <p>To exercise any right or raise a grievance, email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
           </Section>
 
           <Section title="11. Children">
-            <p>Spendly is intended for people aged 18 and over. We do not knowingly collect data from children. If you believe a child has created an account, contact us and we will delete it.</p>
+            <p>Vittova is intended for people aged 18 and over. We do not knowingly collect data from children. If you believe a child has created an account, contact us and we will delete it.</p>
           </Section>
 
           <Section title="12. Not financial advice">
-            <p>Spendly provides expense tracking and general financial education. It does not recommend any security, fund, broker or platform and is not a SEBI-registered investment adviser.</p>
+            <p>Vittova provides expense tracking and general financial education. It does not recommend any security, fund, broker or platform and is not a SEBI-registered investment adviser.</p>
           </Section>
 
           <Section title="13. Changes">

@@ -52,7 +52,7 @@ treats the URL as untrusted input.
 **Android App Links (verified `https://` links) are preferable for production**
 and are feasible:
 
-1. Use a domain you control (e.g. `spendly.app`, or the Vercel domain).
+1. Use the Vittova domain (`vittova.in`) once DNS and HTTPS are verified.
 2. Publish `https://<domain>/.well-known/assetlinks.json` containing package
    `com.spendly.app` and the **SHA-256 fingerprint of the Play App Signing key**
    (Play Console → Setup → App signing), plus the upload key for testing.
@@ -73,13 +73,15 @@ Supabase → Authentication → URL Configuration → **Redirect URLs** must con
 ```
 spendly://login-callback
 spendly://reset-password
+https://vittova.in/auth/callback
+https://vittova.in/reset-password
 https://spendly-iota.vercel.app/auth/callback
 https://spendly-iota.vercel.app/reset-password
 http://localhost:5173/auth/callback
 http://localhost:5173/reset-password
 ```
 
-(Replace the Vercel domain with the production site.) If an entry is missing,
+Site URL: `https://vittova.in` (only after the domain serves the site over HTTPS). Keep the `spendly-iota.vercel.app` entries until vittova.in is verified. **Delete any `pendly://` entry (typo).** The `spendly://` scheme is a legacy identifier kept deliberately after the Vittova rebrand; see REBRAND_VITTOVA.md. If an entry is missing,
 Supabase silently redirects to the **Site URL** and the user lands on the
 website instead of the app.
 

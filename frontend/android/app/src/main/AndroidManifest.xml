@@ -62,7 +62,7 @@
         <!-- UPI Payment Notification Listener Service -->
         <service
             android:name=".PaymentNotificationListener"
-            android:label="Spendly Payment Tracker"
+            android:label="Vittova Payment Tracker"
             android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
@@ -83,11 +83,11 @@
 
     <!--
         Permissions. Deliberately minimal.
-        - INTERNET: talk to the Spendly API and Supabase.
+        - INTERNET: talk to the Vittova API and Supabase.
         Notification access is NOT a manifest permission: the listener service
         above is protected by BIND_NOTIFICATION_LISTENER_SERVICE (which only the
         system holds), and the user grants access in Android settings.
-        POST_NOTIFICATIONS was removed: Spendly does not post notifications.
+        POST_NOTIFICATIONS was removed: Vittova does not post notifications.
         SMS permissions are not requested.
     -->
     <uses-permission android:name="android.permission.INTERNET" />

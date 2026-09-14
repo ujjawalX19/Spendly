@@ -66,7 +66,7 @@ export default function ResetPassword() {
                         <p className="mt-3 text-sm text-zinc-400">Use your new password next time you sign in.</p>
                     </div>
                     <button type="button" onClick={() => navigate('/dash', { replace: true })} className="h-12 w-full rounded-xl bg-lime-400 text-sm font-extrabold text-black">
-                        Continue to Spendly
+                        Continue to Vittova
                     </button>
                 </div>
             </AuthLayout>

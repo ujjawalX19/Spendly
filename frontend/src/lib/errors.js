@@ -23,8 +23,8 @@ const BY_STATUS = {
   422: 'We could not read that. Please check it and try again.',
   429: 'Too many requests in a row. Please wait a moment and try again.',
   500: 'Something went wrong on our side. Please try again in a moment.',
-  502: 'Spendly is having trouble reaching its server. Please try again shortly.',
-  503: 'Spendly is temporarily unavailable. Please try again in a few minutes.',
+  502: 'Vittova is having trouble reaching its server. Please try again shortly.',
+  503: 'Vittova is temporarily unavailable. Please try again in a few minutes.',
   504: 'The server took too long to respond. Please try again.',
 };
 

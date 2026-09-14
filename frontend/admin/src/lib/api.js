@@ -39,7 +39,7 @@ export async function adminApi(path, { method = 'GET', body, query } = {}) {
       credentials: 'omit',
     });
   } catch {
-    throw new ApiError('Cannot reach the Spendly API. It may be waking up; try again in a moment.', 0);
+    throw new ApiError('Cannot reach the Vittova API. It may be waking up; try again in a moment.', 0);
   }
 
   const json = await response.json().catch(() => ({}));

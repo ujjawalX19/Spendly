@@ -1,5 +1,5 @@
 /**
- * PdfImport.jsx — Spendly v1
+ * PdfImport.jsx — Vittova
  * ─────────────────────────────────────────────────────────────
  * Bank Statement PDF import interface. Gated behind Pro.
  */
@@ -74,7 +74,7 @@ export default function PdfImport() {
     <ProGate
       feature="pdf_import"
       title="Bank Statement Import"
-      description="Import past expenses from a bank statement PDF. This is planned for Spendly Pro, which is not available yet."
+      description="Import past expenses from a bank statement PDF. This is planned for Vittova Pro, which is not available yet."
     >
       <motion.div
         className="space-y-6 pb-6 p-4 max-w-lg mx-auto"
@@ -173,7 +173,7 @@ export default function PdfImport() {
               <div className="flex justify-between"><span>Bank:</span> <span className="font-bold text-white">{result.bankName}</span></div>
               <div className="flex justify-between"><span>New transactions added:</span> <span className="font-bold text-white">{result.imported}</span></div>
               {result.duplicatesSkipped > 0 && (
-                <div className="flex justify-between"><span>Already in Spendly (skipped):</span> <span className="font-bold text-white">{result.duplicatesSkipped}</span></div>
+                <div className="flex justify-between"><span>Already in Vittova (skipped):</span> <span className="font-bold text-white">{result.duplicatesSkipped}</span></div>
               )}
               {result.invalidRowsSkipped > 0 && (
                 <div className="flex justify-between"><span>Unreadable rows skipped:</span> <span className="font-bold text-white">{result.invalidRowsSkipped}</span></div>

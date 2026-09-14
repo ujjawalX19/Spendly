@@ -1,5 +1,5 @@
 /**
- * cancellationGuides — how to actually cancel the things Spendly detects.
+ * cancellationGuides — how to actually cancel the things Vittova detects.
  *
  * Detecting a forgotten subscription is the easy half and every competitor
  * does it. What people pay for is the outcome: the money stops leaving their
@@ -16,7 +16,7 @@
  * matches on a normalised name rather than exact lookups.
  *
  * Every URL here is a cancellation or subscription-management page, not a
- * marketing page or a signup link. Nothing in this file earns Spendly money;
+ * marketing page or a signup link. Nothing in this file earns Vittova money;
  * that is the point — the user has to be able to trust the recommendation to
  * cancel.
  */

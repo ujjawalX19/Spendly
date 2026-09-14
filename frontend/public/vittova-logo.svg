@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 1254 1254" role="img" aria-label="Vittova">
+  <defs>
+    <radialGradient id="tile" cx="45%" cy="22%" r="90%">
+      <stop offset="0%" stop-color="#0F2329"/>
+      <stop offset="55%" stop-color="#07141A"/>
+      <stop offset="100%" stop-color="#04070C"/>
+    </radialGradient>
+    <linearGradient id="pulse" x1="0" y1="320" x2="0" y2="950" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E6FF4C"/>
+      <stop offset="48%" stop-color="#8FF03A"/>
+      <stop offset="100%" stop-color="#2BD460"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+  </defs>
+  <rect x="66" y="62" width="1122" height="1128" rx="262" fill="url(#tile)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#7BEA2F" stroke-width="116" opacity="0.3" filter="url(#glow)">
+      <path d="M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636"/>
+      <path d="M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998"/>
+    </g>
+    <path d="M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998" stroke="url(#pulse)" stroke-width="116"/>
+    <path d="M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636" stroke="#07131A" stroke-width="134"/>
+    <path d="M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636" stroke="url(#pulse)" stroke-width="116"/>
+  </g>
+</svg>

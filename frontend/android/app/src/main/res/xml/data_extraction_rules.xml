@@ -2,7 +2,7 @@
 <!--
   Android 12+ (android:dataExtractionRules).
 
-  Same reasoning as backup_rules.xml: Spendly's auth session is stored on the
+  Same reasoning as backup_rules.xml: Vittova's auth session is stored on the
   device, so neither cloud backup nor device-to-device transfer may carry it.
   Signing in again is cheap; a transferred session is an account takeover.
 -->

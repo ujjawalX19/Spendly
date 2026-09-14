@@ -1,6 +1,10 @@
-# Spendly
+# Vittova
 
-A personal financial co-pilot for India. Spendly tracks what you spend — mostly
+**Your Money's Pulse.** Website: https://vittova.in
+
+> Vittova was previously branded **Spendly**. Some technical identifiers keep the old name on purpose (Android package `com.spendly.app`, the `spendly://` auth deep links, database/storage keys, the GitHub repository and Render service names). See [REBRAND_VITTOVA.md](REBRAND_VITTOVA.md).
+
+A personal financial co-pilot for India. Vittova tracks what you spend — mostly
 without you typing anything — explains where it went, and tells you what you
 can safely spend next.
 
@@ -12,7 +16,7 @@ entering every UPI payment, which almost nobody sustains past week two.
 
 ## The approach
 
-**Track without typing.** Spendly reads the payment notifications your UPI and
+**Track without typing.** Vittova reads the payment notifications your UPI and
 banking apps already post — with your explicit permission, and nothing else —
 and turns the real ones into expenses. It does not read SMS.
 
@@ -99,7 +103,7 @@ not catch a missing filter. See `SECURITY.md`.
 ## Project structure
 
 ```text
-Spendly/
+Vittova/
 ├── backend/
 │   ├── lib/            # appTime (timezone), streak, csv — pure and tested
 │   ├── middleware/     # auth, proGate (server-side free-tier limits)
@@ -125,7 +129,7 @@ Android Studio if you are building the app.
 
 ```bash
 git clone https://github.com/ujjawalX19/Spendly.git
-cd Spendly
+cd Vittova
 npm run install:all
 ```
 
@@ -202,7 +206,7 @@ prevention, and how to report a vulnerability.
 
 ## Privacy
 
-Spendly stores your email, display name, and the expenses you record.
+Vittova stores your email, display name, and the expenses you record.
 Notification content is processed on-device and never logged or transmitted
 verbatim. Receipt images are sent to Google Gemini for OCR. You can export
 everything as CSV and delete your account and all its data from within the app.

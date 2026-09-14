@@ -31,7 +31,7 @@ function createApp() {
     // bearer token, not cookies.
     const allowedOrigins = process.env.ALLOWED_ORIGINS
         ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-        : ['https://spendly-iota.vercel.app', 'http://localhost', 'http://localhost:5173', 'https://localhost'];
+        : ['https://vittova.in', 'https://www.vittova.in', 'https://admin.vittova.in', 'https://spendly-iota.vercel.app', 'http://localhost', 'http://localhost:5173', 'http://localhost:5174', 'https://localhost'];
 
     app.use(cors({
         origin: (origin, callback) => {
@@ -93,7 +93,7 @@ function createApp() {
             res.sendFile(path.resolve(__dirname, '../frontend', 'dist', 'index.html'));
         });
     } else {
-        app.get('/', (req, res) => res.send('Spendly API running'));
+        app.get('/', (req, res) => res.send('Vittova API running'));
     }
 
     // --- Global error handler ---

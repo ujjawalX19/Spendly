@@ -219,7 +219,7 @@ async function usageMetrics(p) {
             pdfMonth: pdfImportsMonth,
             pdfTransactionsMonth: pdfRowsMonth,
             pdfFailuresMonth,
-            csv: unavailable('CSV import is not a Spendly feature (CSV export only)'),
+            csv: unavailable('CSV import is not a Vittova feature (CSV export only)'),
         },
         goals: {
             savingsTargets,

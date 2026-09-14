@@ -15,14 +15,14 @@ import android.util.Log;
  *
  * This service does NOT read SMS. It only runs after the user explicitly grants
  * Notification Access (Settings → Apps → Special app access → Notification
- * access → Spendly), and it ignores every package not on
+ * access → Vittova), and it ignores every package not on
  * {@link PaymentNotificationParser}'s allowlist before reading any text.
  *
  * Responsibilities:
  *   - {@link PaymentNotificationParser} decides what a notification means.
  *   - {@link DuplicateSuppressor} drops reposts and bank/UPI echoes.
  *   - {@link PendingPaymentStore} keeps detections until the user acts, so a
- *     payment made while Spendly is closed is not lost.
+ *     payment made while Vittova is closed is not lost.
  *   - This class handles the Android lifecycle and extracting text.
  *
  * PRIVACY: notification text is never logged or stored. Only the parsed

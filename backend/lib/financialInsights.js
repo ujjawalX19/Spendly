@@ -214,7 +214,7 @@ function toText(a) {
     return out.join('\n\n');
 }
 
-const EDUCATION_NOTE = 'General financial education, not investment advice. Spendly is not a SEBI-registered investment adviser.';
+const EDUCATION_NOTE = 'General financial education, not investment advice. Vittova is not a SEBI-registered investment adviser.';
 
 function composeAnswer(intent, f, question) {
     const insufficient = f.confidence === 'insufficient';
@@ -330,7 +330,7 @@ function composeAnswer(intent, f, question) {
                 numbers: [`Safe to spend remaining: ${inr(room)}`, amount <= room ? `Left afterwards: ${inr(room - amount)}, about ${inr((room - amount) / f.daysLeft)} a day for ${f.daysLeft} days` : `Shortfall: ${inr(amount - room)}`, f.upcomingBills ? `Bills still due: ${inr(f.upcomingBills)}` : null],
                 reasoning: 'Safe to spend already accounts for bills still due and your savings target.',
                 action: amount > room ? `Waiting until next month, or saving ${inr(Math.ceil((amount - room) / f.daysLeft))} a day, would cover it.` : '',
-                note: 'Income is not tracked in Spendly, so this uses your budget rather than your bank balance.',
+                note: 'Income is not tracked in Vittova, so this uses your budget rather than your bank balance.',
             });
         }
         case 'investing':

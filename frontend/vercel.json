@@ -1,4 +1,13 @@
 {
+  "$comment": "User website (vittova.in). www redirects to the apex; SPA routes fall back to index.html.",
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.vittova.in" }],
+      "destination": "https://vittova.in/:path",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

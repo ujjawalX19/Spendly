@@ -1,4 +1,4 @@
-# Spendly launch TODO
+# Vittova launch TODO
 
 Updated 2026-09-13 · source, GitHub `main`, Render and the built APK are all at
 commit **`1138e8e`** (Render health reports `version: 1138e8e`).
@@ -13,7 +13,7 @@ See `TEST_REPORT.md` for evidence and `API_INVENTORY.md` for endpoints.
 | UPI notification detection | ✅ | ✅ (needs v1_2 enum for `upi_auto`) | ✅ | ✅ unit · ⬜ device | Run migration; device test |
 | Safe-to-Spend / burn rate | ✅ | ✅ live | ✅ | ✅ | Ready |
 | Paisa Score (explained, /100) | ✅ | ✅ live | ✅ | ✅ | Ready |
-| Spendly AI (grounded coach) | ✅ | ✅ live (history needs v1_3 table) | ✅ | ✅ | Run migration; confirm Gemini key/model |
+| Vittova AI (grounded coach) | ✅ | ✅ live (history needs v1_3 table) | ✅ | ✅ | Run migration; confirm Gemini key/model |
 | Wealth | ✅ | ✅ live | ✅ | ✅ API | Ready (visual check signed in) |
 | Group Pool | ✅ | ⚠️ needs v1_3 (invite codes) | ✅ | ✅ API | **Blocked on migration** |
 | Recurring charges + cancellation | ✅ | ⚠️ mark-cancelled needs v1_3 | ✅ | ✅ API | **Blocked on migration** |
@@ -22,6 +22,8 @@ See `TEST_REPORT.md` for evidence and `API_INVENTORY.md` for endpoints.
 | Branding / login screen | ✅ official logo | — | ✅ | ✅ emulator | Ready |
 
 ## MANUAL ACTIONS REQUIRED (in order)
+
+**Rebrand (2026-09-14):** DNS for vittova.in, Vercel/Render domains, Supabase Site URL + redirects + email templates, Google OAuth consent branding — exact steps in [REBRAND_VITTOVA.md](REBRAND_VITTOVA.md#manual-owner-actions).
 
 1. **Run database migrations now** (production is currently missing them;
    group creation/joining, UPI and PDF expense inserts, marking subscriptions
@@ -37,7 +39,7 @@ See `TEST_REPORT.md` for evidence and `API_INVENTORY.md` for endpoints.
 3. **Render environment:** confirm `GEMINI_API_KEY` (paid tier recommended),
    optionally `GEMINI_MODEL` (default `gemini-3.5-flash`), `ALLOWED_ORIGINS`,
    `NODE_ENV=production`. Set a Google Cloud budget alert.
-4. **Device test** the current APK (`release-artifacts/Spendly-debug.apk`) with
+4. **Device test** the current APK (`release-artifacts/Vittova-debug.apk`) with
    `DEVICE_TEST_CHECKLIST.md`: Google login, reset-password email, UPI detection
    while the app is closed, CSV share, Group Pool with two accounts.
 5. **Release signing:** create an upload keystore + `keystore.properties`, enrol

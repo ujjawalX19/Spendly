@@ -1,4 +1,4 @@
-# Spendly — web and Android app
+# Vittova — web and Android app
 
 React 19 + Vite + Tailwind, packaged for Android with Capacitor 8.
 
