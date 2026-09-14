@@ -23,6 +23,10 @@ See `TEST_REPORT.md` for evidence and `API_INVENTORY.md` for endpoints.
 
 ## MANUAL ACTIONS REQUIRED (in order)
 
+**Run now (2026-09-14):**
+- `supabase/v1_5_backfill_profiles.sql` in the Supabase SQL Editor: 8 of 18 accounts have no profile row and cannot load the app on older APKs (the new app/backend repairs an account on sign-in, but the SQL fixes everyone at once).
+- Owner Console access: `update public.profiles set role = 'admin' where email = '<the address in ADMIN_EMAIL on Render>';` (production currently has 0 admin accounts). v1_4 is already applied.
+
 **Rebrand (2026-09-14):** DNS for vittova.in, Vercel/Render domains, Supabase Site URL + redirects + email templates, Google OAuth consent branding — exact steps in [REBRAND_VITTOVA.md](REBRAND_VITTOVA.md#manual-owner-actions).
 
 1. **Run database migrations now** (production is currently missing them;
