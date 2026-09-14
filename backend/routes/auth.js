@@ -46,5 +46,47 @@ router.get('/me', protect, async (req, res) => {
     res.json({ success: true, user: profile });
 });
 
+/**
+ * @route   POST /api/auth/profile
+ * @desc    Create the signed-in user's profile row if it is missing, and
+ *          return it. Idempotent.
+ *
+ * The signup trigger normally creates the row. Accounts created before the
+ * trigger existed (or while it was failing) have none, and without it the app
+ * cannot load at all. Only default values are written: nothing the client
+ * sends is used, so this cannot set Pro, role, ban or quota fields.
+ * @access  Protected
+ */
+router.post('/profile', protect, async (req, res) => {
+    const existing = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', req.user.id).maybeSingle();
+    if (existing.error) {
+        console.error('Ensure profile read error:', existing.error.message);
+        return res.status(500).json({ success: false, message: 'Server error fetching profile' });
+    }
+    if (existing.data) return res.json({ success: true, created: false, user: existing.data });
+
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(req.user.id);
+    if (authError || !authUser?.user) {
+        console.error('Ensure profile auth lookup failed:', authError?.message || 'no user');
+        return res.status(500).json({ success: false, message: 'Server error creating profile' });
+    }
+    const meta = authUser.user.user_metadata || {};
+    const fullName = String(meta.full_name || meta.name || '').slice(0, 120);
+
+    const { error: insertError } = await supabase
+        .from('profiles')
+        .upsert({ id: req.user.id, email: authUser.user.email, full_name: fullName }, { onConflict: 'id', ignoreDuplicates: true });
+    if (insertError) {
+        console.error('Ensure profile insert failed:', insertError.message);
+        return res.status(500).json({ success: false, message: 'Server error creating profile' });
+    }
+
+    const created = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', req.user.id).maybeSingle();
+    if (created.error || !created.data) {
+        return res.status(500).json({ success: false, message: 'Server error creating profile' });
+    }
+    res.status(201).json({ success: true, created: true, user: created.data });
+});
+
 module.exports = router;
 module.exports.PROFILE_COLUMNS = PROFILE_COLUMNS;

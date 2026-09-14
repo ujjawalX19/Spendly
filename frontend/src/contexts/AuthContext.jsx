@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabaseClient';
 import { isNative, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/authRedirects';
+import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 
 const AuthContext = createContext();
 
@@ -36,7 +37,21 @@ export function AuthProvider({ children }) {
   // Reading the profile is the only table access the app makes directly; the
   // database allows SELECT on the user's own row and nothing else.
   const loadProfile = useCallback(async (userId) => {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    let { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (!error && !data) {
+      // Older accounts can lack a profile row (created before the signup
+      // trigger). The backend creates one with default values, then we re-read.
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const res = await apiFetch(apiUrl('/auth/profile'), {
+          method: 'POST',
+          headers: authHeaders(sessionData.session),
+        });
+        if (res.ok) {
+          ({ data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle());
+        }
+      } catch { /* network failure: fall through to the retry screen */ }
+    }
     if (error || !data) {
       setProfileError(true);
       return null;

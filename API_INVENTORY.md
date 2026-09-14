@@ -14,6 +14,7 @@ test account (manual).
 |---|---|---|---|---|---|
 | GET | /api/health | — (uptime, `?diag=proxy`) | app.js | No | ✅ prod 200 |
 | GET | /api/auth/me | — | routes/auth.js | Yes | ✅ |
+| POST | /api/auth/profile | contexts/AuthContext.jsx (profile missing) | routes/auth.js | Yes | ✅ tested · creates a default profile only |
 | GET | /api/expenses `?q,category,source,from,to,minAmount,maxAmount,sort,limit,offset` | hooks/useExpenses.js, hooks/useTransactionSearch.js | routes/expenses.js | Yes | ✅ prod 401 · tested |
 | POST | /api/expenses | hooks/useExpenses.js | routes/expenses.js | Yes + quota | ✅ tested |
 | PATCH | /api/expenses/:id | hooks/useExpenses.js | routes/expenses.js | Yes | ✅ prod 401 (was 404) · tested |

@@ -390,3 +390,34 @@ test('unknown API routes return JSON 404', async () => {
     assert.equal(res.status, 404);
     assert.equal(res.body.success, false);
 });
+
+// ─── Missing profile self-repair ────────────────────────────────────────────
+
+test('a signed-in account without a profile row gets one, and only with default values', async () => {
+    const a = t.db.addUser({ full_name: 'Legacy User' });
+    t.db.tables.profiles = t.db.tables.profiles.filter((p) => p.id !== a.id);
+
+    assert.equal((await t.request('GET', '/api/auth/me', { token: a.token })).status, 404);
+
+    const created = await t.request('POST', '/api/auth/profile', {
+        token: a.token,
+        body: { is_pro: true, role: 'admin', is_banned: false, pro_expires_at: '2099-01-01T00:00:00Z' },
+    });
+    assert.equal(created.status, 201, created.text);
+    assert.equal(created.body.created, true);
+    assert.equal(created.body.user.id, a.id);
+
+    const row = t.db.profile(a.id);
+    assert.ok(row, 'profile row created');
+    assert.notEqual(row.is_pro, true);
+    assert.notEqual(row.role, 'admin');
+    assert.equal(row.pro_expires_at ?? null, null);
+    assert.equal(row.email, a.email);
+
+    const again = await t.request('POST', '/api/auth/profile', { token: a.token });
+    assert.equal(again.status, 200);
+    assert.equal(again.body.created, false);
+    assert.equal(t.db.tables.profiles.filter((p) => p.id === a.id).length, 1);
+
+    assert.equal((await t.request('POST', '/api/auth/profile')).status, 401);
+});

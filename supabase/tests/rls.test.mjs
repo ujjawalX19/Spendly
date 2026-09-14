@@ -306,6 +306,34 @@ test('production-like database: partial v1 extension, v1_1 applied, no v1_2', as
         await assert.rejects(db.exec(`insert into public.cancelled_subscriptions (user_id, normalized_name, merchant, monthly_amount) values ('${USERS.alice}', 'netflix', 'NETFLIX.COM', 649)`), /duplicate key/);
     });
 
+    await t.test('v1_5 backfills profiles for accounts created without one, and changes nothing else', async () => {
+        const legacy = '44444444-4444-4444-4444-444444444444';
+        await db.exec(`
+            alter table auth.users disable trigger on_auth_user_created;
+            insert into auth.users (id, email, raw_user_meta_data) values ('${legacy}', 'legacy@example.com', '{"name":"Legacy Google"}');
+            alter table auth.users enable trigger on_auth_user_created;
+            update public.profiles set monthly_budget = 4321 where id = '${USERS.alice}';
+        `);
+        const before = await db.query(`select count(*)::int as n from public.profiles where id = '${legacy}'`);
+        assert.equal(before.rows[0].n, 0);
+
+        await db.exec(sql('v1_5_backfill_profiles.sql'));
+        await db.exec(sql('v1_5_backfill_profiles.sql')); // idempotent
+
+        const row = await db.query(`select email, full_name, is_pro, role from public.profiles where id = '${legacy}'`);
+        assert.deepEqual(row.rows, [{ email: 'legacy@example.com', full_name: 'Legacy Google', is_pro: false, role: 'user' }]);
+        const alice = await db.query(`select monthly_budget::int as b from public.profiles where id = '${USERS.alice}'`);
+        assert.equal(alice.rows[0].b, 4321);
+        const orphans = await db.query('select count(*)::int as n from auth.users u left join public.profiles p on p.id = u.id where p.id is null');
+        assert.equal(orphans.rows[0].n, 0);
+
+        // The trigger still creates profiles for new signups.
+        const fresh = '55555555-5555-5555-5555-555555555555';
+        await db.exec(`insert into auth.users (id, email) values ('${fresh}', 'fresh@example.com')`);
+        const freshRow = await db.query(`select count(*)::int as n from public.profiles where id = '${fresh}'`);
+        assert.equal(freshRow.rows[0].n, 1);
+    });
+
     await db.close();
 });
 
