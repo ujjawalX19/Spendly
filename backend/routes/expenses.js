@@ -10,6 +10,7 @@ const gemini = require('../lib/gemini');
 const appTime = require('../lib/appTime');
 const { toCsv } = require('../lib/csv');
 const { validationError } = require('../lib/validation');
+const telemetry = require('../lib/opsTelemetry');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -248,6 +249,7 @@ Return ONLY raw JSON, no markdown:
     } catch (error) {
         // Receipt output may contain personal data; log only the failure type.
         console.error('Receipt scan failed:', error.code || error.name);
+        telemetry.recordEvent('receipt_scan_failed', { route: 'POST /api/expenses/scan', code: error.code || error.name });
         return res.status(502).json({ success: false, message: "We couldn't read that receipt. Try a clearer photo, or add it manually." });
     }
 

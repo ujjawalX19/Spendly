@@ -31,7 +31,6 @@ const PdfImport = lazy(() => import('./pages/PdfImport'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const DeleteAccountInfo = lazy(() => import('./pages/DeleteAccountInfo'));
-const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
@@ -76,17 +75,6 @@ function ProtectedRoute({ children }) {
   // explanation, before the dashboard.
   if (!hasOnboarded()) return <Navigate to="/welcome" replace />;
 
-  return children;
-}
-
-/**
- * Admin-only route. The API enforces `role = 'admin'` on every request; this
- * only avoids rendering a dashboard that would fail with 403s.
- */
-function AdminRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return <FullScreenLoader />;
-  if (user?.role !== 'admin') return <Navigate to="/dash" replace />;
   return children;
 }
 
@@ -251,7 +239,6 @@ function App() {
                 <Route path="/graveyard" element={<ProtectedRoute><Layout><SubscriptionGraveyard /></Layout></ProtectedRoute>} />
                 <Route path="/import" element={<ProtectedRoute><Layout><PdfImport /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute><AdminRoute><Layout><AdminDashboard /></Layout></AdminRoute></ProtectedRoute>} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

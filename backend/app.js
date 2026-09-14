@@ -9,6 +9,7 @@ const helmet = require('helmet');
 const fs = require('fs');
 const path = require('path');
 const { ipLimiter, authFailureLimiter, parseTrustProxy, resolveClientIp } = require('./middleware/rateLimits');
+const { requestMetrics } = require('./lib/opsTelemetry');
 
 function createApp() {
     const app = express();
@@ -49,6 +50,8 @@ function createApp() {
     )(req, res, next));
 
     // --- Rate limiting (see middleware/rateLimits.js) ---
+    // Latency / 5xx telemetry for the owner admin panel (no request data).
+    app.use('/api/', requestMetrics);
     app.use('/api/', ipLimiter);
     app.use('/api/', authFailureLimiter);
 

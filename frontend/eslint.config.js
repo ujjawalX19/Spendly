@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   // Capacitor sync output and Android build intermediates are generated code,
   // not frontend source subject to this lint configuration.
-  globalIgnores(['dist/**', 'android/**']),
+  globalIgnores(['dist/**', 'android/**', 'admin/dist/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

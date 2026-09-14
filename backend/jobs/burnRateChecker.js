@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { supabase } = require('../config/supabase');
 const appTime = require('../lib/appTime');
 const { computeBurnRate } = require('../lib/burnRate');
+const telemetry = require('../lib/opsTelemetry');
 
 /**
  * burnRateChecker — daily count of users projected to overspend, at 09:00 IST.
@@ -34,6 +35,7 @@ async function runOnce(now = new Date()) {
 
         if (error) {
             console.error('[BurnRateChecker] Failed to load profiles:', error.message);
+            telemetry.recordJobRun('burn_rate_checker', false, 'DB_READ');
             return;
         }
         if (!profiles || profiles.length === 0) break;
@@ -55,12 +57,16 @@ async function runOnce(now = new Date()) {
 
     // Aggregate only — never log user ids or amounts.
     console.log(`[BurnRateChecker] ${flagged}/${checked} active users projected to exceed budget.`);
+    telemetry.recordJobRun('burn_rate_checker', true);
 }
 
 function startBurnRateChecker() {
     if (process.env.ENABLE_BURN_RATE_JOB !== 'true') return;
     cron.schedule('0 9 * * *', () => {
-        runOnce().catch((e) => console.error('[BurnRateChecker] Fatal error:', e.message));
+        runOnce().catch((e) => {
+            console.error('[BurnRateChecker] Fatal error:', e.message);
+            telemetry.recordJobRun('burn_rate_checker', false, e.name || 'UNEXPECTED');
+        });
     }, { timezone: appTime.APP_TIMEZONE });
     console.log('Burn-rate checker scheduled: daily at 09:00', appTime.APP_TIMEZONE);
 }

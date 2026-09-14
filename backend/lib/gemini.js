@@ -11,6 +11,7 @@
  */
 
 const { GoogleGenAI } = require('@google/genai');
+const telemetry = require('./opsTelemetry');
 
 // Verify against https://ai.google.dev/gemini-api/docs/models before release.
 const DEFAULT_MODEL = 'gemini-3.5-flash';
@@ -38,7 +39,19 @@ function modelName() {
  * @param {{maxOutputTokens?: number, temperature?: number}} [options]
  * @returns {Promise<string>} the model's text ('' when it returned nothing)
  */
-async function generateText(contents, { maxOutputTokens = 800, temperature } = {}) {
+async function generateText(contents, options = {}) {
+    try {
+        const text = await callModel(contents, options);
+        telemetry.recordAiSuccess();
+        return text;
+    } catch (err) {
+        // Only a code or error class: provider messages can echo the prompt.
+        telemetry.recordAiFailure(err.code || err.status || err.name);
+        throw err;
+    }
+}
+
+async function callModel(contents, { maxOutputTokens = 800, temperature } = {}) {
     const ai = getClient();
     if (!ai) throw Object.assign(new Error('AI service not configured'), { code: 'AI_NOT_CONFIGURED' });
 

@@ -86,9 +86,39 @@ const protect = async (req, res, next) => {
         });
     }
 
+    touchActivity(user.id);
+
     // Controllers use req.user.id for all user-scoped queries.
-    req.user = { id: user.id, email: user.email };
+    // emailConfirmed comes from Supabase Auth, never from the client.
+    req.user = { id: user.id, email: user.email, emailConfirmed: Boolean(user.email_confirmed_at) };
     return userApiLimiter(req, res, next);
 };
+
+/**
+ * Record that a user was active, for the admin panel's active-user counts.
+ * At most one write per user per ACTIVITY_WRITE_MS, fire-and-forget: a failed
+ * or missing column (migration v1.4 not run) never affects the request.
+ */
+const ACTIVITY_WRITE_MS = 10 * 60 * 1000;
+const lastActivityWrite = new Map(); // userId -> ms
+let activityErrorLogged = false;
+
+function touchActivity(userId) {
+    const now = Date.now();
+    const last = lastActivityWrite.get(userId);
+    if (last && now - last < ACTIVITY_WRITE_MS) return;
+    if (lastActivityWrite.size > 20000) lastActivityWrite.clear();
+    lastActivityWrite.set(userId, now);
+
+    Promise.resolve()
+        .then(() => supabase.from('profiles').update({ last_active_at: new Date(now).toISOString() }).eq('id', userId))
+        .then((result) => {
+            if (result?.error && !activityErrorLogged) {
+                activityErrorLogged = true;
+                console.error('Activity tracking unavailable (run supabase/v1_4_admin_ops.sql):', result.error.message);
+            }
+        })
+        .catch(() => { /* best effort */ });
+}
 
 module.exports = { protect, invalidateBanCache };

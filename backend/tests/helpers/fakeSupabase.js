@@ -27,6 +27,31 @@ const CASCADE = [
     ['group_members', 'user_id'], ['groups', 'created_by'], ['profiles', 'id'],
 ];
 
+function ilikeTest(c, pattern) {
+    const re = new RegExp(`^${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.')}$`, 'i');
+    return (r) => re.test(String(r[c] ?? ''));
+}
+
+/** Mirror of the public.admin_user_stats view (supabase/v1_4_admin_ops.sql). */
+function adminUserStats(tables) {
+    const of = (table, userId, extra = () => true) => (tables[table] || []).filter((r) => r.user_id === userId && extra(r));
+    const latest = (...lists) => lists.flat().map((r) => r.created_at).filter(Boolean).sort().pop() || null;
+    return (tables.profiles || []).map((p) => {
+        const expenses = of('expenses', p.id);
+        const questions = of('ai_chat_history', p.id, (r) => r.role === 'user');
+        return {
+            id: p.id, email: p.email, full_name: p.full_name, role: p.role, is_banned: p.is_banned,
+            is_pro: p.is_pro, pro_expires_at: p.pro_expires_at, created_at: p.created_at, last_active_at: p.last_active_at ?? null,
+            expense_count: expenses.length,
+            goal_count: Number(p.investment_target) > 0 ? 1 : 0,
+            subscription_count: of('recurring_bills', p.id).length + of('cancelled_subscriptions', p.id).length,
+            ai_question_count: questions.length,
+            group_count: of('group_members', p.id).length,
+            last_activity_at: latest(expenses, questions, of('pdf_imports', p.id)),
+        };
+    });
+}
+
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 
 function same(a, b) {
@@ -77,6 +102,7 @@ class Query {
     select(columns = '*', options) {
         this.columns = columns;
         if (options?.count) this.countMode = options.count;
+        if (options?.head) this.head = true;
         if (this.op !== 'select') this.returning = true;
         return this;
     }
@@ -94,11 +120,26 @@ class Query {
     in(c, vs) { this.filters.push((r) => vs.some((v) => same(r[c], v))); return this; }
     is(c, v) { this.filters.push((r) => (v === null ? r[c] === null || r[c] === undefined : r[c] === v)); return this; }
     ilike(c, pattern) {
-        const re = new RegExp(`^${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.')}$`, 'i');
-        this.filters.push((r) => re.test(String(r[c] ?? '')));
+        this.filters.push(ilikeTest(c, pattern));
         return this;
     }
-    order(c, { ascending = true } = {}) { this.orders.push({ c, ascending }); return this; }
+    /** PostgREST `or`: comma-separated `col.op.value` terms (ilike, is, lt, gt, eq). */
+    or(expr) {
+        const tests = expr.split(',').map((term) => {
+            const [c, op, ...rest] = term.split('.');
+            const v = rest.join('.');
+            if (op === 'ilike') return ilikeTest(c, v);
+            if (op === 'is') return (r) => (v === 'null' ? r[c] === null || r[c] === undefined : String(r[c]) === v);
+            if (op === 'lt') return (r) => r[c] != null && compare(r[c], v) < 0;
+            if (op === 'gt') return (r) => r[c] != null && compare(r[c], v) > 0;
+            if (op === 'eq') return (r) => same(r[c], v);
+            throw new Error(`fake or(): unsupported op ${op}`);
+        });
+        this.filters.push((r) => tests.some((f) => f(r)));
+        return this;
+    }
+    // Postgres default: NULLS LAST ascending, NULLS FIRST descending.
+    order(c, { ascending = true, nullsFirst = !ascending } = {}) { this.orders.push({ c, ascending, nullsFirst }); return this; }
     range(from, to) { this.rangeFrom = from; this.rangeTo = to; return this; }
     limit(n) { this.limitN = n; return this; }
     single() { this.mode = 'single'; return this; }
@@ -109,6 +150,7 @@ class Query {
     }
 
     rows() {
+        if (this.table === 'admin_user_stats') return adminUserStats(this.db.tables);
         if (!this.db.tables[this.table]) this.db.tables[this.table] = [];
         return this.db.tables[this.table];
     }
@@ -151,10 +193,16 @@ class Query {
 
         if (this.op === 'select') {
             let rows = matches();
-            for (const { c, ascending } of [...this.orders].reverse()) {
-                rows = [...rows].sort((a, b) => (ascending ? 1 : -1) * compare(a[c], b[c]));
+            for (const { c, ascending, nullsFirst } of [...this.orders].reverse()) {
+                rows = [...rows].sort((a, b) => {
+                    const an = a[c] === null || a[c] === undefined;
+                    const bn = b[c] === null || b[c] === undefined;
+                    if (an || bn) return an === bn ? 0 : (an ? -1 : 1) * (nullsFirst ? 1 : -1);
+                    return (ascending ? 1 : -1) * compare(a[c], b[c]);
+                });
             }
             const count = this.countMode ? rows.length : null;
+            if (this.head) return { data: null, error: null, count };
             if (this.rangeFrom !== null) rows = rows.slice(this.rangeFrom, this.rangeTo + 1);
             if (this.limitN !== null) rows = rows.slice(0, this.limitN);
             return this.finish(rows.map((r) => this.project(r)), count);
@@ -230,7 +278,7 @@ function createFakeSupabase() {
                 const id = db.tokens.get(token);
                 const user = id && db.authUsers.get(id);
                 if (!user) return { data: { user: null }, error: { message: 'invalid token' } };
-                return { data: { user: { id: user.id, email: user.email } }, error: null };
+                return { data: { user: { id: user.id, email: user.email, email_confirmed_at: user.emailConfirmed === false ? null : '2026-01-01T00:00:00Z' } }, error: null };
             },
             admin: {
                 deleteUser: async (id) => {
@@ -242,6 +290,15 @@ function createFakeSupabase() {
                         db.tables[table] = (db.tables[table] || []).filter((r) => !same(r[column], id));
                     }
                     return { data: {}, error: null };
+                },
+                getUserById: async (id) => {
+                    const user = db.authUsers.get(id);
+                    if (!user) return { data: { user: null }, error: { message: 'User not found' } };
+                    return { data: { user: { id, email: user.email, email_confirmed_at: '2026-01-01T00:00:00Z', last_sign_in_at: null, app_metadata: { providers: ['email'] } } }, error: null };
+                },
+                listUsers: async () => {
+                    if (db.failures.find((f) => f.table === 'auth')) return { data: null, error: { message: 'simulated failure' } };
+                    return { data: { users: [...db.authUsers.values()].slice(0, 1) }, error: null };
                 },
                 updateUserById: async (id, attrs) => {
                     db.calls.push(['updateUserById', id, attrs]);
@@ -256,11 +313,12 @@ function createFakeSupabase() {
         const id = overrides.id || crypto.randomUUID();
         const email = overrides.email || `${id.slice(0, 8)}@example.com`;
         const token = `token-${id}`;
-        db.authUsers.set(id, { id, email });
+        db.authUsers.set(id, { id, email, emailConfirmed: overrides.emailConfirmed !== false });
+        delete overrides.emailConfirmed;
         db.tokens.set(token, id);
         db.tables.profiles = db.tables.profiles || [];
         db.tables.profiles.push({
-            id, email, full_name: overrides.full_name || 'Test User', role: 'user', is_banned: false,
+            id, email, full_name: overrides.full_name || 'Test User', role: 'user', is_banned: false, created_at: new Date().toISOString(),
             monthly_budget: 10000, investment_target: 0, karma_score: 100,
             streak_current: 0, streak_longest: 0, streak_last_log: null, total_chillar: 0,
             is_pro: false, pro_expires_at: null, streak_freezes_remaining: 0, paisa_score: 0,

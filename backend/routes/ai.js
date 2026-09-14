@@ -10,6 +10,7 @@ const appTime = require('../lib/appTime');
 const { classifyIntent, buildFacts, composeAnswer, toText, numbersAreGrounded, EDUCATION_NOTE } = require('../lib/financialInsights');
 const { sanitizeReply } = require('../lib/coachContent');
 const { validationError } = require('../lib/validation');
+const telemetry = require('../lib/opsTelemetry');
 
 /**
  * Spendly AI — a money coach grounded in the user's own data.
@@ -145,6 +146,7 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
                     }
                     if (text) {
                         console.warn('Coach reply rejected: contained figures not in the computed facts');
+                        telemetry.recordEvent('ai_reply_rejected', { severity: 'warning', route: 'POST /api/ai/invest-advice', code: 'UNGROUNDED_FIGURES' });
                         retryNote = 'Your previous reply used a rupee amount or percentage that is not in the draft or facts. Use only figures copied exactly from them.';
                     } else {
                         break;

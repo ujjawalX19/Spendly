@@ -108,6 +108,26 @@ checks as (
            (select coalesce(string_agg(email, ', '), 'none') from public.profiles where role = 'admin')
 
     union all
+    -- 11b. Owner admin panel objects (v1_4_admin_ops.sql) are service-role only
+    select 'No client access to ' || o || ' (' || r || ')',
+           case when to_regclass('public.' || o) is null then false
+                else not has_table_privilege(r, 'public.' || o, 'SELECT') end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_4_admin_ops.sql' else '' end
+    from unnest(array['admin_audit_log', 'ops_events', 'admin_user_stats']) as o,
+         unnest(array['anon', 'authenticated']) as r
+
+    union all
+    select 'RLS enabled: ' || o,
+           coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.' || o)), false),
+           ''
+    from unnest(array['admin_audit_log', 'ops_events']) as o
+
+    union all
+    select 'Exactly one admin account (owner)',
+           (select count(*) from public.profiles where role = 'admin') = 1,
+           (select count(*)::text || ' admin(s); must also match ADMIN_EMAIL on the server' from public.profiles where role = 'admin')
+
+    union all
     -- 12. Every table referencing profiles cascades on delete (no orphaned data)
     select 'ON DELETE CASCADE: ' || con.conrelid::regclass::text || '.' || con.conname,
            con.confdeltype = 'c',

@@ -49,8 +49,30 @@ test account (manual).
 | POST | /api/pro/activate, /api/pro/add-freezes | — | routes/pro.js (501 until billing) | Yes | ✅ 501 by design |
 | DELETE | /api/account | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
 | PUT | /api/account/budget, /api/account/investment-target | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
-| GET/POST/DELETE | /api/admin/* | pages/Admin/AdminDashboard.jsx | routes/admin.js | Admin role | ✅ tested |
+
+### Owner admin API (separate admin web app, `frontend/admin`)
+
+All behind `protect` + `requireOwner`: confirmed email = `ADMIN_EMAIL` **and** `profiles.role = 'admin'`. Non-owners get `404`. See [ADMIN_PANEL.md](ADMIN_PANEL.md).
+
+| Method | Path | Admin app page | Notes | Status |
+|---|---|---|---|---|
+| GET | /api/admin/me | App.jsx (session gate) | Owner check | ✅ tested |
+| GET | /api/admin/overview | pages/Overview.jsx | Aggregates only | ✅ tested |
+| GET | /api/admin/health | pages/Health.jsx, Overview.jsx | Real probes | ✅ tested |
+| GET | /api/admin/users | pages/Users.jsx | Server-side filters/sort/pagination; **needs v1_4 view** for usage columns | ✅ tested |
+| GET | /api/admin/users/:id | pages/UserDetail.jsx | Counts only; audited view | ✅ tested |
+| GET | /api/admin/users/:id/timeline | pages/UserDetail.jsx | No amounts/contents | ✅ tested |
+| POST | /api/admin/users/:id/suspend, /reinstate | pages/UserDetail.jsx | Reason required, audited | ✅ tested |
+| POST/DELETE | /api/admin/users/:id/pro | UserDetail.jsx, Pro.jsx | Grant/revoke; reason required, audited | ✅ tested |
+| POST | /api/admin/users/:id/pro/extend | UserDetail.jsx, Pro.jsx | Compare-and-set on expiry | ✅ tested |
+| GET | /api/admin/pro | pages/Pro.jsx | Entitlements + history | ✅ tested |
+| GET | /api/admin/audit-log | pages/AuditLog.jsx | **needs v1_4** | ✅ tested |
 
 Removed (confirmed 404 in production after deploy): `POST /api/auth/login`,
 `POST /api/auth/signup` (unused credential proxies) and `POST /api/chatbot/msg`
 (unused route with fabricated affiliate links).
+
+Removed with the owner admin panel: `GET /api/admin/expenses/recent`,
+`DELETE /api/admin/expenses/:id` (cross-user transaction access) and
+`POST /api/admin/users/:id/ban` (replaced by explicit, audited suspend/reinstate).
+The in-app `/admin` route was removed from the Android/user app.

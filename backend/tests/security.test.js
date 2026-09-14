@@ -70,30 +70,23 @@ test('an expired Pro flag does not grant Pro features', async () => {
     assert.equal(pdf.body.code, 'PRO_REQUIRED');
 });
 
-test("a user cannot change another user's Pro status or ban them", async () => {
+test("a user cannot change another user's Pro status or suspend them", async () => {
     const a = t.db.addUser();
     const b = t.db.addUser({ is_pro: true });
-    const ban = await t.request('POST', `/api/admin/users/${b.id}/ban`, { token: a.token });
-    assert.equal(ban.status, 403);
+    const body = { reason: 'trying it' };
+    assert.equal((await t.request('POST', `/api/admin/users/${b.id}/suspend`, { token: a.token, body })).status, 404);
+    assert.equal((await t.request('DELETE', `/api/admin/users/${b.id}/pro`, { token: a.token, body })).status, 404);
     assert.equal(t.db.profile(b.id).is_banned, false);
     assert.equal(t.db.profile(b.id).is_pro, true);
 });
 
-// ─── Admin ──────────────────────────────────────────────────────────────────
+// ─── Admin (owner-only; detailed coverage in admin.test.js) ─────────────────
 
 test('a normal user cannot use admin endpoints', async () => {
     const a = t.db.addUser();
-    const victim = addExpense(t.db.addUser().id);
-    assert.equal((await t.request('GET', '/api/admin/users', { token: a.token })).status, 403);
-    assert.equal((await t.request('GET', '/api/admin/expenses/recent', { token: a.token })).status, 403);
-    assert.equal((await t.request('DELETE', `/api/admin/expenses/${victim.id}`, { token: a.token })).status, 403);
-    assert.ok(t.db.tables.expenses.find((e) => e.id === victim.id), 'expense must survive');
-});
-
-test('admin status is read from the database, and admins can reach admin endpoints', async () => {
-    const admin = t.db.addUser({ role: 'admin' });
-    const res = await t.request('GET', '/api/admin/users', { token: admin.token });
-    assert.equal(res.status, 200);
+    for (const url of ['/api/admin/me', '/api/admin/users', '/api/admin/overview', '/api/admin/health', '/api/admin/audit-log']) {
+        assert.equal((await t.request('GET', url, { token: a.token })).status, 404, url);
+    }
 });
 
 test('requests without a valid token are rejected', async () => {
@@ -383,11 +376,13 @@ test('account deletion reports failure, and deletes nothing, if the auth user ca
 
 test('GET /api/pro/status does not modify the profile', async () => {
     const a = t.db.addUser({ is_pro: true, pro_expires_at: new Date(Date.now() - 1000).toISOString(), chat_messages_today: 4, chat_messages_reset_at: '2020-01-01' });
-    const before = JSON.stringify(t.db.profile(a.id));
+    // last_active_at is activity telemetry written by `protect`, not entitlement state.
+    const snapshot = () => JSON.stringify({ ...t.db.profile(a.id), last_active_at: undefined });
+    const before = snapshot();
     const res = await t.request('GET', '/api/pro/status', { token: a.token });
     assert.equal(res.status, 200);
     assert.equal(res.body.limits.chatMessagesUsed, 0);
-    assert.equal(JSON.stringify(t.db.profile(a.id)), before);
+    assert.equal(snapshot(), before);
 });
 
 test('unknown API routes return JSON 404', async () => {

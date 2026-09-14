@@ -8,6 +8,9 @@ const { pdfImportLimiter } = require('../middleware/rateLimits');
 const gemini = require('../lib/gemini');
 const { applyProfileStats, roundupFor } = require('../lib/profileStats');
 const { validateTransactions, removeDuplicates } = require('../lib/statementImport');
+const telemetry = require('../lib/opsTelemetry');
+
+const importFailed = (code) => telemetry.recordEvent('pdf_import_failed', { route: 'POST /api/pdf-import', code });
 
 /**
  * POST /api/pdf-import — Pro only.
@@ -79,6 +82,7 @@ ${rawText.substring(0, 15000)}`;
         } catch (e) {
             // AI output can contain statement data; never log it.
             console.error('PDF import parse failed:', e.code || e.name);
+            importFailed(e.code === 'AI_TRUNCATED' ? 'AI_TRUNCATED' : 'AI_PARSE');
             return res.status(502).json({ success: false, message: 'Could not read this statement. Try a different export format.' });
         }
 
@@ -100,6 +104,7 @@ ${rawText.substring(0, 15000)}`;
             .lte('occurred_at', to);
         if (existingError) {
             console.error('PDF import duplicate check failed:', existingError.message);
+            importFailed('DB_READ');
             return res.status(500).json({ success: false, message: 'Failed to import transactions' });
         }
 
@@ -119,6 +124,7 @@ ${rawText.substring(0, 15000)}`;
             const { data, error: insertError } = await supabase.from('expenses').insert(rows).select('id, amount, roundup_chillar');
             if (insertError) {
                 console.error('PDF import insert failed:', insertError.message);
+                importFailed('DB_WRITE');
                 return res.status(500).json({ success: false, message: 'Failed to save transactions' });
             }
             inserted = data || [];
@@ -153,6 +159,7 @@ ${rawText.substring(0, 15000)}`;
         });
     } catch (error) {
         console.error('PDF import error:', error.name);
+        importFailed(error.name || 'UNEXPECTED');
         res.status(500).json({ success: false, message: 'Failed to process PDF' });
     }
 });

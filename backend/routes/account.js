@@ -4,6 +4,7 @@ const { z } = require('zod');
 const { supabase } = require('../config/supabase');
 const { protect } = require('../middleware/authMiddleware');
 const { validationError } = require('../lib/validation');
+const telemetry = require('../lib/opsTelemetry');
 
 /**
  * Tables holding a user's data, all with ON DELETE CASCADE from profiles,
@@ -71,6 +72,7 @@ router.delete('/', protect, async (req, res) => {
     if (leftovers.length > 0) {
         // The login is already gone; data cleanup needs attention.
         console.error(`Account deletion: data remains in ${leftovers.join(', ')} for a deleted user`);
+        telemetry.recordEvent('account_deletion_partial', { route: 'DELETE /api/account', code: 'LEFTOVER_DATA' });
         return res.status(500).json({
             success: false,
             code: 'PARTIAL_DELETION',
@@ -78,6 +80,8 @@ router.delete('/', protect, async (req, res) => {
         });
     }
 
+    // Counted for the admin panel; no identifier is stored.
+    telemetry.recordEvent('account_deleted', { severity: 'info', route: 'DELETE /api/account' });
     res.json({
         success: true,
         message: 'Your account and all associated data have been permanently deleted.',
