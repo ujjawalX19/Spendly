@@ -1,4 +1,4 @@
-import { Bot, LayoutDashboard, LogOut, Moon, Sun, TrendingUp, FileText, Repeat, Settings, Receipt, Users } from 'lucide-react';
+import { Bot, LayoutDashboard, LogOut, TrendingUp, FileText, Repeat, Settings, Receipt, Users } from 'lucide-react';
 import VittovaLogo from './VittovaLogo';
 import { NavLink } from 'react-router-dom';
 
@@ -13,9 +13,7 @@ const navigation = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export default function Sidebar({ theme, toggleTheme, onLogout }) {
-  const isDark = theme === 'dark';
-
+export default function Sidebar({ onLogout }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 select-none border-r border-white/10 bg-[#0c0f0c] p-4 md:flex md:flex-col" aria-label="App navigation">
       <NavLink to="/dash" className="mb-8 flex items-center gap-3 rounded-2xl px-2 py-2 no-underline" aria-label="Vittova overview">
@@ -42,11 +40,7 @@ export default function Sidebar({ theme, toggleTheme, onLogout }) {
           <p className="text-xs font-bold text-lime-200">Small steps add up.</p>
           <p className="mt-1 text-[11px] leading-4 text-zinc-500">Keep tracking and make every rupee count.</p>
         </div>
-        <button type="button" onClick={toggleTheme} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-400 transition hover:bg-white/[.06] hover:text-white">
-          <span>{isDark ? 'Use light mode' : 'Use dark mode'}</span>
-          {isDark ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-sky-400" />}
-        </button>
-        <button type="button" onClick={onLogout} className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-400 transition hover:bg-rose-400/10 hover:text-rose-300">
+        <button type="button" onClick={onLogout} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-400 transition hover:bg-rose-400/10 hover:text-rose-300">
           <span>Log out</span><LogOut className="h-4 w-4" />
         </button>
       </div>

@@ -5,7 +5,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabaseClient';
 import { NATIVE_SCHEME, NATIVE_HOSTS, authErrorFromUrl, isMissingVerifierError } from './lib/authRedirects';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProProvider } from './contexts/ProContext';
 import Sidebar from './components/Sidebar';
@@ -79,7 +79,6 @@ function ProtectedRoute({ children }) {
 }
 
 function Layout({ children }) {
-  const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -90,7 +89,7 @@ function Layout({ children }) {
 
   return (
     <div className="pb-20 md:pb-0 md:pl-64 min-h-screen">
-      <Sidebar theme={theme} toggleTheme={toggleTheme} onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} />
       <main className="p-4 md:p-8 max-w-7xl mx-auto">
         {children}
       </main>

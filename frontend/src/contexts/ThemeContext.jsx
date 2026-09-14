@@ -1,36 +1,24 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 
-const ThemeContext = createContext();
+const ThemeContext = createContext({ theme: 'dark' });
 
+/**
+ * Vittova is a dark-only design: every screen hard-codes dark surfaces and
+ * light text. Following the phone's light system setting (the Android
+ * default) turned only the page background light, hiding white headings, so
+ * the theme is fixed to dark. Any "light" value saved by older builds is
+ * cleared.
+ */
 export function ThemeProvider({ children }) {
-    // Check local storage or default to dark
-    const [theme, setTheme] = useState(() => {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) return savedTheme;
-        // Check system preference
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-            return 'light';
-        }
-        return 'dark'; // default to dark
-    });
-
     useEffect(() => {
         const root = window.document.documentElement;
-        
-        // Remove old theme class
-        root.classList.remove(theme === 'dark' ? 'light' : 'dark');
-        // Add new theme class
-        root.classList.add(theme);
-        
-        localStorage.setItem('theme', theme);
-    }, [theme]);
-
-    const toggleTheme = () => {
-        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-    };
+        root.classList.remove('light');
+        root.classList.add('dark');
+        try { localStorage.removeItem('theme'); } catch { /* storage unavailable */ }
+    }, []);
 
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme: 'dark' }}>
             {children}
         </ThemeContext.Provider>
     );
