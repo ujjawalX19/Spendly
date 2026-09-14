@@ -29,8 +29,12 @@ router.get('/status', protect, async (req, res) => {
         .eq('id', req.user.id)
         .maybeSingle();
 
-    if (error || !profile) {
+    if (error) {
         return res.status(500).json({ success: false, message: 'Could not load profile' });
+    }
+    if (!profile) {
+        // Not a server fault: the app creates the row (POST /api/auth/profile).
+        return res.status(404).json({ success: false, code: 'PROFILE_NOT_FOUND', message: 'Profile not found' });
     }
 
     const now = new Date();

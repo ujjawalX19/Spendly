@@ -398,6 +398,7 @@ test('a signed-in account without a profile row gets one, and only with default 
     t.db.tables.profiles = t.db.tables.profiles.filter((p) => p.id !== a.id);
 
     assert.equal((await t.request('GET', '/api/auth/me', { token: a.token })).status, 404);
+    assert.equal((await t.request('GET', '/api/pro/status', { token: a.token })).status, 404, 'a missing profile is not a server error');
 
     const created = await t.request('POST', '/api/auth/profile', {
         token: a.token,
@@ -417,6 +418,7 @@ test('a signed-in account without a profile row gets one, and only with default 
     const again = await t.request('POST', '/api/auth/profile', { token: a.token });
     assert.equal(again.status, 200);
     assert.equal(again.body.created, false);
+    assert.equal((await t.request('GET', '/api/pro/status', { token: a.token })).status, 200);
     assert.equal(t.db.tables.profiles.filter((p) => p.id === a.id).length, 1);
 
     assert.equal((await t.request('POST', '/api/auth/profile')).status, 401);
