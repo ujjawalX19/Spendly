@@ -215,3 +215,22 @@ test('Group Pool obligations reach the mentor context', async () => {
     assert.match(t.gemini.calls[0].contents, /"youOwe":450/);
     assert.match(res.body.answer.numbers.join('\n'), /₹450 you owe in Group Pool/);
 });
+
+test('an unexpected exception inside the AI route returns the friendly 503 and refunds the quota', async () => {
+    const u = t.db.addUser({ monthly_budget: 20000 });
+    const originalFrom = t.db.client.from;
+    t.db.client.from = (table) => {
+        if (table === 'ai_chat_history') return { insert: () => { throw new TypeError('boom'); } };
+        return originalFrom(table);
+    };
+    try {
+        const res = await ask(u, 'How much can I safely spend?');
+        assert.equal(res.status, 503);
+        assert.equal(res.body.code, 'AI_UNAVAILABLE');
+        assert.doesNotMatch(JSON.stringify(res.body), /boom|TypeError/);
+    } finally {
+        t.db.client.from = originalFrom;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(t.db.profile(u.id).chat_messages_today, 0, 'refunded');
+});

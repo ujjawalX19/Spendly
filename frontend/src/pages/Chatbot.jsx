@@ -212,8 +212,9 @@ export default function Chatbot() {
                 addBot(data.message, { isError: true, retry: query, repairProfile: true });
                 return;
             }
-            if (res.status === 503 || res.status >= 500) {
-                addBot(data.message || UNAVAILABLE, { isError: true, retry: query });
+            if (res.status >= 500) {
+                // Only show the server's text when it is the mentor's own friendly message.
+                addBot(data.code === 'AI_UNAVAILABLE' && data.message ? data.message : UNAVAILABLE, { isError: true, retry: query });
                 return;
             }
             if (!res.ok || !data.success) {

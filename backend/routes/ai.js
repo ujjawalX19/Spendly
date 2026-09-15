@@ -267,6 +267,14 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
     res.json({ success: true, reply, intent, source, aiFallback, answer: structured, quota: res.locals.quota || null });
 });
 
+// Any unexpected failure while building an answer: a friendly, retryable
+// response instead of a generic 500. The quota is refunded (status >= 400).
+router.use((err, req, res, next) => {
+    if (res.headersSent) return next(err);
+    console.error('AI route error:', err.name || 'Error');
+    return res.status(503).json({ success: false, code: 'AI_UNAVAILABLE', message: UNAVAILABLE_MESSAGE });
+});
+
 module.exports = router;
 module.exports.MAX_QUERY_CHARS = MAX_QUERY_CHARS;
 module.exports.buildPrompt = buildPrompt;
