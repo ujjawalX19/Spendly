@@ -12,6 +12,7 @@
 
 const { GoogleGenAI } = require('@google/genai');
 const telemetry = require('./opsTelemetry');
+const { withTimeout } = require('./timeout');
 
 // Verify against https://ai.google.dev/gemini-api/docs/models before release.
 const DEFAULT_MODEL = 'gemini-3.5-flash';
@@ -36,7 +37,7 @@ function modelName() {
  * Generate text with a hard output budget.
  *
  * @param {string|Array} contents  prompt, or prompt parts (e.g. inline image)
- * @param {{maxOutputTokens?: number, temperature?: number}} [options]
+ * @param {{maxOutputTokens?: number, temperature?: number, timeoutMs?: number}} [options]
  * @returns {Promise<string>} the model's text ('' when it returned nothing)
  */
 async function generateText(contents, options = {}) {
@@ -51,11 +52,14 @@ async function generateText(contents, options = {}) {
     }
 }
 
-async function callModel(contents, { maxOutputTokens = 800, temperature } = {}) {
+async function callModel(contents, { maxOutputTokens = 800, temperature, timeoutMs = 30000 } = {}) {
     const ai = getClient();
     if (!ai) throw Object.assign(new Error('AI service not configured'), { code: 'AI_NOT_CONFIGURED' });
 
-    const response = await ai.models.generateContent({
+    // A hung provider call must not hold the request open: abort it and let
+    // the caller fall back to the calculated answer.
+    const controller = new AbortController();
+    const response = await withTimeout(ai.models.generateContent({
         model: modelName(),
         contents,
         config: {
@@ -67,8 +71,9 @@ async function callModel(contents, { maxOutputTokens = 800, temperature } = {}) 
             // deterministically, so thinking adds cost without value.
             thinkingConfig: { thinkingBudget: 0 },
             ...(temperature !== undefined ? { temperature } : {}),
+            abortSignal: controller.signal,
         },
-    });
+    }), timeoutMs, () => controller.abort());
     const finish = response.candidates?.[0]?.finishReason;
     if (finish === 'MAX_TOKENS') {
         // A cut-off answer is worse than the deterministic fallback.

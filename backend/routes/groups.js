@@ -463,3 +463,4 @@ router.delete('/:id/members/me', protect, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.loadGroupState = loadGroupState;

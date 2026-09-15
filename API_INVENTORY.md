@@ -22,7 +22,8 @@ test account (manual).
 | GET | /api/expenses/export.csv | hooks/useExpenses.js | routes/expenses.js | Yes + limit | ✅ prod 401 (was 404) · tested |
 | POST | /api/expenses/scan | hooks/useExpenses.js | routes/expenses.js | Yes + limit + quota | ✅ |
 | GET | /api/ai/history | pages/Chatbot.jsx | routes/ai.js | Yes | ✅ prod 401 (was 404) · tested · **needs v1_3 table** |
-| POST | /api/ai/invest-advice | pages/Chatbot.jsx | routes/ai.js | Yes + limits + quota | ✅ tested |
+| POST | /api/ai/invest-advice | pages/Chatbot.jsx | routes/ai.js | Yes + limits + quota | ✅ tested (mentorRoutes) |
+| GET | /api/ai/insights | pages/Chatbot.jsx | routes/ai.js ("Your money today" + quick prompts; no model call, no quota) | Yes | ✅ tested · not yet deployed |
 | GET | /api/wealth | pages/Wealth.jsx | routes/wealth.js | Yes | ✅ prod 401 (was 404) · tested |
 | GET | /api/safe-to-spend | pages/Dashboard.jsx | routes/safeToSpend.js | Yes | ✅ |
 | GET/POST/DELETE | /api/safe-to-spend/bills[/:id] | — | routes/safeToSpend.js | Yes | ✅ |

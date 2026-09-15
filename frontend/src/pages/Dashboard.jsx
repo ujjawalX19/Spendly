@@ -103,6 +103,9 @@ const CATEGORY_META = {
   Food:          { icon: ShoppingCart, bg: 'bg-orange-500/15', color: 'text-orange-400' },
   Entertainment: { icon: Tv,           bg: 'bg-purple-500/15', color: 'text-purple-400' },
   Grocery:       { icon: ShoppingBag,  bg: 'bg-green-500/15',  color: 'text-green-400'  },
+  Transport:     { icon: Zap,          bg: 'bg-sky-500/15',    color: 'text-sky-400'    },
+  Recharge:      { icon: Zap,          bg: 'bg-yellow-500/15', color: 'text-yellow-400' },
+  Rent:          { icon: Wallet,       bg: 'bg-blue-500/15',   color: 'text-blue-400'   },
   Shopping:      { icon: ShoppingBag,  bg: 'bg-pink-500/15',   color: 'text-pink-400'   },
   Other:         { icon: Wallet,       bg: 'bg-zinc-700/60',   color: 'text-zinc-400'   },
 };
@@ -141,16 +144,22 @@ function StreakDots({ current, total = 7 }) {
 }
 
 // ─── ADD EXPENSE MODAL ────────────────────────────────────────
-const CATEGORIES = ['Food', 'Entertainment', 'Grocery', 'Shopping', 'Other'];
+// Must match the backend's expense categories (routes/expenses.js). 'Grocery'
+// was offered here but rejected by the API, so those expenses silently failed.
+const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
 function AddExpenseModal({ onClose, onAdd, loading }) {
   const [form, setForm] = useState({ desc: '', amount: '', category: 'Food' });
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.desc || !form.amount) return;
-    await onAdd(parseFloat(form.amount), form.category, form.desc);
-    onClose();
+    setError('');
+    const result = await onAdd(parseFloat(form.amount), form.category, form.desc);
+    // Keep the form open with the reason if the expense was not saved.
+    if (result?.success) onClose();
+    else setError(result?.message || "We couldn't save that expense. Please try again.");
   };
 
   return (
@@ -226,6 +235,7 @@ function AddExpenseModal({ onClose, onAdd, loading }) {
               ))}
             </div>
           </div>
+          {error && <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
           <motion.button type="submit" disabled={loading}
             whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.01 }}
             className="w-full bg-lime-400 hover:bg-lime-300 text-black font-black py-3.5 rounded-2xl
@@ -762,39 +772,39 @@ export default function Dashboard() {
   const [savingPayment, setSavingPayment] = useState(false);
 
   // ── Fetch v1 feature data ──────────────────────────────────
+  // Server-calculated cards depend on this month's expenses. They were fetched
+  // once per sign-in, so after adding an expense the budget card changed but
+  // Safe-to-Spend and the forecast kept showing the old figures. Re-fetch
+  // whenever the loaded expenses change.
+  const token = session?.access_token;
+  const expensesVersion = loading ? null : `${expenses.length}:${Math.round(totalSpent * 100)}`;
   useEffect(() => {
-    if (!session?.access_token) return;
-    const headers = { Authorization: `Bearer ${session.access_token}` };
-    const parseResponse = (response) => {
-      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
-      return response.json();
-    };
-
-    // Fetch Safe-to-Spend
-    apiFetch(`${API_URL}/safe-to-spend`, { headers })
-      .then(parseResponse)
-      .then(d => { if (d.success) setSafeToSpend(d.safeToSpend); })
+    if (!token || expensesVersion === null) return undefined;
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    const load = (path, apply) => apiFetch(`${API_URL}${path}`, { headers })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+        return response.json();
+      })
+      .then((d) => { if (!cancelled && d.success) apply(d); })
       .catch(() => {});
 
-    // Fetch Burn Rate
-    apiFetch(`${API_URL}/burn-rate`, { headers })
-      .then(parseResponse)
-      .then(d => { if (d.success) setBurnRate(d.burnRate); })
-      .catch(() => {});
+    load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend));
+    load('/burn-rate', (d) => setBurnRate(d.burnRate));
+    load('/paisa-score', (d) => setPaisaScore(d.paisaScore));
+    return () => { cancelled = true; };
+  }, [token, expensesVersion]);
 
-    // Fetch Spend Score
-    apiFetch(`${API_URL}/paisa-score`, { headers })
-      .then(parseResponse)
-      .then(d => { if (d.success) setPaisaScore(d.paisaScore); })
-      .catch(() => {});
-
-    // Record streak check-in for viewing safe-to-spend
+  // Record the streak check-in for viewing Safe-to-Spend, once per session.
+  useEffect(() => {
+    if (!token) return;
     fetch(`${API_URL}/streaks/check-in`, {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ activity: 'check_safe_to_spend' }),
     }).catch(() => {});
-  }, [session]);
+  }, [token]);
 
   // ── Derived Values ─────────────────────────────────────────
   const monthlyBudget = user?.monthly_budget || 5000;
@@ -809,7 +819,7 @@ export default function Dashboard() {
   // ── Handlers ───────────────────────────────────────────────
   const handleAddExpense = async (amount, category, description) => {
     setAddLoading(true);
-    try { await addExpense(amount, category, description); }
+    try { return await addExpense(amount, category, description); }
     finally { setAddLoading(false); }
   };
 
@@ -870,7 +880,7 @@ export default function Dashboard() {
     }
   };
 
-  const firstName = (user?.full_name || user?.name || 'buddy').split(' ')[0];
+  const firstName = String(user?.full_name || user?.name || '').trim().split(/\s+/)[0] || 'there';
 
   // ── RENDER ─────────────────────────────────────────────────
   return (

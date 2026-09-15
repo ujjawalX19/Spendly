@@ -135,7 +135,12 @@ function proGate(feature) {
                 .select('is_pro, pro_expires_at')
                 .eq('id', userId)
                 .maybeSingle();
-            if (error || !profile) throw new QuotaUnavailableError(error?.message || 'profile not found');
+            if (error) throw new QuotaUnavailableError(error.message);
+            if (!profile) {
+                // Not an outage: the account has no profile row yet. The app
+                // creates it (POST /api/auth/profile) and retries.
+                return res.status(404).json({ success: false, code: 'PROFILE_NOT_FOUND', message: "We couldn't find your Vittova profile. Close and reopen the app to finish setting up your account." });
+            }
 
             if (hasActivePro(profile, now)) return next();
 

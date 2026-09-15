@@ -5,6 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 const gemini = require('../lib/gemini');
 const appTime = require('../lib/appTime');
 const { computeBurnRate } = require('../lib/burnRate');
+const { effectiveMonthlyBudget } = require('../lib/safeToSpend');
 const { TtlCache } = require('../lib/ttlCache');
 
 /**
@@ -55,8 +56,11 @@ router.get('/', protect, async (req, res) => {
             .eq('id', req.user.id)
             .maybeSingle();
 
-        if (profileError || !profile) {
+        if (profileError) {
             return res.status(500).json({ success: false, message: 'Could not load profile' });
+        }
+        if (!profile) {
+            return res.status(404).json({ success: false, code: 'PROFILE_NOT_FOUND', message: 'Profile not found' });
         }
 
         const now = new Date();
@@ -72,7 +76,7 @@ router.get('/', protect, async (req, res) => {
 
         const forecast = computeBurnRate({
             expenses: expenses || [],
-            monthlyBudget: Number(profile.monthly_budget) || 5000,
+            monthlyBudget: effectiveMonthlyBudget(profile),
             now,
         });
         const aiSuggestion = await aiTipFor(req.user.id, forecast, now);

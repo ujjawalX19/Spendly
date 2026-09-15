@@ -1,47 +1,72 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Info } from 'lucide-react';
+import { Send, Sparkles, Info, RotateCcw, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { Link } from 'react-router-dom';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
+import VittovaLogo from '../components/VittovaLogo';
 
 const MAX_CHARS = 500;
+const REQUEST_TIMEOUT_MS = 45000;
+const UNAVAILABLE = 'Vittova AI is temporarily unavailable. Your financial data is safe. Please try again in a moment.';
 
-const SUGGESTIONS = [
-    'Why did I overspend this month?',
-    'Give me a monthly summary',
-    'Can I afford ₹3,000 headphones?',
-    'How much can I spend per day?',
-    'How can I save more?',
-    'Any unusual spending?',
-    'Show my subscriptions',
-    'How long to save ₹50,000?',
+// Shown until the server's personalised suggestions arrive.
+const FALLBACK_SUGGESTIONS = [
+    { label: 'What should I improve first?' },
+    { label: 'Can I afford this?', prefill: 'Can I afford ₹' },
+    { label: 'How much can I safely spend?' },
+    { label: 'Where am I overspending?' },
+    { label: 'Build my emergency fund' },
+    { label: 'Review my subscriptions' },
 ];
 
+const GREETING = {
+    id: 'greeting',
+    role: 'bot',
+    content: "I'm your money mentor. Before I answer, I look at your budget, spending, bills, recurring charges and savings target in Vittova, and every number I give comes from that data.\n\nIncome, bank balances and debts aren't tracked yet, so I'll say when something is missing. General education, not investment advice.",
+};
+
+/** Inline **bold** and ₹ amounts, rendered as React nodes (never HTML). */
+function Inline({ text }) {
+    const parts = String(text).split(/(\*\*[^*]+\*\*|₹\s?[\d,]+(?:\.\d+)?)/g).filter(Boolean);
+    return parts.map((part, i) => {
+        if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i} className="font-semibold text-white">{part.slice(2, -2)}</strong>;
+        if (/^₹/.test(part)) return <span key={i} className="font-semibold tabular-nums text-white">{part}</span>;
+        return <span key={i}>{part}</span>;
+    });
+}
+
 /**
- * Render the coach's plain-text answer: "**Heading**" lines become section
- * titles and "• " lines become a list. Everything else is text. No HTML from
- * the server is ever injected.
+ * The mentor's answer: "**Heading**" lines become section labels, "• " / "- "
+ * lines bullets, "1. " lines numbered steps. Everything else is a paragraph.
  */
 function AnswerText({ text }) {
     const blocks = String(text || '').split(/\n{2,}/);
     return (
-        <div className="space-y-2">
+        <div className="space-y-3">
             {blocks.map((block, i) => {
-                const lines = block.split('\n');
-                const heading = /^\*\*(.+)\*\*$/.exec(lines[0].trim());
+                const lines = block.split('\n').filter((l) => l.trim() !== '');
+                if (!lines.length) return null;
+                const heading = /^\*\*(.+?)\*\*:?$/.exec(lines[0].trim());
                 const body = heading ? lines.slice(1) : lines;
-                const bullets = body.filter((l) => l.trim().startsWith('•'));
                 return (
                     <div key={i}>
-                        {heading && <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[var(--color-neon-green)]">{heading[1]}</p>}
-                        {bullets.length === body.length && bullets.length > 0 ? (
-                            <ul className="space-y-0.5">{bullets.map((b, j) => <li key={j}>{b.replace(/^\s*•\s*/, '• ')}</li>)}</ul>
-                        ) : (
-                            <p className="whitespace-pre-wrap">{body.join('\n').replace(/\*\*/g, '')}</p>
-                        )}
+                        {heading && <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.14em] text-[#A3E635]">{heading[1]}</p>}
+                        <div className="space-y-1">
+                            {body.map((line, j) => {
+                                const bullet = /^\s*[•-]\s+(.*)$/.exec(line);
+                                const numbered = /^\s*(\d+)\.\s+(.*)$/.exec(line);
+                                if (bullet) {
+                                    return <p key={j} className="flex gap-2"><span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#A3E635]/70" aria-hidden /><span><Inline text={bullet[1]} /></span></p>;
+                                }
+                                if (numbered) {
+                                    return <p key={j} className="flex gap-2"><span className="w-4 shrink-0 font-semibold text-[#A3E635]">{numbered[1]}.</span><span><Inline text={numbered[2]} /></span></p>;
+                                }
+                                return <p key={j} className={i === 0 && !heading ? 'text-[15px] font-medium text-white' : ''}><Inline text={line} /></p>;
+                            })}
+                        </div>
                     </div>
                 );
             })}
@@ -49,207 +74,315 @@ function AnswerText({ text }) {
     );
 }
 
-const GREETING = {
-    id: 'greeting',
-    role: 'bot',
-    content: "Ask me about your money: why spending changed, what you can afford, how much is safe to spend, recurring charges, or how long a goal will take. Every number comes from your own Vittova data. I don't recommend specific investments.",
+const TONE = {
+    alert: { ring: 'border-red-500/30', badge: 'bg-red-500/15 text-red-300', icon: AlertTriangle, label: 'Needs attention' },
+    watch: { ring: 'border-amber-400/25', badge: 'bg-amber-400/15 text-amber-200', icon: TrendingUp, label: 'Watch this' },
+    good: { ring: 'border-[#A3E635]/25', badge: 'bg-[#A3E635]/15 text-[#A3E635]', icon: CheckCircle2, label: 'On track' },
+    neutral: { ring: 'border-white/10', badge: 'bg-white/10 text-zinc-300', icon: Sparkles, label: 'Getting started' },
 };
 
+function InsightCard({ insight, loading }) {
+    if (loading) {
+        return <div className="h-40 animate-pulse rounded-2xl border border-white/5 bg-zinc-900/70" aria-label="Loading your money insight" />;
+    }
+    if (!insight) return null;
+    const tone = TONE[insight.tone] || TONE.neutral;
+    const Icon = tone.icon;
+    return (
+        <section aria-label="Your money today" className={`rounded-2xl border ${tone.ring} bg-gradient-to-br from-[#10190a] via-zinc-950 to-zinc-950 p-4`}>
+            <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-zinc-400">Your money today</p>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone.badge}`}><Icon className="h-3 w-3" aria-hidden />{tone.label}</span>
+            </div>
+            <p className="mt-2 text-[15px] font-semibold leading-snug text-white">{insight.headline}</p>
+            <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-3xl font-black tabular-nums text-[#A3E635]">₹{Number(insight.figure?.value || 0).toLocaleString('en-IN')}</span>
+                <span className="text-xs text-zinc-400">{insight.figure?.label}</span>
+            </div>
+            {insight.opportunity && <p className="mt-2 text-sm text-zinc-300"><Inline text={insight.opportunity} /></p>}
+            {insight.nextMove && (
+                <div className="mt-3 rounded-xl bg-white/[.04] px-3 py-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#A3E635]">Next move</p>
+                    <p className="mt-0.5 text-sm text-zinc-200"><Inline text={insight.nextMove} /></p>
+                </div>
+            )}
+        </section>
+    );
+}
+
 /**
- * Vittova money coach.
+ * Vittova AI — personal finance mentor.
  *
- * Limits are enforced by the server (free plan: 10 questions a day, plus
- * short-term rate limits). The page shows what the server reports and never
- * decides access itself. Replies never contain links or product
- * recommendations (see FINANCIAL_CONTENT_REVIEW.md).
+ * Every figure is calculated by the server from the user's own data; the
+ * language model only words the answer, and the server discards replies with
+ * figures it did not calculate. Limits are enforced by the server (free plan:
+ * 10 questions a day, plus short-term rate limits); this page only displays
+ * them. Replies never contain links or product recommendations.
  */
 export default function Chatbot() {
-    const { session } = useAuth();
+    const { session, refreshProfile } = useAuth();
     const { isPro, limits, applyQuota } = usePro();
     const [messages, setMessages] = useState([GREETING]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [limitReached, setLimitReached] = useState(false);
-    const messagesEndRef = useRef(null);
+    const [insight, setInsight] = useState(null);
+    const [insightLoading, setInsightLoading] = useState(true);
+    const [suggestions, setSuggestions] = useState(FALLBACK_SUGGESTIONS);
+    const scrollRef = useRef(null);
+    const inputRef = useRef(null);
+    const token = session?.access_token;
+
+    const scrollToBottom = useCallback((behavior = 'smooth') => {
+        const el = scrollRef.current;
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior });
+    }, []);
+
+    const loadInsights = useCallback(async () => {
+        if (!token) return;
+        setInsightLoading(true);
+        try {
+            const res = await apiFetch(`${API_URL}/ai/insights`, { headers: { Authorization: `Bearer ${token}` } });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                setInsight(data.insight);
+                if (Array.isArray(data.suggestions) && data.suggestions.length) setSuggestions(data.suggestions);
+            } else if (data.code === 'PROFILE_NOT_FOUND') {
+                refreshProfile?.();
+            }
+        } catch {
+            // The insight card is optional; questions still work without it.
+        } finally {
+            setInsightLoading(false);
+        }
+    }, [token, refreshProfile]);
+
+    useEffect(() => { loadInsights(); }, [loadInsights]);
 
     useEffect(() => {
-        if (!session?.access_token) return;
+        if (!token) return undefined;
         let cancelled = false;
         (async () => {
             try {
-                // GET is safe to retry while the server wakes up.
-                const res = await apiFetch(`${API_URL}/ai/history`, {
-                    headers: { Authorization: `Bearer ${session.access_token}` },
-                });
+                const res = await apiFetch(`${API_URL}/ai/history`, { headers: { Authorization: `Bearer ${token}` } });
                 if (!res.ok) return;
                 const data = await res.json();
                 if (!cancelled && Array.isArray(data.history) && data.history.length > 0) {
                     setMessages([GREETING, ...data.history]);
+                    requestAnimationFrame(() => scrollToBottom('auto'));
                 }
             } catch {
                 // History is a convenience; the chat still works without it.
             }
         })();
         return () => { cancelled = true; };
-    }, [session?.access_token]);
+    }, [token, scrollToBottom]);
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    useEffect(() => { scrollToBottom(); }, [messages, isLoading, scrollToBottom]);
 
     const addBot = (content, extra = {}) =>
-        setMessages((prev) => [...prev, { id: `bot-${Date.now()}`, role: 'bot', content, ...extra }]);
+        setMessages((prev) => [...prev, { id: `bot-${Date.now()}-${Math.random()}`, role: 'bot', content, ...extra }]);
 
     const send = async (text) => {
-        const query = text.trim();
-        if (!query || isLoading || query.length > MAX_CHARS) return;
+        const query = String(text || '').trim();
+        if (!query || isLoading || query.length > MAX_CHARS || limitReached) return;
 
         setMessages((prev) => [...prev, { id: `user-${Date.now()}`, role: 'user', content: query }]);
         setInput('');
         setIsLoading(true);
 
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         try {
-            // Plain fetch: a question must not be sent twice by automatic retries.
+            // Plain fetch, no automatic retry: a question must not be charged twice.
             const res = await fetch(`${API_URL}/ai/invest-advice`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-                },
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ query }),
+                signal: controller.signal,
             });
             const data = await res.json().catch(() => ({}));
 
             if (res.status === 429 && data.code === 'QUOTA_EXCEEDED') {
                 setLimitReached(true);
-                addBot(data.message || "You've used today's free questions.", { isLimitAlert: true });
+                addBot("You've reached your free AI questions for today. You can continue tomorrow.", { isLimitAlert: true });
+                return;
+            }
+            if (res.status === 404 && data.code === 'PROFILE_NOT_FOUND') {
+                addBot(data.message, { isError: true, retry: query, repairProfile: true });
+                return;
+            }
+            if (res.status === 503 || res.status >= 500) {
+                addBot(data.message || UNAVAILABLE, { isError: true, retry: query });
                 return;
             }
             if (!res.ok || !data.success) {
                 const err = Object.assign(new Error(data.message || `HTTP ${res.status}`), { status: res.status, data });
-                addBot(friendlyError(err, "I couldn't answer that just now. Please try again."), { isError: true });
+                addBot(friendlyError(err, UNAVAILABLE), { isError: true, retry: res.status === 429 ? null : query });
                 return;
             }
 
             if (data.quota) applyQuota(data.quota);
-            addBot(data.reply);
+            addBot(data.reply, { source: data.source, aiFallback: data.aiFallback });
         } catch (err) {
-            addBot(friendlyError(err, "I couldn't reach the server. Please check your connection."), { isError: true });
+            const timedOut = err?.name === 'AbortError';
+            addBot(timedOut ? 'That took longer than expected. Your financial data is safe; please try again.' : friendlyError(err, UNAVAILABLE), { isError: true, retry: query });
         } finally {
+            clearTimeout(timer);
             setIsLoading(false);
         }
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        send(input);
+    const retry = async (msg) => {
+        if (msg.repairProfile) await refreshProfile?.();
+        setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+        send(msg.retry);
     };
+
+    const pickSuggestion = (s) => {
+        if (s.prefill) {
+            setInput(s.prefill);
+            requestAnimationFrame(() => {
+                inputRef.current?.focus();
+                inputRef.current?.setSelectionRange(s.prefill.length, s.prefill.length);
+            });
+            return;
+        }
+        send(s.label);
+    };
+
+    const onKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            send(input);
+        }
+    };
+
+    // Auto-grow the question box up to four lines.
+    useEffect(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+    }, [input]);
 
     const remaining = !isPro && limits?.chatMessagesLimit != null
         ? Math.max(0, limits.chatMessagesLimit - (limits.chatMessagesUsed || 0))
         : null;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-40px)] bg-[var(--color-bg)]">
-            <div className="flex items-center gap-4 p-4 border-b border-[var(--glass-border)] bg-black/40 backdrop-blur-md sticky top-0 z-10 rounded-t-2xl">
-                <div className="w-12 h-12 rounded-full bg-[var(--color-neon-green)]/10 flex items-center justify-center border border-[var(--color-neon-green)]/30">
-                    <Bot className="w-6 h-6 text-[var(--color-neon-green)]" />
-                </div>
+        <div className="-mx-4 -mt-4 flex h-[calc(100dvh-6rem)] flex-col bg-black text-zinc-100 md:m-0 md:h-[calc(100dvh-4rem)] md:rounded-2xl md:border md:border-white/10">
+            <header className="flex items-center gap-3 border-b border-white/10 bg-zinc-950/95 px-4 py-3">
+                <VittovaLogo size={36} />
                 <div className="min-w-0 flex-1">
-                    <h1 className="text-xl font-extrabold text-[var(--color-neon-green)]">Vittova AI</h1>
-                    <p className="text-sm text-[var(--color-text)]/70">
-                        {remaining !== null ? `${remaining} free question${remaining === 1 ? '' : 's'} left today` : 'Answers based on your own spending'}
-                    </p>
+                    <h1 className="text-base font-extrabold leading-tight text-white">Vittova AI</h1>
+                    <p className="text-xs text-zinc-400">Your personal money mentor</p>
                 </div>
-            </div>
+                {remaining !== null && (
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${remaining === 0 ? 'bg-red-500/15 text-red-300' : 'bg-white/[.06] text-zinc-300'}`}>
+                        {remaining} left today
+                    </span>
+                )}
+            </header>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                <AnimatePresence initial={false}>
-                    {messages.map((msg) => (
-                        <motion.div
-                            key={msg.id}
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
-                        >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${
-                                msg.role === 'user'
-                                    ? 'bg-[var(--color-electric-blue)]/20 text-[var(--color-electric-blue)]'
-                                    : 'bg-[var(--color-neon-green)]/20 text-[var(--color-neon-green)]'
-                            }`}>
-                                {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                            </div>
+            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
+                <InsightCard insight={insight} loading={insightLoading} />
 
-                            <div className="flex flex-col gap-2">
-                                <div className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                                    msg.role === 'user'
-                                        ? 'bg-[var(--color-electric-blue)]/10 border border-[var(--color-electric-blue)]/30 text-[var(--color-text)] rounded-tr-none'
-                                        : msg.isError
-                                            ? 'bg-red-500/10 border border-red-500/20 text-red-200 rounded-tl-none'
-                                            : 'bg-zinc-900 border border-[var(--glass-border)] text-[var(--color-text)]/90 rounded-tl-none'
-                                }`}>
-                                    {msg.role === 'bot' ? <AnswerText text={msg.content} /> : msg.content}
-                                </div>
-                                {msg.isLimitAlert && (
-                                    <Link to="/pro" className="text-xs font-bold text-amber-300 underline">See what Vittova Pro will include</Link>
+                <div aria-live="polite" className="space-y-4">
+                    <AnimatePresence initial={false}>
+                        {messages.map((msg) => (
+                            <motion.div
+                                key={msg.id}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
+                            >
+                                {msg.role === 'user' ? (
+                                    <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-[#A3E635] px-4 py-2.5 text-[15px] font-medium text-black">
+                                        {msg.content}
+                                    </div>
+                                ) : (
+                                    <div className="w-full max-w-[95%]">
+                                        <div className={`break-words rounded-2xl rounded-bl-md border px-4 py-3 text-sm leading-relaxed ${
+                                            msg.isError
+                                                ? 'border-red-500/25 bg-red-950/40 text-red-100'
+                                                : msg.isLimitAlert
+                                                    ? 'border-amber-400/25 bg-amber-950/30 text-amber-50'
+                                                    : 'border-white/10 bg-zinc-900 text-zinc-200'
+                                        }`}>
+                                            {msg.isError || msg.isLimitAlert ? <p>{msg.content}</p> : <AnswerText text={msg.content} />}
+                                        </div>
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-3 px-1 text-[11px] text-zinc-500">
+                                            {msg.source === 'ai' && <span>Based on your Vittova data</span>}
+                                            {msg.source === 'calculated' && <span>{msg.aiFallback ? 'Calculated from your data (AI wording unavailable)' : 'Calculated from your data'}</span>}
+                                            {msg.retry && (
+                                                <button type="button" onClick={() => retry(msg)} disabled={isLoading} className="inline-flex min-h-8 items-center gap-1 font-semibold text-[#A3E635] disabled:opacity-50">
+                                                    <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Try again
+                                                </button>
+                                            )}
+                                            {msg.isLimitAlert && <Link to="/pro" className="font-semibold text-amber-300 underline">See what Vittova Pro will include</Link>}
+                                        </div>
+                                    </div>
                                 )}
-                            </div>
-                        </motion.div>
-                    ))}
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
 
                     {isLoading && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 max-w-[85%]" role="status" aria-label="Coach is typing">
-                            <div className="w-8 h-8 rounded-full bg-[var(--color-neon-green)]/20 flex items-center justify-center shrink-0 mt-1 border border-[var(--color-neon-green)]/30">
-                                <Bot className="w-4 h-4 text-[var(--color-neon-green)]" />
-                            </div>
-                            <div className="p-4 rounded-2xl bg-zinc-900 border border-[var(--glass-border)] rounded-tl-none flex items-center gap-1.5">
-                                {[0, 150, 300].map((d) => (
-                                    <span key={d} className="w-2 h-2 bg-[var(--color-neon-green)] rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
-                                ))}
-                            </div>
-                        </motion.div>
+                        <div className="flex items-center gap-3 rounded-2xl rounded-bl-md border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-zinc-400" role="status">
+                            <span className="flex gap-1" aria-hidden>
+                                {[0, 150, 300].map((d) => <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A3E635]" style={{ animationDelay: `${d}ms` }} />)}
+                            </span>
+                            Checking your numbers…
+                        </div>
                     )}
-                </AnimatePresence>
-                <div ref={messagesEndRef} />
+                </div>
             </div>
 
-            <div className="p-4 bg-black/40 backdrop-blur-md border-t border-[var(--glass-border)] rounded-b-2xl">
-                {messages.length <= 1 && (
-                    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-                        {SUGGESTIONS.map((s) => (
-                            <button key={s} type="button" onClick={() => send(s)} disabled={isLoading || limitReached}
-                                className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-50">
-                                {s}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                <form onSubmit={handleSubmit} className="relative flex items-center">
-                    <input
-                        type="text"
+            <div className="border-t border-white/10 bg-zinc-950/95 px-4 pb-3 pt-2.5">
+                <div className="-mx-4 mb-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]">
+                    {suggestions.map((s) => (
+                        <button
+                            key={s.label}
+                            type="button"
+                            onClick={() => pickSuggestion(s)}
+                            disabled={isLoading || limitReached}
+                            className="min-h-9 shrink-0 rounded-full border border-white/10 bg-zinc-900 px-3.5 text-[13px] font-medium text-zinc-200 transition-colors hover:border-[#A3E635]/50 active:bg-zinc-800 disabled:opacity-40"
+                        >
+                            {s.label}
+                        </button>
+                    ))}
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex items-end gap-2">
+                    <label htmlFor="mentor-question" className="sr-only">Your question</label>
+                    <textarea
+                        id="mentor-question"
+                        ref={inputRef}
+                        rows={1}
                         value={input}
                         maxLength={MAX_CHARS}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={limitReached ? 'Daily limit reached. Come back tomorrow.' : 'Ask about your spending…'}
-                        aria-label="Your question"
-                        className="w-full bg-[var(--input-bg)] border border-[var(--glass-border)] rounded-full pl-6 pr-14 py-4 text-sm outline-none focus:border-[var(--color-neon-green)] transition-colors text-[var(--color-text)]"
-                        disabled={isLoading || limitReached}
+                        onKeyDown={onKeyDown}
+                        placeholder={limitReached ? 'Daily limit reached. Come back tomorrow.' : 'Ask about your money…'}
+                        disabled={limitReached}
+                        className="max-h-28 min-h-12 flex-1 resize-none rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-[15px] leading-6 text-white outline-none placeholder:text-zinc-500 focus:border-[#A3E635]/60 disabled:opacity-60"
                     />
                     <button
                         type="submit"
-                        aria-label="Send"
+                        aria-label="Send question"
                         disabled={!input.trim() || isLoading || limitReached}
-                        className="absolute right-2 p-2.5 bg-[var(--color-neon-green)] text-black rounded-full hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all"
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#A3E635] text-black transition-transform active:scale-95 disabled:bg-zinc-800 disabled:text-zinc-500"
                     >
-                        <Send className="w-5 h-5" />
+                        <Send className="h-5 w-5" />
                     </button>
                 </form>
-                <div className="mt-2 flex items-start justify-between gap-3 text-[10px] text-zinc-500">
+                <div className="mt-2 flex items-start justify-between gap-3 text-[11px] leading-4 text-zinc-500">
                     <p className="flex items-start gap-1">
-                        <Info className="mt-px h-3 w-3 shrink-0" />
-                        General education, not investment advice. Vittova is not a SEBI-registered adviser. AI answers can be wrong.
+                        <Info className="mt-px h-3 w-3 shrink-0" aria-hidden />
+                        General education, not investment advice. Vittova is not a SEBI-registered adviser.
                     </p>
-                    {input.length > MAX_CHARS * 0.8 && <span className="shrink-0">{input.length}/{MAX_CHARS}</span>}
+                    {input.length > MAX_CHARS * 0.8 && <span className="shrink-0 tabular-nums">{input.length}/{MAX_CHARS}</span>}
                 </div>
             </div>
         </div>

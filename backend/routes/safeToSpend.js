@@ -5,6 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 const appTime = require('../lib/appTime');
 const { z } = require('zod');
 const { validationError } = require('../lib/validation');
+const { computeSafeToSpend, effectiveMonthlyBudget } = require('../lib/safeToSpend');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VALID_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
@@ -14,82 +15,47 @@ const VALID_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertai
 // @desc    Calculate safe-to-spend amount for the current day
 // @access  Protected
 //
-// Formula: monthly_budget − total_spent_this_month − upcoming_recurring_bills − investment_target
-// Then divided by remaining days to get daily safe amount.
-// Pure math — no financial advice, no license needed.
+// Formula and assumptions: lib/safeToSpend.js (shared with Vittova AI).
 // ---------------------------------------------------------------------------
 router.get('/', protect, async (req, res) => {
     try {
-        // 1. Get user profile (budget, investment target)
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('monthly_budget, investment_target')
             .eq('id', req.user.id)
-            .single();
+            .maybeSingle();
 
-        if (profileError || !profile) {
+        if (profileError) {
             return res.status(500).json({ success: false, message: 'Could not load profile' });
         }
+        if (!profile) {
+            return res.status(404).json({ success: false, code: 'PROFILE_NOT_FOUND', message: 'Profile not found' });
+        }
 
-        const monthlyBudget = Number(profile.monthly_budget) || 5000;
-        const investmentTarget = Number(profile.investment_target) || 0;
-
-        // 2. Get total spent this month.
-        //    Boundaries are computed in the app timezone (IST), not the
-        //    server's UTC clock — see lib/appTime.js for why that matters.
+        // Boundaries are computed in the app timezone (IST), not the server's
+        // UTC clock — see lib/appTime.js for why that matters.
         const now = new Date();
-        const monthStart = appTime.startOfMonth(now);
-
-        const { data: expenses, error: expError } = await supabase
-            .from('expenses')
-            .select('amount')
-            .eq('user_id', req.user.id)
-            .gte('occurred_at', monthStart.toISOString());
+        const [{ data: expenses, error: expError }, { data: bills, error: billsError }] = await Promise.all([
+            supabase.from('expenses').select('amount').eq('user_id', req.user.id).gte('occurred_at', appTime.startOfMonth(now).toISOString()),
+            supabase.from('recurring_bills').select('name, amount, due_day, is_active').eq('user_id', req.user.id).eq('is_active', true),
+        ]);
 
         if (expError) {
             return res.status(500).json({ success: false, message: 'Could not load expenses' });
         }
 
-        const totalSpentThisMonth = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-
-        // 3. Get upcoming recurring bills (bills due on or after today this month)
-        const todayDay = appTime.dayOfMonth(now);
-
-        const { data: bills, error: billsError } = await supabase
-            .from('recurring_bills')
-            .select('amount, due_day')
-            .eq('user_id', req.user.id)
-            .eq('is_active', true);
-
-        let upcomingBills = 0;
-        if (!billsError && bills) {
-            upcomingBills = bills
-                .filter(b => b.due_day >= todayDay)
-                .reduce((sum, b) => sum + Number(b.amount), 0);
-        }
-
-        // 4. Calculate safe-to-spend
-        const safeToSpendMonth = monthlyBudget - totalSpentThisMonth - upcomingBills - investmentTarget;
-        const daysRemaining = appTime.daysRemainingInMonth(now); // Including today
-        const safeToSpendDaily = Math.max(0, Math.round(safeToSpendMonth / daysRemaining));
-        const safeToSpendTotal = Math.max(0, Math.round(safeToSpendMonth));
-
-        res.json({
-            success: true,
-            safeToSpend: {
-                daily: safeToSpendDaily,
-                remaining: safeToSpendTotal,
-                monthlyBudget,
-                totalSpent: Math.round(totalSpentThisMonth),
-                upcomingBills: Math.round(upcomingBills),
-                investmentTarget,
-                daysRemaining,
-                isNegative: safeToSpendMonth < 0,
-                overBy: safeToSpendMonth < 0 ? Math.abs(Math.round(safeToSpendMonth)) : 0,
-            }
+        const result = computeSafeToSpend({
+            monthlyBudget: effectiveMonthlyBudget(profile),
+            totalSpent: (expenses || []).reduce((sum, e) => sum + Number(e.amount), 0),
+            bills: billsError ? [] : bills,
+            investmentTarget: Number(profile.investment_target) || 0,
+            now,
         });
+        const { upcomingBillList, ...safeToSpend } = result;
+
+        res.json({ success: true, safeToSpend: { ...safeToSpend, upcomingBillList } });
     } catch (error) {
-        console.error('Safe-to-Spend Error:', error);
+        console.error('Safe-to-Spend Error:', error.message);
         res.status(500).json({ success: false, message: 'Failed to calculate safe-to-spend' });
     }
 });
