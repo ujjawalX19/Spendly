@@ -174,7 +174,7 @@ function AddExpenseModal({ onClose, onAdd, loading }) {
         onClick={onClose}
       />
       <motion.div
-        className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-6 pb-8 shadow-2xl z-10"
+        className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-2xl z-10"
         initial={{ y: '100%', opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
@@ -908,7 +908,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -40, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-            className={`fixed top-4 inset-x-4 z-[300] max-w-sm mx-auto
+            className={`fixed top-[calc(1rem+env(safe-area-inset-top))] inset-x-4 z-[300] max-w-sm mx-auto
                        rounded-2xl p-4 shadow-xl backdrop-blur-xl border ${
                          scanToast.type === 'success'
                            ? 'bg-zinc-900 border-lime-500/30 shadow-[0_0_30px_rgba(57,255,20,0.15)]'
@@ -1009,7 +1009,7 @@ export default function Dashboard() {
         transition={{ delay: 0.6, type: 'spring', stiffness: 380, damping: 20 }}
         whileTap={{ scale: 0.88 }}
         whileHover={{ scale: 1.08, boxShadow: '0 0 30px rgba(57,255,20,0.5)' }}
-        className="fixed bottom-24 right-5 z-[100] w-14 h-14 rounded-full bg-lime-400 text-black
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-5 z-[100] w-14 h-14 rounded-full bg-lime-400 text-black
                    flex items-center justify-center shadow-[0_4px_24px_rgba(57,255,20,0.4)]
                    transition-shadow cursor-pointer"
         aria-label="Add expense"

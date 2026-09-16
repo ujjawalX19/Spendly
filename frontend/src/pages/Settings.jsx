@@ -196,7 +196,7 @@ function DeleteAccountModal({ onClose, onDelete }) {
     >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <motion.div
-        className="relative w-full max-w-md bg-zinc-900 border border-red-500/20 rounded-t-3xl sm:rounded-3xl p-6 pb-8 z-10"
+        className="relative w-full max-w-md bg-zinc-900 border border-red-500/20 rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] z-10"
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 340, damping: 30 }}
       >

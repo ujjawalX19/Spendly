@@ -88,7 +88,7 @@ function Layout({ children }) {
   };
 
   return (
-    <div className="pb-20 md:pb-0 md:pl-64 min-h-screen">
+    <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] md:pb-0 md:pl-64 md:pt-0">
       <Sidebar onLogout={handleLogout} />
       <main className="p-4 md:p-8 max-w-7xl mx-auto">
         {children}

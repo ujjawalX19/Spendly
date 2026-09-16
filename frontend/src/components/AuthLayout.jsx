@@ -42,7 +42,7 @@ function Waves() {
 
 export default function AuthLayout({ children }) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0B1220] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#0B1220] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-white">
       <Waves />
 
       <div className="relative mx-auto grid min-h-screen max-w-6xl grid-cols-1 lg:grid-cols-2">

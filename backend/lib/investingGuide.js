@@ -142,7 +142,7 @@ function composeInvestingAnswer(f, question, amount) {
         reasoning: `${plan.why[0].toUpperCase()}${plan.why.slice(1)}. Typical choices at this horizon: ${plan.options}.${lumpSum ? ' A large one-time amount can be moved in gradually over a few months to reduce the risk of investing just before a fall.' : ''}`,
         action: [
             emergencyTarget ? `1. Build the ${inr(emergencyTarget)} emergency fund first if you do not have it.` : null,
-            monthly ? `2. Automate ${inr(monthly)} a month on the day after your salary arrives.` : '2. Set a monthly savings target in Settings so I can plan with real numbers.',
+            monthly ? `2. Set aside ${inr(monthly)} a month (${f.savingsTarget ? 'your savings target' : 'what your budget pace leaves over'}) as soon as money comes in.` : '2. Set a monthly savings target in Settings so I can plan with real numbers.',
             '3. Prefer low-cost, diversified options: check the expense ratio, choose direct plans, and confirm the fund or adviser is SEBI-registered.',
         ].filter(Boolean).join('\n'),
         note: `Illustrations use assumed constant rates, not forecasts; real returns vary and can be negative. ${years ? '' : 'Tell me your time horizon (e.g. "in 3 years") for a more specific answer. '}${NOTE}`,

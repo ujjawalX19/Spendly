@@ -88,7 +88,7 @@ export default function Onboarding() {
   const slide = SLIDES[step];
 
   return (
-    <div className="flex min-h-screen flex-col bg-black px-6 pb-8 pt-14 text-white">
+    <div className="flex min-h-screen flex-col bg-black px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.5rem+env(safe-area-inset-top))] text-white">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
 
         <div className="mb-6 flex items-center gap-2.5">

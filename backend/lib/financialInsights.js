@@ -21,6 +21,7 @@ const appTime = require('./appTime');
 const { detectSubscriptions } = require('./subscriptions');
 const { composeInvestingAnswer, composeConceptAnswer, futureValue } = require('./investingGuide');
 const { computeSafeToSpend, effectiveMonthlyBudget } = require('./safeToSpend');
+const { buildInvestmentContext, composeInvestmentAnswer } = require('./investmentDecision');
 const { computeBurnRate } = require('./burnRate');
 
 const DISCRETIONARY = ['Food', 'Entertainment', 'Shopping', 'Other'];
@@ -283,6 +284,10 @@ function answer(parts) {
     return {
         direct: parts.direct,
         numbers: (parts.numbers || []).filter(Boolean),
+        priorities: (parts.priorities || []).filter(Boolean),
+        missing: parts.missing || '',
+        approaches: (parts.approaches || []).filter(Boolean),
+        tradeoffs: parts.tradeoffs || '',
         reasoning: parts.reasoning || '',
         action: parts.action || '',
         next: parts.next || '',
@@ -293,6 +298,10 @@ function answer(parts) {
 function toText(a) {
     const out = [a.direct];
     if (a.numbers.length) out.push(`**Your numbers**\n${a.numbers.map((n) => `• ${n}`).join('\n')}`);
+    if (a.priorities && a.priorities.length) out.push(`**Priorities**\n${a.priorities.map((p) => `• ${p}`).join('\n')}`);
+    if (a.missing) out.push(`**What's missing**\n${a.missing}`);
+    if (a.approaches && a.approaches.length) out.push(`**Possible approaches**\n${a.approaches.map((x) => `\u2022 ${x}`).join('\n')}`);
+    if (a.tradeoffs) out.push(`**Trade-offs**\n${a.tradeoffs}`);
     if (a.reasoning) out.push(`**Why it matters**\n${a.reasoning}`);
     if (a.action) out.push(`**What I recommend**\n${a.action}`);
     if (a.next) out.push(`**Next step**\n${a.next}`);
@@ -553,14 +562,24 @@ function composeAnswer(intent, f, question) {
             }
             return answer({
                 direct: `My first priority for you: ${items[0].title.charAt(0).toLowerCase()}${items[0].title.slice(1)}.`,
-                numbers: items.slice(0, 3).map((it, i) => `${i + 1}. ${it.title}`),
+                priorities: items.slice(0, 3).map((it, i) => `${i + 1}. ${it.title}`),
+                numbers: [`Safe to spend: ${inr(f.safeToSpendPerDay)} a day`, f.budget ? `Projected month end: ${inr(f.projectedMonthEnd)} of ${inr(f.budget)}` : null],
                 reasoning: `${items[0].detail}${doingWell.length ? ` You are doing well in ${doingWell.join(', ')}.` : ''}`,
                 action: items.slice(1, 3).map((it) => `Then: ${it.step}`).join('\n'),
                 next: items[0].step,
             });
         }
-        case 'investing':
-            return answer(composeInvestingAnswer(f, question, amount));
+        case 'investing': {
+            // Decide from the user's own figures first. Goal-shaped questions
+            // (retirement, a house, tax saving) keep the horizon guide, which
+            // already plans around the goal rather than this month's cash.
+            // Speculation (crypto, F&O, gold) and goal-shaped questions keep the
+            // horizon guide, which answers those directly rather than planning
+            // this month's spare cash.
+            const goalShaped = /\b(retire|retirement|tax|80c|elss|house|home|flat|down ?payment|wedding|marriage|college|child|crypto|bitcoin|f&o|futures|options|intraday|trading|gold)\b/.test(q);
+            if (goalShaped) return answer(composeInvestingAnswer(f, question, amount));
+            return answer(composeInvestmentAnswer(buildInvestmentContext(f, question, amount)));
+        }
         case 'education':
             return answer(composeConceptAnswer(question));
         default: {

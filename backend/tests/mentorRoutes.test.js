@@ -213,7 +213,7 @@ test('Group Pool obligations reach the mentor context', async () => {
     const res = await ask(bala, 'What should I improve first?');
     assert.equal(res.status, 200);
     assert.match(t.gemini.calls[0].contents, /"youOwe":450/);
-    assert.match(res.body.answer.numbers.join('\n'), /₹450 you owe in Group Pool/);
+    assert.match(res.body.answer.priorities.join('\n'), /₹450 you owe in Group Pool/);
 });
 
 test('an unexpected exception inside the AI route returns the friendly 503 and refunds the quota', async () => {

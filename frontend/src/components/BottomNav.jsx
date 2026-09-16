@@ -6,6 +6,7 @@
  * a hardcoded value.
  */
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutGrid, Receipt, Bot, BarChart2, Settings as SettingsIcon } from 'lucide-react';
@@ -20,6 +21,22 @@ const tabs = [
 
 export default function BottomNav() {
   const { pathname } = useLocation();
+  // While the keyboard is open the bar would eat a fifth of the visible
+  // screen, which matters most on the AI screen.
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const isField = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    const show = () => setTyping(false);
+    const hide = (e) => { if (isField(e.target)) setTyping(true); };
+    document.addEventListener('focusin', hide);
+    document.addEventListener('focusout', show);
+    return () => {
+      document.removeEventListener('focusin', hide);
+      document.removeEventListener('focusout', show);
+    };
+  }, []);
+
+  if (typing) return null;
 
   return (
     <motion.nav
@@ -28,7 +45,8 @@ export default function BottomNav() {
       transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 28 }}
       className="md:hidden fixed bottom-0 inset-x-0 z-50
                  bg-[#181818]/90 backdrop-blur-md border-t border-white/5
-                 flex items-center justify-around py-3 px-2 rounded-t-3xl"
+                 flex items-center justify-around px-2 pt-3 rounded-t-3xl
+                 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
       {tabs.map(tab => {
         const Icon = tab.icon;

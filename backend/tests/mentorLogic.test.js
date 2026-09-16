@@ -181,7 +181,7 @@ test('priorities put a shortfall first and credit what is going well', () => {
     assert.ok(facts.shortfall > 0);
     const a = composeAnswer(classifyIntent('What should I improve first?'), facts, 'What should I improve first?');
     assert.match(a.direct, /close this month's ₹1,100 gap/);
-    assert.ok(a.numbers.some((n) => /₹450 you owe in Group Pool/.test(n)));
+    assert.ok(a.priorities.some((p) => /₹450 you owe in Group Pool/.test(p)), a.priorities.join(' | '));
     assert.equal(buildDailyInsight(facts).tone, 'alert');
 });
 
