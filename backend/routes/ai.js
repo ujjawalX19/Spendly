@@ -264,6 +264,8 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
     ]);
     if (insertError) console.error('Error saving chat history:', insertError.message);
 
+    // Outcome only (no question or answer text) for the Owner Console.
+    res.locals.aiOutcome = { source, aiFallback, intent };
     res.json({ success: true, reply, intent, source, aiFallback, answer: structured, quota: res.locals.quota || null });
 });
 

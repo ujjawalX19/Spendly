@@ -52,7 +52,7 @@ test account (manual).
 | DELETE | /api/account | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
 | PUT | /api/account/budget, /api/account/investment-target | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
 
-### Owner admin API (separate admin web app, `frontend/admin`)
+### Owner admin API (Owner Console at https://vittova.in/admin, `frontend/admin`)
 
 All behind `protect` + `requireOwner`: confirmed email = `ADMIN_EMAIL` **and** `profiles.role = 'admin'`. Non-owners get `404`. See [ADMIN_PANEL.md](ADMIN_PANEL.md).
 
@@ -68,7 +68,21 @@ All behind `protect` + `requireOwner`: confirmed email = `ADMIN_EMAIL` **and** `
 | POST/DELETE | /api/admin/users/:id/pro | UserDetail.jsx, Pro.jsx | Grant/revoke; reason required, audited | ✅ tested |
 | POST | /api/admin/users/:id/pro/extend | UserDetail.jsx, Pro.jsx | Compare-and-set on expiry | ✅ tested |
 | GET | /api/admin/pro | pages/Pro.jsx | Entitlements + history | ✅ tested |
-| GET | /api/admin/audit-log | pages/AuditLog.jsx | **needs v1_4** | ✅ tested |
+| GET | /api/admin/audit-log (alias /audit) | pages/AuditLog.jsx | **needs v1_4** | ✅ tested |
+| GET | /api/admin/dashboard (alias of /overview) | pages/Overview.jsx | + installs, totals, API traffic | ✅ tested |
+| GET | /api/admin/activity?days= | pages/Activity.jsx | Event counts, trends, failure rates; **needs v1_6** | ✅ tested |
+| GET | /api/admin/installs?days= | pages/Activity.jsx | First launches, versions; not Play Store data; **needs v1_6** | ✅ tested |
+| GET | /api/admin/engagement | pages/Activity.jsx | DAU/WAU/MAU, conversion, retention (lower bound) | ✅ tested |
+| GET | /api/admin/ai | pages/AiMentor.jsx | Health light, outcomes, quota, error codes; no content | ✅ tested |
+| GET | /api/admin/errors | pages/Errors.jsx | Grouped ops_events, filters, pagination | ✅ tested |
+| POST | /api/admin/errors/resolve, /errors/reopen | pages/Errors.jsx | Audited; re-open needs a reason; **needs v1_6** | ✅ tested |
+| GET | /api/admin/settings | pages/Settings.jsx | Read-only config status; no secrets | ✅ tested |
+
+### Telemetry
+
+| Method | Path | Caller | Notes | Status |
+|---|---|---|---|---|
+| POST | /api/telemetry/events | lib/telemetry.js | Anonymous allowed (first launch); optional bearer links the install; allow-listed events/props; per-IP limit; always 202 once valid | ✅ tested |
 
 Removed (confirmed 404 in production after deploy): `POST /api/auth/login`,
 `POST /api/auth/signup` (unused credential proxies) and `POST /api/chatbot/msg`

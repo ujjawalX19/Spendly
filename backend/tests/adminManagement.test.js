@@ -43,7 +43,7 @@ test('user list returns per-user usage counts and sorts by usage server-side', a
     assert.equal(res.body.usageAvailable, true);
     assert.deepEqual(res.body.users.map((u) => u.id), [heavy.id, light.id]);
     const { lastActivityAt, ...counts } = res.body.users[0].usage;
-    assert.deepEqual(counts, { expenses: 5, goals: 1, subscriptions: 1, aiQuestions: 0, groupPools: 0 });
+    assert.deepEqual(counts, { expenses: 5, goals: 1, subscriptions: 1, aiQuestions: 0, groupPools: 0, scannedExpenses: 0, statementImports: 0 });
     assert.ok(lastActivityAt);
     assert.equal(res.body.users[1].usage.aiQuestions, 1);
 
@@ -154,7 +154,7 @@ test('Pro page summarises entitlements with source and history', async () => {
     const res = await get('/api/admin/pro?state=all&pageSize=100');
     assert.equal(res.status, 200);
     assert.equal(res.body.billing.connected, false);
-    assert.match(res.body.billing.note, /Billing not connected/);
+    assert.match(res.body.billing.note, /Billing: Not enabled/);
     const s = res.body.summary;
     assert.equal(s.freeUsers, s.totalUsers - s.activePro);
     assert.ok(s.expiringSoon >= 1);

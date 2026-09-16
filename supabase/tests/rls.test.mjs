@@ -124,6 +124,7 @@ const CURRENT = [
     'v1_2_security_p0.sql',
     'v1_3_product_core.sql',
     'v1_4_admin_ops.sql',
+    'v1_6_owner_console.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -268,11 +269,91 @@ test('after v1_2_security_p0.sql', async (t) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_6 Owner Console telemetry', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const INSTALL = '55555555-5555-4555-8555-555555555555';
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_6_owner_console.sql'));
+    });
+
+    await t.test('clients can neither read nor write telemetry, install, issue or audit tables', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            for (const table of ['app_events', 'app_installs', 'ops_issue_states', 'admin_audit_log', 'ops_events', 'admin_user_stats']) {
+                assert.ok(denied(await as(db, role, USERS.carol, `select * from public.${table}`)), `${role} select ${table}`);
+            }
+            assert.ok(denied(await as(db, role, USERS.carol, "insert into public.app_events (name, source) values ('login', 'client')")), `${role} insert app_events`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.app_installs (install_id, platform) values ('${INSTALL}', 'android')`)), `${role} insert app_installs`);
+            assert.ok(denied(await as(db, role, USERS.carol, "insert into public.ops_issue_states (fingerprint) values ('x|-|-|-')")), `${role} resolve issue`);
+            assert.ok(denied(await as(db, role, USERS.carol, "insert into public.admin_audit_log (action) values ('forged')")), `${role} forge audit entry`);
+        }
+    });
+
+    await t.test('a user still cannot make themselves admin', async () => {
+        assert.ok(denied(await asUser(db, USERS.carol, `update public.profiles set role = 'admin' where id = '${USERS.carol}'`)));
+    });
+
+    await t.test('the backend (service role) records installs and events', async () => {
+        const install = await as(db, 'service_role', null, `insert into public.app_installs (install_id, platform, app_version, user_id) values ('${INSTALL}', 'android', '1.0.0', '${USERS.bob}')`);
+        assert.ok(install.ok, install.error);
+        const event = await as(db, 'service_role', null, `insert into public.app_events (name, source, user_id, install_id, platform, props) values ('first_launch', 'client', '${USERS.bob}', '${INSTALL}', 'android', '{"method":"email"}')`);
+        assert.ok(event.ok, event.error);
+    });
+
+    await t.test('event names, sources, platforms and property size are constrained', async () => {
+        const bad = [
+            "insert into public.app_events (name, source) values ('DROP TABLE', 'client')",
+            "insert into public.app_events (name, source) values ('login', 'browser')",
+            "insert into public.app_events (name, source, platform) values ('login', 'client', 'windows')",
+            "insert into public.app_events (name, source, props) values ('login', 'client', jsonb_build_object('blob', repeat('x', 5000)))",
+        ];
+        for (const statement of bad) {
+            const r = await as(db, 'service_role', null, statement);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+    });
+
+    await t.test('the audit log is append-only, even for the service role', async () => {
+        const insert = await as(db, 'service_role', null, "insert into public.admin_audit_log (action, details) values ('admin_login', '{}')");
+        assert.ok(insert.ok, insert.error);
+        const update = await as(db, 'service_role', null, "update public.admin_audit_log set action = 'tampered'");
+        assert.ok(!update.ok && /append-only/.test(update.error), JSON.stringify(update));
+        const del = await as(db, 'service_role', null, 'delete from public.admin_audit_log');
+        assert.ok(!del.ok && /append-only/.test(del.error), JSON.stringify(del));
+    });
+
+    await t.test('admin_user_stats exposes scan and import counts', async () => {
+        await db.exec(`insert into public.expenses (user_id, amount, category, description, source) values ('${USERS.bob}', 10, 'Shopping', 'Receipt', 'ai_scan')`);
+        const r = await as(db, 'service_role', null, `select receipt_scan_count, pdf_import_count from public.admin_user_stats where id = '${USERS.bob}'`);
+        assert.ok(r.ok, r.error);
+        assert.equal(r.rows[0].receipt_scan_count, 1);
+        assert.equal(r.rows[0].pdf_import_count, 0);
+    });
+
+    await t.test('deleting an account anonymises its telemetry instead of keeping the link', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.bob}'`);
+        const events = await db.query(`select user_id from public.app_events where install_id = '${INSTALL}'`);
+        assert.equal(events.rows.length, 1);
+        assert.equal(events.rows[0].user_id, null);
+        const installs = await db.query(`select user_id from public.app_installs where install_id = '${INSTALL}'`);
+        assert.equal(installs.rows[0].user_id, null);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_6 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 test('production-like database: partial v1 extension, v1_1 applied, no v1_2', async (t) => {
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 

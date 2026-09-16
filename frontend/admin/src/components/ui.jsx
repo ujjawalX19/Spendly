@@ -36,6 +36,9 @@ const STATUS_STYLES = {
   DISABLED: 'bg-zinc-500/10 text-zinc-500 ring-zinc-600/30',
 };
 const STATUS_DOT = { HEALTHY: 'bg-lime-400', WARNING: 'bg-amber-400', ERROR: 'bg-red-500', NO_DATA: 'bg-zinc-500', DISABLED: 'bg-zinc-600' };
+// AI health lights map onto the same styles.
+Object.assign(STATUS_STYLES, { GREEN: STATUS_STYLES.HEALTHY, YELLOW: STATUS_STYLES.WARNING, RED: STATUS_STYLES.ERROR, UNKNOWN: STATUS_STYLES.NO_DATA });
+Object.assign(STATUS_DOT, { GREEN: STATUS_DOT.HEALTHY, YELLOW: STATUS_DOT.WARNING, RED: STATUS_DOT.ERROR, UNKNOWN: STATUS_DOT.NO_DATA });
 
 export function StatusBadge({ status }) {
   const label = status === 'NO_DATA' ? 'NO DATA' : status;
@@ -212,5 +215,39 @@ export function ReasonDialog({ open, title, description, confirmLabel, danger, o
         </div>
       </form>
     </div>
+  );
+}
+
+/** A section whose data does not exist yet: says why instead of showing zeros. */
+export function Unavailable({ note }) {
+  return (
+    <div className="flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-200/90">
+      <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      <span>{note || 'Not available — telemetry not configured'}</span>
+    </div>
+  );
+}
+
+export const selectClass = 'rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 focus:border-lime-400 focus:outline-none';
+
+export function Select({ label, value, onChange, options }) {
+  return (
+    <label className="flex flex-col gap-1">
+      {label && <span className="text-[11px] text-zinc-500">{label}</span>}
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClass} aria-label={label}>
+        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </label>
+  );
+}
+
+/** Label/value rows. */
+export function Rows({ rows }) {
+  return (
+    <dl className="space-y-1.5 text-sm">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex justify-between gap-4"><dt className="text-zinc-500">{k}</dt><dd className="text-right text-zinc-200">{v}</dd></div>
+      ))}
+    </dl>
   );
 }

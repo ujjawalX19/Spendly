@@ -1,4 +1,5 @@
 import React from 'react';
+import { flushTelemetry, track } from '../lib/telemetry';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -12,6 +13,9 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
+    // Error class only (e.g. TypeError): messages and stacks can contain user data.
+    track('app_crash', { kind: /^[A-Za-z]{1,40}$/.test(error?.name || '') ? error.name : 'Error' });
+    flushTelemetry();
     console.error('🔴 ErrorBoundary caught:', error, errorInfo);
   }
 

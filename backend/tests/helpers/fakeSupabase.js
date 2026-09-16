@@ -48,8 +48,16 @@ function adminUserStats(tables) {
             ai_question_count: questions.length,
             group_count: of('group_members', p.id).length,
             last_activity_at: latest(expenses, questions, of('pdf_imports', p.id)),
+            receipt_scan_count: expenses.filter((e) => e.source === 'ai_scan').length,
+            pdf_import_count: of('pdf_imports', p.id).length,
         };
     });
+}
+
+/** Column value, including a PostgREST JSON text path such as `props->>outcome`. */
+function field(r, c) {
+    const [col, key] = c.split('->>');
+    return key === undefined ? r[col] : r[col]?.[key];
 }
 
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
@@ -111,7 +119,7 @@ class Query {
     delete() { this.op = 'delete'; return this; }
     upsert(values, options = {}) { this.op = 'upsert'; this.values = values; this.onConflict = options.onConflict; return this; }
 
-    eq(c, v) { this.filters.push((r) => same(r[c], v)); return this; }
+    eq(c, v) { this.filters.push((r) => same(field(r, c), v)); return this; }
     neq(c, v) { this.filters.push((r) => !same(r[c], v)); return this; }
     gt(c, v) { this.filters.push((r) => r[c] != null && compare(r[c], v) > 0); return this; }
     gte(c, v) { this.filters.push((r) => r[c] != null && compare(r[c], v) >= 0); return this; }

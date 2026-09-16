@@ -9,6 +9,9 @@ const { hasActivePro, purchasesEnabled } = require('../lib/entitlements');
 const { validationError } = require('../lib/validation');
 const adminMetrics = require('../lib/adminMetrics');
 const adminHealth = require('../lib/adminHealth');
+const adminAnalytics = require('../lib/adminAnalytics');
+const telemetry = require('../lib/opsTelemetry');
+const { adminWriteLimiter } = require('../middleware/rateLimits');
 const appTime = require('../lib/appTime');
 
 /**
@@ -36,7 +39,7 @@ const appTime = require('../lib/appTime');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGE_SIZE_MAX = 100;
 
-router.use(protect, requireOwner);
+router.use(protect, requireOwner, adminWriteLimiter);
 
 // Columns the admin user list and detail may expose. Deliberately excludes
 // quota counters' raw internals, chillar totals and score internals.
@@ -86,15 +89,35 @@ async function selectProfiles(build) {
 // @route GET /api/admin/me — 200 only for the owner; the admin app uses it to
 // decide whether to show the panel. It is not the security boundary: every
 // other route enforces the same middleware independently.
-router.get('/me', (req, res) => {
+//
+// Opening the console is audited as `admin_login`, at most once per 30 minutes
+// per owner so an auto-refreshing tab does not flood the log.
+const LOGIN_AUDIT_MS = 30 * 60 * 1000;
+const lastLoginAudit = new Map(); // userId -> ms
+
+router.get('/me', async (req, res) => {
+    const now = Date.now();
+    if (!(lastLoginAudit.get(req.user.id) > now - LOGIN_AUDIT_MS)) {
+        lastLoginAudit.set(req.user.id, now);
+        await audit(req, 'admin_login', { details: { userAgent: String(req.headers['user-agent'] || '').slice(0, 160) } });
+    }
     res.json({ success: true, owner: { id: req.user.id, email: req.user.email } });
 });
 
 // ─── Dashboard ──────────────────────────────────────────────────────────────
-// @route GET /api/admin/overview
-router.get('/overview', async (req, res) => {
+// @route GET /api/admin/overview  (alias: /dashboard)
+router.get(['/overview', '/dashboard'], async (req, res) => {
     try {
-        res.json({ success: true, billing: { connected: purchasesEnabled() }, ...(await adminMetrics.overview()) });
+        const [metrics, installs] = await Promise.all([adminMetrics.overview(), adminAnalytics.installs({ days: 30 })]);
+        res.json({
+            success: true,
+            billing: { connected: purchasesEnabled() },
+            ...metrics,
+            installs: installs.available
+                ? { available: true, totals: installs.totals, trackingSince: installs.trackingSince, playStore: installs.playStore, note: installs.note }
+                : { available: false, note: installs.note, playStore: installs.playStore },
+            api: telemetry.requestSnapshot(),
+        });
     } catch (err) {
         console.error('Admin overview failed:', err.message);
         res.status(500).json({ success: false, message: 'Could not build the overview' });
@@ -129,6 +152,23 @@ const listSchema = z.object({
 
 const ACTIVE_WINDOW_MS = 30 * 86400000;
 const USAGE_COLUMNS = 'expense_count, goal_count, subscription_count, ai_question_count, group_count, last_activity_at';
+const USAGE_COLUMNS_V16 = `${USAGE_COLUMNS}, receipt_scan_count, pdf_import_count`;
+
+/** Most recently seen install per user: { platform, appVersion, lastSeenAt }. null when untracked. */
+async function latestInstalls(userIds) {
+    if (!userIds.length) return new Map();
+    const { data, error } = await supabase.from('app_installs')
+        .select('user_id, platform, app_version, last_seen_at')
+        .in('user_id', userIds)
+        .order('last_seen_at', { ascending: false })
+        .limit(1000);
+    if (error) return null;
+    const map = new Map();
+    for (const row of data || []) {
+        if (!map.has(row.user_id)) map.set(row.user_id, { platform: row.platform, appVersion: row.app_version, lastSeenAt: row.last_seen_at });
+    }
+    return map;
+}
 const USAGE_SORTS = new Set(['expenses', 'ai_usage', 'last_activity']);
 
 const SORT_ORDER = {
@@ -190,7 +230,8 @@ router.get('/users', async (req, res) => {
         return query.order(column, options).order('id', { ascending: true }).range(from, from + f.pageSize - 1);
     };
 
-    let result = await build('admin_user_stats', `${USER_COLUMNS}, ${USAGE_COLUMNS}`);
+    let result = await build('admin_user_stats', `${USER_COLUMNS}, ${USAGE_COLUMNS_V16}`);
+    if (result.error) result = await build('admin_user_stats', `${USER_COLUMNS}, ${USAGE_COLUMNS}`);
     let usageAvailable = !result.error;
     if (result.error) {
         const needsView = USAGE_SORTS.has(f.sort) || f.activity !== 'all' || f.sort === 'last_active';
@@ -206,6 +247,7 @@ router.get('/users', async (req, res) => {
         return res.status(500).json({ success: false, message: 'Could not load users' });
     }
 
+    const devices = await latestInstalls((result.data || []).map((row) => row.id));
     const users = (result.data || []).map((row) => ({
         ...presentUser(row, now),
         usage: usageAvailable ? {
@@ -214,8 +256,12 @@ router.get('/users', async (req, res) => {
             subscriptions: row.subscription_count,
             aiQuestions: row.ai_question_count,
             groupPools: row.group_count,
+            scannedExpenses: row.receipt_scan_count ?? null,
+            statementImports: row.pdf_import_count ?? null,
             lastActivityAt: row.last_activity_at,
         } : null,
+        // null = install telemetry unavailable; nulls inside = never reported by this user's app.
+        device: devices === null ? null : devices.get(row.id) || { platform: null, appVersion: null, lastSeenAt: null },
     }));
     const total = result.count ?? users.length;
     res.json({
@@ -223,6 +269,7 @@ router.get('/users', async (req, res) => {
         users,
         usageAvailable,
         activityTracking: usageAvailable,
+        deviceTracking: devices !== null,
         pagination: { page: f.page, pageSize: f.pageSize, total, hasMore: from + users.length < total },
     });
 });
@@ -287,6 +334,14 @@ router.get('/users/:id', async (req, res) => {
         userCount('cancelled_subscriptions', 'user_id', userId),
     ]);
 
+    const [installRows, eventRows] = await Promise.all([
+        supabase.from('app_installs').select('install_id, platform, app_version, first_seen_at, last_seen_at')
+            .eq('user_id', userId).order('last_seen_at', { ascending: false }).limit(20),
+        supabase.from('app_events').select('name, source').eq('user_id', userId).gte('created_at', since30).limit(5000),
+    ]);
+    const eventCounts = new Map();
+    for (const e of eventRows.data || []) eventCounts.set(e.name, (eventCounts.get(e.name) || 0) + 1);
+
     await audit(req, 'user_viewed', { targetUserId: userId });
 
     res.json({
@@ -320,6 +375,11 @@ router.get('/users/:id', async (req, res) => {
             csvImports: null,
             upiDetections: null,
         },
+        // Install id is shortened: enough to tell devices apart, not to track one.
+        devices: installRows.error ? null : (installRows.data || []).map((d) => ({
+            installId: `${d.install_id.slice(0, 8)}…`, platform: d.platform, appVersion: d.app_version, firstSeenAt: d.first_seen_at, lastSeenAt: d.last_seen_at,
+        })),
+        events30d: eventRows.error ? null : [...eventCounts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
         auditTrail: auditTrail.error ? null : (auditTrail.data || []).map((a) => ({
             id: a.id, action: a.action, details: a.details, at: a.created_at, by: a.actor_email,
         })),
@@ -686,9 +746,18 @@ router.get('/pro', async (req, res) => {
             }));
         }
 
+        const quotas = await quotaUsage(now);
+        const attempts = await supabase.from('app_events').select('user_id, created_at').eq('name', 'pro_purchase_attempted')
+            .gte('created_at', new Date(now.getTime() - 30 * 86400000).toISOString()).limit(5000);
+
         res.json({
             success: true,
-            billing: { connected: purchasesEnabled(), note: purchasesEnabled() ? null : 'Billing not connected — every entitlement is a manual grant' },
+            billing: { connected: purchasesEnabled(), status: purchasesEnabled() ? 'enabled' : 'not_enabled', note: purchasesEnabled() ? null : 'Billing: Not enabled — every entitlement is a manual grant' },
+            quotas,
+            purchaseAttempts30d: attempts.error
+                ? { value: null, note: 'Not available — telemetry not configured (run supabase/v1_6_owner_console.sql)' }
+                : { value: attempts.data.length, users: new Set(attempts.data.map((a) => a.user_id).filter(Boolean)).size, note: 'Taps on a purchase action; purchases return 501 while billing is not enabled' },
+            revenue: { value: null, connected: false, note: 'No revenue: billing is not enabled' },
             summary: {
                 totalUsers,
                 activePro,
@@ -706,6 +775,43 @@ router.get('/pro', async (req, res) => {
         res.status(500).json({ success: false, message: 'Could not load Pro data' });
     }
 });
+
+/**
+ * Free-tier quota usage right now, from the counters proGate maintains on
+ * profiles. Pro users are not metered. Counters from an earlier period (reset
+ * key not current) count as zero, exactly as proGate reads them.
+ */
+async function quotaUsage(now) {
+    const { FREE_LIMITS, COUNTERS } = require('../middleware/proGate');
+    const out = {};
+    for (const [feature, spec] of Object.entries(COUNTERS)) {
+        const key = spec.period === 'month' ? appTime.localMonthKey(now) : appTime.localDateKey(now);
+        const { data, error } = await supabase.from('profiles')
+            .select(`id, email, is_pro, pro_expires_at, ${spec.counter}`)
+            .eq(spec.reset, key)
+            .gt(spec.counter, 0)
+            .order(spec.counter, { ascending: false })
+            .limit(1000);
+        if (error) {
+            out[feature] = { value: null, note: 'Could not read quota counters' };
+            continue;
+        }
+        const limit = FREE_LIMITS[feature];
+        const metered = (data || []).filter((r) => !hasActivePro(r, now));
+        const near = Math.ceil(limit * 0.8);
+        out[feature] = {
+            limit,
+            period: spec.period,
+            usersUsing: metered.length,
+            used: metered.reduce((sum, r) => sum + Number(r[spec.counter] || 0), 0),
+            atLimit: metered.filter((r) => r[spec.counter] >= limit).length,
+            nearLimit: metered.filter((r) => r[spec.counter] >= near && r[spec.counter] < limit).length,
+            // Who is close to a limit (support context). Email and count only.
+            approaching: metered.filter((r) => r[spec.counter] >= near).slice(0, 20).map((r) => ({ id: r.id, email: r.email, used: r[spec.counter] })),
+        };
+    }
+    return out;
+}
 
 const extendSchema = z.object({
     reason: reasonSchema,
@@ -758,8 +864,8 @@ const auditListSchema = z.object({
     pageSize: z.coerce.number().int().min(1).max(PAGE_SIZE_MAX).optional().default(50),
 }).strict();
 
-// @route GET /api/admin/audit-log
-router.get('/audit-log', async (req, res) => {
+// @route GET /api/admin/audit-log  (alias: /audit)
+router.get(['/audit-log', '/audit'], async (req, res) => {
     const parsed = auditListSchema.safeParse(req.query);
     if (!parsed.success) return validationError(res, parsed.error, 'Invalid filter');
     const { action, page, pageSize } = parsed.data;
@@ -779,6 +885,105 @@ router.get('/audit-log', async (req, res) => {
         entries: (data || []).map((e) => ({ id: e.id, action: e.action, actor: e.actor_email, targetUserId: e.target_user_id, details: e.details, ip: e.ip, at: e.created_at })),
         pagination: { page, pageSize, total: count ?? 0, hasMore: from + (data || []).length < (count ?? 0) },
     });
+});
+
+// ─── Activity, installs, engagement, AI, settings ──────────────────────────
+const windowSchema = z.object({
+    days: z.coerce.number().int().refine((d) => [7, 14, 30, 90].includes(d), 'days must be 7, 14, 30 or 90').optional().default(30),
+}).strict();
+const noQuery = z.object({}).strict();
+
+/** An analytics section: validate the query, 500 with a generic message on failure. */
+function section(name, fn, schema = windowSchema) {
+    return async (req, res) => {
+        const parsed = schema.safeParse(req.query);
+        if (!parsed.success) return validationError(res, parsed.error, 'Invalid filter');
+        try {
+            res.json({ success: true, ...(await fn(parsed.data)) });
+        } catch (err) {
+            if (err.status === 400) return res.status(400).json({ success: false, message: err.message });
+            console.error(`Admin ${name} failed:`, err.message);
+            res.status(500).json({ success: false, message: `Could not load ${name}` });
+        }
+    };
+}
+
+// @route GET /api/admin/activity?days=7|14|30|90
+router.get('/activity', section('activity', (q) => adminAnalytics.activity(q)));
+// @route GET /api/admin/installs?days=7|14|30|90
+router.get('/installs', section('installs', (q) => adminAnalytics.installs(q)));
+// @route GET /api/admin/engagement
+router.get('/engagement', section('engagement', () => adminAnalytics.engagement(), noQuery));
+// @route GET /api/admin/ai
+router.get('/ai', section('AI monitoring', () => adminAnalytics.aiMentor(), noQuery));
+// @route GET /api/admin/settings — read-only configuration, never secrets
+router.get('/settings', section('settings', () => adminAnalytics.settings(), noQuery));
+
+// ─── Error Center ───────────────────────────────────────────────────────────
+const errorListSchema = z.object({
+    days: z.coerce.number().int().min(1).max(90).optional().default(7),
+    from: dateKey.optional(),
+    to: dateKey.optional(),
+    severity: z.enum(['all', 'error', 'warning']).optional().default('all'),
+    category: z.enum(['all', 'backend', 'ai', 'import', 'job', 'account', 'other']).optional().default('all'),
+    type: z.string().trim().regex(/^[a-z0-9_]{1,60}$/).optional(),
+    route: z.string().trim().max(120).optional(),
+    state: z.enum(['open', 'resolved', 'regressed', 'all']).optional().default('open'),
+    page: z.coerce.number().int().min(1).max(10000).optional().default(1),
+    pageSize: z.coerce.number().int().min(1).max(PAGE_SIZE_MAX).optional().default(25),
+}).strict();
+
+// @route GET /api/admin/errors
+router.get('/errors', section('errors', (q) => {
+    if (q.from && q.to && q.from > q.to) throw Object.assign(new Error('from must be on or before to'), { status: 400 });
+    return adminAnalytics.errorCenter({
+        ...q,
+        from: q.from ? localDay(q.from, false) : undefined,
+        to: q.to ? localDay(q.to, true) : undefined,
+    });
+}, errorListSchema));
+
+const fingerprintSchema = z.string().max(300).regex(adminAnalytics.FINGERPRINT_RE, 'Invalid issue');
+const resolveSchema = z.object({ fingerprint: fingerprintSchema, note: z.string().trim().max(500).optional() }).strict();
+const reopenSchema = z.object({ fingerprint: fingerprintSchema, reason: reasonSchema }).strict();
+
+// @route POST /api/admin/errors/resolve { fingerprint, note? }
+// Resolution is state about an issue, never an edit of the recorded events.
+router.post('/errors/resolve', async (req, res) => {
+    const parsed = resolveSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const { fingerprint, note } = parsed.data;
+
+    const exists = await adminAnalytics.issueExists(fingerprint);
+    if (exists === null) return res.status(503).json({ success: false, message: 'Error tracking unavailable' });
+    if (!exists) return res.status(404).json({ success: false, message: 'No such issue in the last 90 days' });
+
+    const stored = await audit(req, 'error_resolved', { details: { fingerprint, note: note || null }, required: true });
+    if (!stored) return res.status(503).json({ success: false, code: 'AUDIT_UNAVAILABLE', message: 'Action refused: the audit log is unavailable' });
+
+    const resolvedAt = new Date().toISOString();
+    const { error } = await supabase.from('ops_issue_states').upsert({
+        fingerprint, resolved_at: resolvedAt, resolved_by: req.user.id, resolved_by_email: req.user.email, note: note || null,
+    }, { onConflict: 'fingerprint' });
+    if (error) {
+        await audit(req, 'error_resolved_failed', { details: { fingerprint } });
+        return res.status(409).json({ success: false, code: 'MIGRATION_REQUIRED', message: 'Resolving issues needs supabase/v1_6_owner_console.sql' });
+    }
+    res.json({ success: true, message: 'Marked resolved. It re-opens automatically if it happens again.', resolvedAt });
+});
+
+// @route POST /api/admin/errors/reopen { fingerprint, reason }
+router.post('/errors/reopen', async (req, res) => {
+    const parsed = reopenSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const { fingerprint, reason } = parsed.data;
+
+    const stored = await audit(req, 'error_reopened', { details: { fingerprint, reason }, required: true });
+    if (!stored) return res.status(503).json({ success: false, code: 'AUDIT_UNAVAILABLE', message: 'Action refused: the audit log is unavailable' });
+
+    const { error } = await supabase.from('ops_issue_states').delete().eq('fingerprint', fingerprint);
+    if (error) return res.status(409).json({ success: false, code: 'MIGRATION_REQUIRED', message: 'Re-opening issues needs supabase/v1_6_owner_console.sql' });
+    res.json({ success: true, message: 'Issue re-opened' });
 });
 
 module.exports = router;

@@ -5,6 +5,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabaseClient';
 import { NATIVE_SCHEME, NATIVE_HOSTS, authErrorFromUrl, isMissingVerifierError } from './lib/authRedirects';
+import { track } from './lib/telemetry';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProProvider } from './contexts/ProContext';
@@ -146,6 +147,7 @@ function DeepLinkHandler({ onMessage }) {
 
       const providerError = authErrorFromUrl(url);
       if (providerError) {
+        track('auth_callback_failed', { code: isReset ? 'reset_provider_error' : 'provider_error' });
         onMessage(providerError);
         navigate(failTo, { replace: true });
         return;
@@ -153,6 +155,7 @@ function DeepLinkHandler({ onMessage }) {
 
       const code = parsed.searchParams.get('code');
       if (!code || !/^[A-Za-z0-9._~-]{8,512}$/.test(code)) {
+        track('auth_callback_failed', { code: 'invalid_link' });
         onMessage('That link is not valid. Please try again.');
         navigate(failTo, { replace: true });
         return;
@@ -161,6 +164,7 @@ function DeepLinkHandler({ onMessage }) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (cancelled) return;
       if (error) {
+        track('auth_callback_failed', { code: isMissingVerifierError(error) ? 'missing_verifier' : 'code_exchange_failed' });
         onMessage(isMissingVerifierError(error)
           ? 'Please open the link on the same device where you requested it.'
           : 'This link has expired or has already been used. Please request a new one.');

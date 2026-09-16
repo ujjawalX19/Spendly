@@ -123,14 +123,36 @@ checks as (
     from unnest(array['admin_audit_log', 'ops_events']) as o
 
     union all
+    -- v1.6 Owner Console telemetry: backend (service role) only
+    select r || ' cannot SELECT/INSERT ' || o,
+           case when to_regclass('public.' || o) is null then false
+                else not (has_table_privilege(r, 'public.' || o, 'SELECT') or has_table_privilege(r, 'public.' || o, 'INSERT')) end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_6_owner_console.sql' else '' end
+    from unnest(array['app_events', 'app_installs', 'ops_issue_states']) as o,
+         unnest(array['anon', 'authenticated']) as r
+
+    union all
+    select 'RLS enabled: ' || o,
+           coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.' || o)), false),
+           case when to_regclass('public.' || o) is null then 'missing — run v1_6_owner_console.sql' else '' end
+    from unnest(array['app_events', 'app_installs', 'ops_issue_states']) as o
+
+    union all
+    select 'admin_audit_log is append-only (trigger)',
+           exists (select 1 from pg_trigger where tgname = 'trg_admin_audit_log_append_only' and tgrelid = to_regclass('public.admin_audit_log')),
+           'run v1_6_owner_console.sql'
+
+    union all
     select 'Exactly one admin account (owner)',
            (select count(*) from public.profiles where role = 'admin') = 1,
            (select count(*)::text || ' admin(s); must also match ADMIN_EMAIL on the server' from public.profiles where role = 'admin')
 
     union all
     -- 12. Every table referencing profiles cascades on delete (no orphaned data)
+    -- Telemetry rows are anonymised (SET NULL) instead: counts survive, the link to the person does not.
     select 'ON DELETE CASCADE: ' || con.conrelid::regclass::text || '.' || con.conname,
-           con.confdeltype = 'c',
+           con.confdeltype = 'c'
+             or (con.confdeltype = 'n' and (select relname from pg_class where oid = con.conrelid) in ('app_events', 'app_installs')),
            ''
     from pg_constraint con
     where con.contype = 'f'

@@ -6,6 +6,7 @@ import { usePro } from '../contexts/ProContext';
 import { Link } from 'react-router-dom';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
+import { track } from '../lib/telemetry';
 import VittovaLogo from '../components/VittovaLogo';
 
 const MAX_CHARS = 500;
@@ -158,6 +159,7 @@ export default function Chatbot() {
     }, [token, refreshProfile]);
 
     useEffect(() => { loadInsights(); }, [loadInsights]);
+    useEffect(() => { track('ai_mentor_opened'); }, []);
 
     useEffect(() => {
         if (!token) return undefined;

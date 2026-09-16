@@ -42,9 +42,10 @@ function modelName() {
  * @returns {Promise<string>} the model's text ('' when it returned nothing)
  */
 async function generateText(contents, options = {}) {
+    const started = Date.now();
     try {
         const text = await callModel(contents, options);
-        telemetry.recordAiSuccess();
+        telemetry.recordAiSuccess(Date.now() - started);
         return text;
     } catch (err) {
         // Status and Google's reason (e.g. 400:API_KEY_INVALID), never the prompt.

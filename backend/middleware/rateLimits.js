@@ -170,6 +170,27 @@ const exportLimiter = make({
     message: 'Too many exports in a short time. Please try again later.',
 });
 
+// App telemetry (first launch, app open, sign-in outcomes). Per IP, because
+// first launches are anonymous; generous enough for NAT-shared mobile networks.
+const telemetryLimiter = make({
+    name: 'telemetry',
+    windowMs: 10 * MINUTE,
+    limit: 60,
+    keyGenerator: byIp,
+    message: 'Too many telemetry reports.',
+});
+
+// Owner Console writes (suspend, Pro changes, resolving issues). Reads are
+// already covered by userApiLimiter through `protect`.
+const adminWriteLimiter = make({
+    name: 'admin-write',
+    windowMs: 15 * MINUTE,
+    limit: 60,
+    keyGenerator: byUser,
+    skip: (req) => req.method === 'GET' || req.method === 'HEAD',
+    message: 'Too many admin changes in a short time. Please wait and try again.',
+});
+
 /** Both AI limiters, in order. Place after `protect`. */
 const aiLimiter = [aiBurstLimiter, aiHourlyLimiter];
 
@@ -201,6 +222,8 @@ module.exports = {
     receiptScanLimiter,
     pdfImportLimiter,
     exportLimiter,
+    telemetryLimiter,
+    adminWriteLimiter,
     resetRateLimits,
     parseTrustProxy,
     resolveClientIp,

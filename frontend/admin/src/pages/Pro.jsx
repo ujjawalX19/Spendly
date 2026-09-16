@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarPlus, ChevronLeft, ChevronRight, CreditCard, XCircle } from 'lucide-react';
 import { useAdminData } from '../lib/useAdminData';
 import { Button, Card, ErrorBanner, Metric, MetricGrid, PageHeader, Skeleton, fmtDate, fmtPercent } from '../components/ui';
+
+const QUOTA_LABELS = { chat_message: 'AI messages (per day)', receipt_scan: 'Receipt scans (per month)', add_expense: 'Expenses (per day)' };
 import { ProDialogs } from '../components/ProDialogs';
 
 const STATES = [['active', 'Active'], ['expiring', 'Expiring ≤ 7 days'], ['expired', 'Expired'], ['all', 'All Pro flags']];
@@ -46,12 +48,40 @@ export default function Pro() {
               <div>
                 <p className="text-xs text-zinc-500">Billing</p>
                 <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-zinc-800/80 px-2.5 py-1.5 text-sm text-zinc-300">
-                  <CreditCard className="h-4 w-4 text-zinc-500" aria-hidden />{data.billing.connected ? 'Connected' : 'Billing not connected'}
+                  <CreditCard className="h-4 w-4 text-zinc-500" aria-hidden />{data.billing.connected ? 'Connected' : 'Billing: Not enabled'}
                 </p>
                 {!data.billing.connected && <p className="mt-1 text-[11px] text-zinc-500">Every entitlement is a manual grant. No revenue exists.</p>}
               </div>
+              <Metric label="Revenue" metric={data.revenue} />
+              <Metric label="Purchase attempts, 30 days" metric={data.purchaseAttempts30d} hint={data.purchaseAttempts30d?.users !== undefined ? `${data.purchaseAttempts30d.users} user(s)` : undefined} />
             </MetricGrid>
           )}
+        </Card>
+
+        <Card title="Free-tier quota usage" subtitle="Current period, from the counters the server enforces · Pro users are not metered">
+          {!data?.quotas ? <Skeleton className="h-24" /> : (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {Object.entries(data.quotas).map(([feature, q]) => (
+                <div key={feature} className="rounded-xl bg-zinc-950/60 p-4">
+                  <p className="text-xs font-medium text-zinc-400">{QUOTA_LABELS[feature] || feature}</p>
+                  {q.value === null ? <p className="mt-2 text-sm text-amber-300/80">{q.note}</p> : (
+                    <>
+                      <p className="mt-2 text-sm text-zinc-300">Limit {q.limit} · <span className="tabular text-zinc-100">{q.usersUsing}</span> users · <span className="tabular text-zinc-100">{q.used}</span> used</p>
+                      <p className="mt-1 text-sm"><span className="text-red-300">{q.atLimit} at limit</span> · <span className="text-amber-300">{q.nearLimit} near limit</span></p>
+                      {q.approaching.length > 0 && (
+                        <ul className="mt-3 space-y-1 text-xs">
+                          {q.approaching.map((u) => (
+                            <li key={u.id} className="flex justify-between gap-2"><Link to={`/users/${u.id}`} className="truncate font-mono text-zinc-400 hover:text-lime-300">{u.email}</Link><span className="tabular text-zinc-200">{u.used}/{q.limit}</span></li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-4 text-xs text-zinc-500">Future billing data (subscriptions, renewals, cancellations, revenue) will appear here once Google Play Billing with server-side verification exists. Nothing is shown until then.</p>
         </Card>
 
         <Card

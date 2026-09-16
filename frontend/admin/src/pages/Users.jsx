@@ -89,7 +89,7 @@ export default function Users() {
       )}
 
       <div className="overflow-x-auto rounded-2xl border border-zinc-800/80 bg-zinc-900/60">
-        <table className="w-full min-w-[1100px] text-sm">
+        <table className="w-full min-w-[1320px] text-sm">
           <thead>
             <tr className="border-b border-zinc-800/80 text-left text-[11px] uppercase tracking-wider text-zinc-500">
               <th className="px-4 py-3 font-medium">User</th>
@@ -102,14 +102,17 @@ export default function Users() {
               <th className="px-3 py-3 text-right font-medium">Subs</th>
               <th className="px-3 py-3 text-right font-medium">AI Qs</th>
               <th className="px-3 py-3 text-right font-medium">Pools</th>
+              <th className="px-3 py-3 text-right font-medium">Scans</th>
+              <th className="px-3 py-3 text-right font-medium">Imports</th>
+              <th className="px-3 py-3 font-medium">App</th>
               <th className="px-4 py-3 font-medium">Last activity</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/60">
             {loading && !data ? Array.from({ length: 8 }, (_, i) => (
-              <tr key={i}><td colSpan={11} className="px-4 py-3"><Skeleton className="h-6" /></td></tr>
+              <tr key={i}><td colSpan={14} className="px-4 py-3"><Skeleton className="h-6" /></td></tr>
             )) : users.length === 0 ? (
-              <tr><td colSpan={11} className="px-4 py-12 text-center text-zinc-500">No users match these filters.</td></tr>
+              <tr><td colSpan={14} className="px-4 py-12 text-center text-zinc-500">No users match these filters.</td></tr>
             ) : users.map((u) => (
               <tr key={u.id} onClick={() => navigate(`/users/${u.id}`)} className={`cursor-pointer hover:bg-zinc-800/40 ${loading ? 'opacity-60' : ''}`}>
                 <td className="max-w-[260px] px-4 py-3">
@@ -136,6 +139,11 @@ export default function Users() {
                 <Count value={u.usage?.subscriptions} />
                 <Count value={u.usage?.aiQuestions} />
                 <Count value={u.usage?.groupPools} />
+                <Count value={u.usage?.scannedExpenses} />
+                <Count value={u.usage?.statementImports} />
+                <td className="whitespace-nowrap px-3 py-3 text-xs text-zinc-400" title={u.device?.lastSeenAt ? `Last seen ${fmtDate(u.device.lastSeenAt)}` : undefined}>
+                  {u.device === null ? '—' : u.device?.platform ? `${u.device.platform} ${u.device.appVersion || ''}` : <span className="text-zinc-600">not reported</span>}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-400">{u.usage ? fmtRelative(u.usage.lastActivityAt) : '—'}</td>
               </tr>
             ))}
@@ -150,7 +158,7 @@ export default function Users() {
           <Button variant="ghost" disabled={!data?.pagination?.hasMore || loading} onClick={() => update({ page: String(page + 1) })}>Next<ChevronRight className="h-4 w-4" aria-hidden /></Button>
         </div>
       </div>
-      <p className="mt-2 text-xs text-zinc-600">Last active = last authenticated API request. Last activity = last expense, AI question or import.</p>
+      <p className="mt-2 text-xs text-zinc-600">Last active = last authenticated API request. Last activity = last expense, AI question or import. App = platform and version last reported by the user's app (builds with telemetry only).</p>
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
-import { Activity, Crown, LayoutDashboard, LogOut, ScrollText, ShieldCheck, Users as UsersIcon } from 'lucide-react';
+import { AlertOctagon, BarChart3, Bot, Crown, HeartPulse, LayoutDashboard, LogOut, ScrollText, Settings as SettingsIcon, ShieldCheck, Users as UsersIcon } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { adminApi } from './lib/api';
 import { Button } from './components/ui';
@@ -11,6 +11,13 @@ import UserDetail from './pages/UserDetail';
 import Pro from './pages/Pro';
 import Health from './pages/Health';
 import AuditLog from './pages/AuditLog';
+import ActivityPage from './pages/Activity';
+import AiMentor from './pages/AiMentor';
+import Errors from './pages/Errors';
+import Settings from './pages/Settings';
+
+const BASENAME = import.meta.env.BASE_URL.replace(/\/+$/, '');
+export const LOGO_URL = `${import.meta.env.BASE_URL}vittova-logo.svg`;
 
 // Sign out after this long without interaction.
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
@@ -93,15 +100,19 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASENAME}>
       <Shell owner={owner} onSignOut={signOut}>
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/users" element={<Users />} />
           <Route path="/users/:id" element={<UserDetail currentOwnerId={owner.id} />} />
-          <Route path="/pro" element={<Pro />} />
+          <Route path="/activity" element={<ActivityPage />} />
+          <Route path="/ai" element={<AiMentor />} />
+          <Route path="/errors" element={<Errors />} />
           <Route path="/health" element={<Health />} />
+          <Route path="/pro" element={<Pro />} />
           <Route path="/audit" element={<AuditLog />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>
@@ -132,11 +143,15 @@ function Centered({ children }) {
 }
 
 const NAV = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/users', label: 'Users', icon: UsersIcon },
+  { to: '/activity', label: 'Activity', icon: BarChart3 },
+  { to: '/ai', label: 'AI Mentor', icon: Bot },
+  { to: '/errors', label: 'Errors', icon: AlertOctagon },
+  { to: '/health', label: 'System Health', icon: HeartPulse },
   { to: '/pro', label: 'Pro', icon: Crown },
-  { to: '/health', label: 'System health', icon: Activity },
-  { to: '/audit', label: 'Audit log', icon: ScrollText },
+  { to: '/audit', label: 'Audit Logs', icon: ScrollText },
+  { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 function Shell({ owner, onSignOut, children }) {
@@ -176,7 +191,7 @@ function Shell({ owner, onSignOut, children }) {
 function Brand({ compact = false }) {
   return (
     <div className="flex items-center gap-2.5">
-      <img src="/vittova-logo.svg" alt="" className="h-8 w-8 rounded-lg" />
+      <img src={LOGO_URL} alt="" className="h-8 w-8 rounded-lg" />
       <div className="leading-tight">
         <p className="text-sm font-bold tracking-[.14em] text-zinc-50">VITTOVA</p>
         {!compact && <p className="flex items-center gap-1 text-[11px] text-lime-300/80"><ShieldCheck className="h-3 w-3" aria-hidden />Owner Console</p>}

@@ -24,7 +24,8 @@ const SAMPLE_SIZE = 2000;
 const requestSamples = []; // { at, ms, status }
 const totals = { requests: 0, serverErrors: 0 };
 
-const ai = { calls: 0, failures: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureCode: null };
+const ai = { calls: 0, failures: 0, timeouts: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureCode: null };
+const aiLatencies = []; // ms of successful Gemini calls since restart (bounded)
 
 const jobs = new Map(); // name -> { lastRunAt, lastSuccessAt, lastFailureAt }
 
@@ -80,6 +81,10 @@ function requestMetrics(req, res, next) {
             totals.serverErrors++;
             recordEvent('http_5xx', { route: `${req.method} ${routeTemplate(req)}`, statusCode: res.statusCode, durationMs: ms });
         }
+        // Product events (expense created, AI answered, ...) from the outcome.
+        try {
+            require('./appEvents').recordRequestOutcome(req, res, ms);
+        } catch { /* telemetry is best effort */ }
     });
     next();
 }
@@ -104,21 +109,28 @@ function requestSnapshot() {
     };
 }
 
-function recordAiSuccess() {
+function recordAiSuccess(ms) {
     ai.calls++;
     ai.lastSuccessAt = new Date().toISOString();
+    if (Number.isFinite(ms)) {
+        aiLatencies.push(ms);
+        if (aiLatencies.length > 500) aiLatencies.shift();
+    }
 }
 
 function recordAiFailure(code) {
     ai.calls++;
     ai.failures++;
+    if (/TIMEOUT|ABORT/i.test(String(code || ''))) ai.timeouts++;
     ai.lastFailureAt = new Date().toISOString();
     ai.lastFailureCode = code ? String(code).slice(0, 60) : 'UNKNOWN';
     recordEvent('ai_error', { code: ai.lastFailureCode });
 }
 
 function aiSnapshot() {
-    return { ...ai, since: STARTED_AT.toISOString() };
+    const sorted = [...aiLatencies].sort((a, b) => a - b);
+    const avg = sorted.length ? Math.round(sorted.reduce((sum, v) => sum + v, 0) / sorted.length) : null;
+    return { ...ai, since: STARTED_AT.toISOString(), latencyMs: { avg, p95: percentile(sorted, 95), samples: sorted.length } };
 }
 
 function recordJobRun(name, ok, code) {
@@ -140,7 +152,8 @@ function resetTelemetry() {
     requestSamples.length = 0;
     totals.requests = 0;
     totals.serverErrors = 0;
-    Object.assign(ai, { calls: 0, failures: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureCode: null });
+    Object.assign(ai, { calls: 0, failures: 0, timeouts: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureCode: null });
+    aiLatencies.length = 0;
     jobs.clear();
 }
 

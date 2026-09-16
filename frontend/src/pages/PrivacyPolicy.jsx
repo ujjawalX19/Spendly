@@ -49,8 +49,9 @@ export default function PrivacyPolicy() {
               <li>Round-up totals, logging streaks, weekly Spend Score history and statement-import history (bank name, number of transactions, statement period).</li>
               <li>Usage counters for free-plan limits (for example, coach questions asked today).</li>
               <li>Basic server logs needed to run and secure the service, such as request time and error type. Logs do not contain expense amounts, descriptions or notification text.</li>
+              <li><strong className="text-zinc-100">App usage and diagnostics:</strong> to understand how Vittova is used and to find problems, we record simple events such as the app being installed or opened, sign-in succeeding or failing (with a short reason category), an expense being added, edited or deleted, an import or receipt scan succeeding or failing, a coach answer being given, and the app showing its error screen (error type only). Each event has a time, the platform (Android or web) and the app version. The app creates a random installation ID on first launch; it is not an advertising ID or device identifier, and a reinstall creates a new one. Events contain no expense amounts, descriptions, payees, coach questions or answers, or notification text. After you sign in, events are linked to your account; if you delete your account, that link is removed.</li>
             </ul>
-            <p>We do not use advertising IDs, analytics or crash-reporting SDKs, or location data, and we do not show ads.</p>
+            <p>We do not use advertising IDs, third-party analytics or crash-reporting SDKs, or location data, and we do not show ads.</p>
           </Section>
 
           <Section title="3. Payment notifications (Android, optional)">

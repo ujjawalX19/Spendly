@@ -7,6 +7,7 @@ import {
 import { adminApi } from '../lib/api';
 import { useAdminData } from '../lib/useAdminData';
 import { Button, Card, ErrorBanner, Metric, MetricGrid, PageHeader, ReasonDialog, Skeleton, fmtDate, fmtRelative } from '../components/ui';
+import { EVENT_LABELS } from '../lib/labels';
 import { ProDialogs } from '../components/ProDialogs';
 
 const ACTION_LABELS = {
@@ -94,11 +95,39 @@ export default function UserDetail({ currentOwnerId }) {
                 </MetricGrid>
               </Card>
 
+              <Card title="Devices & product events" subtitle="Installs this account signed in on, and recorded events in the last 30 days (names only)">
+                {data.devices === null ? <p className="text-sm text-amber-300/80">Not available — telemetry not configured (run supabase/v1_6_owner_console.sql).</p> : (
+                  <>
+                    {data.devices.length === 0 ? <p className="text-sm text-zinc-500">No device reported (the user's app build may predate telemetry).</p> : (
+                      <table className="w-full text-sm">
+                        <thead><tr className="text-left text-[11px] uppercase tracking-wider text-zinc-500"><th className="pb-2 font-medium">Install</th><th className="pb-2 font-medium">Platform</th><th className="pb-2 font-medium">Version</th><th className="pb-2 font-medium">First seen</th><th className="pb-2 font-medium">Last seen</th></tr></thead>
+                        <tbody className="divide-y divide-zinc-800/60">
+                          {data.devices.map((dv) => (
+                            <tr key={dv.installId + dv.lastSeenAt}>
+                              <td className="py-1.5 font-mono text-xs text-zinc-500">{dv.installId}</td>
+                              <td className="py-1.5 text-zinc-300">{dv.platform}</td>
+                              <td className="py-1.5 font-mono text-xs text-zinc-200">{dv.appVersion || '—'}</td>
+                              <td className="py-1.5 text-xs text-zinc-400">{fmtDate(dv.firstSeenAt, { time: false })}</td>
+                              <td className="py-1.5 text-xs text-zinc-400">{fmtRelative(dv.lastSeenAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    {data.events30d?.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {data.events30d.map((e) => <span key={e.name} className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300">{EVENT_LABELS[e.name] || e.name} <span className="tabular text-zinc-100">{e.count}</span></span>)}
+                      </div>
+                    )}
+                  </>
+                )}
+              </Card>
+
               <Timeline state={timeline} />
             </div>
 
             <div className="space-y-6">
-              <Card title="Pro entitlement" subtitle="Manual grants only — billing is not connected">
+              <Card title="Pro entitlement" subtitle="Manual grants only — Billing: Not enabled">
                 <p className="mb-4 text-sm text-zinc-300">
                   {u.pro.active ? (u.pro.expiresAt ? `Active until ${fmtDate(u.pro.expiresAt)}` : 'Active, no expiry')
                     : u.pro.flagged ? `Expired ${fmtDate(u.pro.expiresAt)}` : 'Free plan'}

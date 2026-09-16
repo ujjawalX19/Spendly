@@ -170,7 +170,7 @@ async function proMetrics(p, totalUsers) {
 function revenueStatus() {
     return purchasesEnabled()
         ? unavailable('Billing enabled but revenue reporting is not implemented')
-        : { value: null, connected: false, note: 'Billing not connected' };
+        : { value: null, connected: false, note: 'Billing: Not enabled' };
 }
 
 async function usageMetrics(p) {
@@ -236,10 +236,34 @@ async function usageMetrics(p) {
     };
 }
 
+/** All-time totals for the dashboard's headline row. */
+async function totalMetrics(p) {
+    const [expenses, receiptScans, pdfImports, aiQuestions, groupUsers, deletedAccounts, aiFallback7d, aiFailed7d] = await Promise.all([
+        safe(async () => ok(await count('expenses'))),
+        safe(async () => ok(await count('expenses', (q) => q.eq('source', 'ai_scan')), { note: 'Receipts saved as expenses' })),
+        safe(async () => ok(await count('pdf_imports', (q) => q.eq('status', 'completed')))),
+        safe(async () => ok(await count('ai_chat_history', (q) => q.eq('role', 'user')))),
+        safe(async () => distinct('group_members', 'user_id')),
+        safe(
+            async () => ok(await count('ops_events', (q) => q.eq('type', 'account_deleted')), { note: 'Accounts are hard-deleted; counted since v1.4 telemetry' }),
+            missingMigration('Deletion counts'),
+        ),
+        safe(
+            async () => ok(await count('app_events', (q) => q.eq('name', 'ai_question_answered').eq('props->>outcome', 'fallback').gte('created_at', p.last7d.toISOString())), { note: 'Gemini reply unusable or unavailable; calculated answer shown' }),
+            'Not available — telemetry not configured (run supabase/v1_6_owner_console.sql)',
+        ),
+        safe(
+            async () => ok(await count('app_events', (q) => q.eq('name', 'ai_question_failed').gte('created_at', p.last7d.toISOString()))),
+            'Not available — telemetry not configured (run supabase/v1_6_owner_console.sql)',
+        ),
+    ]);
+    return { expenses, receiptScans, pdfImports, aiQuestions, groupUsers, deletedAccounts, aiFallback7d, aiFailed7d };
+}
+
 async function overview(now = new Date()) {
     const p = periods(now);
     const users = await userMetrics(p);
-    const [pro, usage] = await Promise.all([proMetrics(p, users.total.value), usageMetrics(p)]);
+    const [pro, usage, totals] = await Promise.all([proMetrics(p, users.total.value), usageMetrics(p), totalMetrics(p)]);
     return {
         generatedAt: now.toISOString(),
         timezone: appTime.APP_TIMEZONE,
@@ -247,6 +271,7 @@ async function overview(now = new Date()) {
         users,
         pro,
         usage,
+        totals,
     };
 }
 

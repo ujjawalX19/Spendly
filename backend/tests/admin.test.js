@@ -239,7 +239,7 @@ test('overview reports real counts and never invents revenue', async () => {
     assert.ok(res.body.pro.active.value >= 1);
     assert.ok(res.body.pro.expiringSoon.value >= 1);
     assert.equal(res.body.pro.revenue.value, null);
-    assert.equal(res.body.pro.revenue.note, 'Billing not connected');
+    assert.equal(res.body.pro.revenue.note, 'Billing: Not enabled');
     assert.equal(res.body.billing.connected, false);
     assert.equal(res.body.usage.upi.detections.value, null);
     assert.equal(res.body.usage.imports.csv.value, null);

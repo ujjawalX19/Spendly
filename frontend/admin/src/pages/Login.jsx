@@ -3,6 +3,8 @@ import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui';
 
+const LOGO_URL = `${import.meta.env.BASE_URL}vittova-logo.svg`;
+
 /**
  * Sign in with the app's normal Supabase accounts. Signing in proves identity
  * only; the backend then decides whether this account is the owner.
@@ -31,7 +33,8 @@ export default function Login({ denied, onClearDenied }) {
     onClearDenied?.();
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      // Back to the console, not the user app on the same origin.
+      options: { redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}` },
     });
     if (authError) setError('Google sign-in could not be started.');
   };
@@ -40,7 +43,7 @@ export default function Login({ denied, onClearDenied }) {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center gap-3">
-          <img src="/vittova-logo.svg" alt="" className="h-10 w-10 rounded-xl" />
+          <img src={LOGO_URL} alt="" className="h-10 w-10 rounded-xl" />
           <div>
             <h1 className="text-lg font-semibold text-zinc-50">Vittova Owner Console</h1>
             <p className="flex items-center gap-1 text-xs text-zinc-500"><ShieldCheck className="h-3 w-3" aria-hidden />Restricted to the app owner</p>

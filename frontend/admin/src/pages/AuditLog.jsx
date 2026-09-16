@@ -5,12 +5,15 @@ import { Button, ErrorBanner, PageHeader, Skeleton, fmtDate } from '../component
 
 const ACTIONS = [
   ['', 'All actions'],
+  ['admin_login', 'Console sign-in'],
   ['user_viewed', 'User viewed'],
   ['user_suspended', 'User suspended'],
   ['user_reinstated', 'User reinstated'],
   ['pro_granted', 'Pro granted'],
   ['pro_extended', 'Pro extended'],
   ['pro_revoked', 'Pro revoked'],
+  ['error_resolved', 'Error resolved'],
+  ['error_reopened', 'Error re-opened'],
   ['admin_access_denied', 'Access denied'],
 ];
 const PAGE_SIZE = 50;

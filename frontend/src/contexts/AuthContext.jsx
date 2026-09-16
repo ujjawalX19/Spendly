@@ -3,6 +3,7 @@ import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabaseClient';
 import { isNative, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/authRedirects';
 import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
+import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
 
 const AuthContext = createContext();
 
@@ -90,6 +91,8 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'PASSWORD_RECOVERY') markPasswordRecovery(true);
+      // Counted once per real sign-in (email or Google), not per page load.
+      if (event === 'SIGNED_IN') trackLogin(nextSession?.user);
       applySession(nextSession);
     });
 
@@ -101,7 +104,10 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, message: error.message };
+    if (error) {
+      trackAuthFailure('login_failed', 'email', error);
+      return { success: false, message: error.message };
+    }
     return { success: true };
   };
 
@@ -115,7 +121,11 @@ export function AuthProvider({ children }) {
         emailRedirectTo: loginRedirectUrl(),
       },
     });
-    if (error) return { success: false, message: error.message };
+    if (error) {
+      trackAuthFailure('signup_failed', 'email', error);
+      return { success: false, message: error.message };
+    }
+    track('signup', { method: 'email' });
 
     // With email confirmation on (the Supabase default) there is no session yet.
     if (data?.user && !data.session) return { success: true, needsConfirmation: true };
@@ -131,6 +141,7 @@ export function AuthProvider({ children }) {
    * spendly://login-callback, handled by DeepLinkHandler in App.jsx.
    */
   const loginWithGoogle = async () => {
+    track('google_sign_in_started', { method: 'google' });
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -139,10 +150,16 @@ export function AuthProvider({ children }) {
           skipBrowserRedirect: isNative(),
         },
       });
-      if (error) return { success: false, message: error.message };
+      if (error) {
+        trackAuthFailure('login_failed', 'google', error);
+        return { success: false, message: error.message };
+      }
 
       if (isNative()) {
-        if (!data?.url) return { success: false, message: 'Could not start Google sign-in. Please try again.' };
+        if (!data?.url) {
+          track('login_failed', { method: 'google', code: 'no_provider_url' });
+          return { success: false, message: 'Could not start Google sign-in. Please try again.' };
+        }
         await Browser.open({ url: data.url, presentationStyle: 'popover' });
       }
       return { success: true };
@@ -158,6 +175,8 @@ export function AuthProvider({ children }) {
    */
   const requestPasswordReset = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: passwordResetRedirectUrl() });
+    if (error) trackAuthFailure('password_reset_failed', 'email', error);
+    else track('password_reset_requested', { method: 'email' });
     if (error) {
       if (error.status === 429 || /rate limit|too many/i.test(error.message)) {
         return { success: false, message: 'Too many reset requests. Please wait a few minutes and try again.' };
@@ -174,6 +193,7 @@ export function AuthProvider({ children }) {
   const updatePassword = async (password) => {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return { success: false, message: error.message };
+    track('password_updated');
     markPasswordRecovery(false);
     return { success: true };
   };
@@ -183,6 +203,9 @@ export function AuthProvider({ children }) {
    * not also sign the user out of their other devices.
    */
   const logout = async ({ scope = 'local' } = {}) => {
+    // Sent while the session is still valid, so it is linked to this install.
+    track('logout');
+    await Promise.race([flushTelemetry(), new Promise((resolve) => setTimeout(resolve, 800))]);
     try {
       await supabase.auth.signOut({ scope });
     } catch {
