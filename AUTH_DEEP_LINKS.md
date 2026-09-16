@@ -4,8 +4,8 @@
 
 | Flow | Web return URL | Android return URL |
 |---|---|---|
-| Google sign-in | `https://<site>/auth/callback` | `spendly://login-callback` |
-| Email signup confirmation | `https://<site>/auth/callback` | `spendly://login-callback` |
+| Google sign-in | `https://<site>/auth/callback` | `https://vittova.in/auth/callback` → `spendly://login-callback` |
+| Email signup confirmation | `https://<site>/auth/callback` | `https://vittova.in/auth/callback` → `spendly://login-callback` |
 | Password reset email | `https://<site>/reset-password` | `spendly://reset-password` |
 
 All flows use Supabase **PKCE** (`flowType: 'pkce'` in
@@ -16,6 +16,24 @@ All flows use Supabase **PKCE** (`flowType: 'pkce'` in
 3. The app exchanges `code` + verifier for a session (`exchangeCodeForSession`).
 
 A `code` without the verifier on *this* device is useless.
+
+## Android sign-in hand-off (`frontend/src/lib/appHandoff.js`)
+
+Chrome Custom Tabs did not reliably follow Supabase's server redirect straight
+to `spendly://login-callback`: the tab stayed on a blank `supabase.co` page.
+The app now asks Supabase to return to `https://vittova.in/auth/callback`
+(listed exactly in the Redirect URLs, with no query string). That page:
+
+- hands off only when the browser holds **no** PKCE verifier (so the sign-in
+  was not started on the website) and the browser is on Android;
+- forwards only a `code` matching the app's pattern, or `error`/`error_code`
+  tokens, never tokens or descriptions;
+- opens `intent://login-callback?code=…#Intent;scheme=spendly;package=com.spendly.app;end`,
+  so only the Vittova app can receive it, and shows an **Open Vittova** button
+  if Chrome wants a tap first.
+
+Flow: Google → Supabase → vittova.in/auth/callback → spendly://login-callback → app.
+The app then exchanges the code with its own verifier exactly as before.
 
 ## Android handling (`frontend/src/App.jsx` → `DeepLinkHandler`)
 

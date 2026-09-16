@@ -28,6 +28,22 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * stays in the WebView's localStorage, private to the app sandbox and excluded
  * from backups (see android backup_rules.xml / data_extraction_rules.xml).
  */
+/**
+ * Whether this browser held a PKCE code verifier when the page loaded, i.e. a
+ * sign-in was started on this website. Read before the client exists, because
+ * supabase-js deletes the verifier once it has exchanged the code. The
+ * /auth/callback page uses it to tell a website sign-in from the Android app's
+ * hand-off (see lib/appHandoff.js). Key format is supabase-js's default.
+ */
+export const hadPkceVerifierAtLoad = (() => {
+  try {
+    const ref = new URL(supabaseUrl).hostname.split('.')[0];
+    return Boolean(window.localStorage.getItem(`sb-${ref}-auth-token-code-verifier`));
+  } catch {
+    return false;
+  }
+})();
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     flowType: 'pkce',

@@ -4,13 +4,46 @@ import { Loader2 } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { authErrorFromUrl } from '../lib/authRedirects';
+import { appHandoff } from '../lib/appHandoff';
+import { hadPkceVerifierAtLoad } from '../lib/supabaseClient';
 
 /**
- * Web return URL for Google sign-in and signup email confirmation.
- * supabase-js exchanges the `?code=` automatically on page load (PKCE).
- * The Android app uses spendly://login-callback instead.
+ * Return URL for Google sign-in and signup email confirmation.
+ *
+ * Website: supabase-js exchanges the `?code=` automatically on page load (PKCE).
+ *
+ * Android app: the sign-in ran in a Chrome Custom Tab, which lands here with
+ * a code this browser cannot use (the verifier is inside the app). The page
+ * passes the code to the app at once, and offers a button in case the browser
+ * wants a tap before opening an app.
  */
 export default function AuthCallback() {
+    const [handoff] = useState(() => appHandoff(window.location.href, {
+        hasVerifier: hadPkceVerifierAtLoad,
+        userAgent: navigator.userAgent,
+    }));
+
+    if (handoff) return <AppHandoff intentUrl={handoff.intentUrl} />;
+    return <WebCallback />;
+}
+
+function AppHandoff({ intentUrl }) {
+    useEffect(() => {
+        window.location.replace(intentUrl);
+    }, [intentUrl]);
+
+    return (
+        <AuthLayout eyebrow="SIGNING IN">
+            <div className="flex flex-col gap-6 text-center">
+                <h1 className="text-3xl font-extrabold tracking-tight">Opening Vittova…</h1>
+                <p className="text-sm text-zinc-400">If the app doesn't open by itself, tap the button below.</p>
+                <a href={intentUrl} className="inline-flex h-12 items-center justify-center rounded-xl bg-lime-400 text-sm font-extrabold text-black">Open Vittova</a>
+            </div>
+        </AuthLayout>
+    );
+}
+
+function WebCallback() {
     const { session, loading } = useAuth();
     const [linkError] = useState(() => authErrorFromUrl(window.location.href));
     const [timedOut, setTimedOut] = useState(false);

@@ -24,10 +24,18 @@ export function isNative() {
   return Capacitor.isNativePlatform();
 }
 
+/**
+ * The website that hosts /auth/callback. The Android app returns there too:
+ * that page hands the one-time code to spendly://login-callback, because
+ * Chrome does not reliably follow Supabase's redirect straight to a custom
+ * scheme and left the sign-in tab blank (see lib/appHandoff.js).
+ */
+export const WEB_ORIGIN = 'https://vittova.in';
+
 /** Google OAuth and signup confirmation. */
 export function loginRedirectUrl() {
   return isNative()
-    ? `${NATIVE_SCHEME}://${NATIVE_HOSTS.login}`
+    ? `${WEB_ORIGIN}/auth/callback`
     : `${window.location.origin}/auth/callback`;
 }
 
