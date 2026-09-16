@@ -93,7 +93,7 @@ function Layout({ children }) {
     // Mobile spacing lives here only: 16px side gutters, the status-bar inset
     // on top, and room for the bottom navigation plus the gesture/nav-bar
     // inset below. Pages must not add their own outer padding on top of it.
-    <div className="min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] md:pb-0 md:pl-64 md:pt-0">
+    <div className="app-layout min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] md:pb-0 md:pl-64 md:pt-0">
       <Sidebar onLogout={handleLogout} />
       <main className="px-4 pt-3 md:p-8 max-w-7xl mx-auto">
         {children}

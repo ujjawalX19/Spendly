@@ -127,3 +127,11 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-neon-green);
 }
+
+/* While a text field is focused on a phone, BottomNav hides itself (the
+   keyboard takes its place), so the space reserved for it is released instead
+   of leaving an empty band above the keyboard. */
+@media (max-width: 767px) {
+  html[data-typing] .app-layout { padding-bottom: 0; }
+  html[data-typing] .chat-shell { height: calc(100dvh - env(safe-area-inset-top)); }
+}

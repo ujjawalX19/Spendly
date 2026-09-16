@@ -274,7 +274,7 @@ export default function Chatbot() {
         : null;
 
     return (
-        <div className="-mx-4 -mt-3 flex h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col bg-black text-zinc-100 md:m-0 md:h-[calc(100dvh-4rem)] md:rounded-2xl md:border md:border-white/10">
+        <div className="chat-shell -mx-4 -mt-3 flex h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col bg-black text-zinc-100 md:m-0 md:h-[calc(100dvh-4rem)] md:rounded-2xl md:border md:border-white/10">
             <header className="flex items-center gap-3 border-b border-white/10 bg-zinc-950/95 px-4 py-3">
                 <VittovaLogo size={36} />
                 <div className="min-w-0 flex-1">

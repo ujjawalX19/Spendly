@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutGrid, Receipt, Bot, BarChart2, Settings as SettingsIcon } from 'lucide-react';
 
@@ -30,11 +31,32 @@ export default function BottomNav() {
     const hide = (e) => { if (isField(e.target)) setTyping(true); };
     document.addEventListener('focusin', hide);
     document.addEventListener('focusout', show);
+
+    // Android: closing the keyboard with Back keeps the field focused, so no
+    // focusout arrives and the bar would stay hidden. When the WebView grows
+    // back to (nearly) full height, the keyboard is gone: drop the focus.
+    let fullHeight = window.innerHeight;
+    const onResize = () => {
+      const height = window.innerHeight;
+      if (height > fullHeight) fullHeight = height;
+      const el = document.activeElement;
+      if (height >= fullHeight - 80 && isField(el)) el.blur();
+    };
+    const native = Capacitor.isNativePlatform();
+    if (native) window.addEventListener('resize', onResize);
+
     return () => {
       document.removeEventListener('focusin', hide);
       document.removeEventListener('focusout', show);
+      if (native) window.removeEventListener('resize', onResize);
     };
   }, []);
+
+  // Lets the layout release the space it reserves for this bar (index.css).
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-typing', typing);
+    return () => document.documentElement.removeAttribute('data-typing');
+  }, [typing]);
 
   if (typing) return null;
 
