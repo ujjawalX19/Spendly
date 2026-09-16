@@ -382,7 +382,7 @@ function composeAnswer(intent, f, question) {
                 numbers: [...s.cuts.map((c) => `${c.category}: ${inr(c.current)} now → save ${inr(c.saving)}`), f.subscriptionsMonthly ? `Recurring charges: ${inr(f.subscriptionsMonthly)}/month (${inr(f.subscriptionsAnnual)}/year)` : null, `What your budget pace leaves this month: ${inr(Math.max(0, f.budget - f.projectedMonthEnd))}`],
                 reasoning: 'Flexible categories (food, shopping, entertainment) are usually the easiest to change without affecting essentials. Saving first, then spending what is left, works better than saving whatever remains.',
                 action: s.cuts.length ? `Pick one concrete habit in ${s.cuts[0].category}, such as fewer delivery orders, and review your recurring charges.` : 'Log expenses for a week so I can see where savings could come from.',
-                next: f.savingsTarget ? 'Move your savings target on the day your income arrives, before spending.' : 'Set a monthly savings target in Settings so Safe-to-Spend reserves it for you.',
+                next: f.savingsTarget ? 'Set your savings target aside as soon as money comes in, before spending.' : 'Set a monthly savings target in Settings so Safe-to-Spend reserves it for you.',
             });
         }
         case 'goal_planning': {
@@ -515,7 +515,7 @@ function composeAnswer(intent, f, question) {
                 direct: `Saving ${inr(total)} a month for ${plural(months, 'month')} adds up to ${inr(total * months)}, before any interest.`,
                 numbers: [more ? `Current target ${inr(f.savingsTarget)} + ${inr(amount)} more = ${inr(total)} a month` : `Monthly amount: ${inr(total)}`, `After 12 months: ${inr(total * 12)}`, `Illustration at an assumed 6% a year: about ${inr(illustration)}`, newSafeTotal !== f.safeToSpendRemaining ? `This month's Safe-to-Spend would drop from ${inr(f.safeToSpendRemaining)} to ${inr(newSafeTotal)}` : null],
                 reasoning: total > Math.max(0, f.budget - f.projectedMonthEnd) ? 'At your current spending pace your budget does not leave this much, so the extra would have to come from cutting spending.' : 'Your current spending pace leaves room for this within your budget.',
-                action: f.savingScenario.total ? `Trimming ${f.savingScenario.cuts.map((c) => c.category).join(' and ')} by 20% would fund about ${inr(f.savingScenario.total)} of it.` : 'Automate the transfer on the day your income arrives.',
+                action: f.savingScenario.total ? `Trimming ${f.savingScenario.cuts.map((c) => c.category).join(' and ')} by 20% would fund about ${inr(f.savingScenario.total)} of it.` : 'Set the amount aside as soon as money comes in, before spending.',
                 next: `Update your monthly savings target in Settings to ${inr(total)} if you want Safe-to-Spend to reserve it.`,
                 note: 'The illustration uses an assumed constant rate, not a forecast.',
             });

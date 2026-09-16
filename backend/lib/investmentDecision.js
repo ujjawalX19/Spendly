@@ -43,7 +43,7 @@ function statedFacts(question) {
 function horizonPlan(years) {
     if (years < 3) {
         return {
-            label: years < 1 ? plural(Math.max(1, Math.round(years * 12)), 'month') : `${Math.round(years * 10) / 10}-year`,
+            label: years < 1 ? `${Math.max(1, Math.round(years * 12))}-month` : `${Math.round(years * 10) / 10}-year`,
             approaches: [
                 'Mostly low-risk options: a savings account or sweep FD, available any day with no market risk.',
                 'A fixed or recurring deposit for exactly that period: a known return, locked until maturity.',
@@ -148,6 +148,7 @@ function composeInvestmentAnswer(ctx) {
     if (ctx.emergencyTarget) numbers.push(`Six months of your typical spending: ${inr(ctx.emergencyTarget)}`);
     if (ctx.illustration) numbers.push(`${inr(ctx.monthly)} a month for ${plural(ctx.illustration.years, 'year')}: ${inr(ctx.illustration.putIn)} put in; about ${inr(ctx.illustration.atSixPercent)} at an assumed 6% a year, ${inr(ctx.illustration.atTenPercent)} at an assumed 10%`);
 
+    const noEmergencyFundStated = ctx.stated.hasEmergencyFund === false;
     let direct;
     if (ctx.shortfall) {
         direct = `Based on your current numbers I would not invest this month: bills and your savings target already exceed your budget by ${inr(ctx.shortfall)}.`;
@@ -156,7 +157,9 @@ function composeInvestmentAnswer(ctx) {
     } else if (ctx.amountExceedsSpare) {
         direct = `Based on your current numbers only about ${inr(ctx.safeToInvest)} of that ${inr(ctx.amount)} looks genuinely spare this month.`;
     } else if (ctx.timeHorizon) {
-        direct = `${inr(ctx.amount)} fits inside what your budget leaves this month, and for a ${ctx.timeHorizon.label} horizon the usual choices are clear.`;
+        direct = noEmergencyFundStated
+            ? `${inr(ctx.amount)} fits inside what your budget leaves this month, but with no emergency fund yet, that usually comes before investing for returns.`
+            : `${inr(ctx.amount)} fits inside what your budget leaves this month, and for a ${ctx.timeHorizon.label} horizon the usual choices are clear.`;
     } else {
         direct = `${inr(ctx.amount)} fits inside what your budget leaves this month, but I need one more thing before saying where it should go.`;
     }
@@ -172,11 +175,18 @@ function composeInvestmentAnswer(ctx) {
         ? ctx.possibleApproaches
         : ['Once you tell me the time frame, I can lay out the options that fit it.'];
 
-    const next = ctx.timeHorizon
-        ? (ctx.stated.hasEmergencyFund === false && ctx.emergencyTarget
+    const noEmergencyFund = ctx.stated.hasEmergencyFund === false;
+    let next;
+    if (noEmergencyFund && ctx.safeToInvest > 0) {
+        // The user said so: that changes the order, whatever the horizon.
+        next = ctx.emergencyTarget
             ? `Put this month's spare ${inr(ctx.safeToInvest)} towards an emergency fund first: ${inr(ctx.emergencyTarget)} is six months of your spending.`
-            : `Decide the amount you can leave untouched for that period, then move it on the day your income arrives.`)
-        : 'Tell me how long this money can stay invested (for example "for 3 months" or "for 5 years") and whether you already have an emergency fund.';
+            : `Build the emergency fund first: keep ${inr(ctx.safeToInvest)} in a savings account or sweep FD you can reach any day. Log a month of spending and I can size the full fund.`;
+    } else if (ctx.timeHorizon) {
+        next = 'Decide how much of it you can leave untouched for the whole period, and put in only that amount.';
+    } else {
+        next = 'Tell me how long this money can stay invested (for example "for 3 months" or "for 5 years") and whether you already have an emergency fund.';
+    }
 
     return {
         direct,

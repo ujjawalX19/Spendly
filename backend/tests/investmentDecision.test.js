@@ -116,6 +116,18 @@ test('F: with no emergency fund, that becomes the first step', () => {
     assert.ok(!a.missing.includes('whether you already have an emergency fund'), 'the user told us');
 });
 
+test('F on a new account: no emergency fund still comes first, with no invented income', () => {
+    // Seen on a device: a new user with a budget but no expenses logged yet.
+    const f = buildFacts({ profile: { monthly_budget: 5000 }, expenses: [], bills: [], now: NOW });
+    const q = "I have ₹2,000 that I won't need for 6 months, and I don't have an emergency fund yet. Where should I invest?";
+    const a = answerFor(f, q);
+    assert.match(a.direct, /no emergency fund yet/);
+    assert.match(a.next, /emergency fund first/i);
+    assert.doesNotMatch(textFor(f, q), /income arrives|salary|6 months horizon/);
+    const short = answerFor(f, "I have ₹2,000 that I won't need for 6 months. Where should I invest?");
+    assert.match(short.direct, /6-month horizon/);
+});
+
 test('G: someone who already invests gets a different framing', () => {
     const f = facts();
     const already = answerFor(f, 'I have ₹2,000 and already invest, where should I put it for 5 years?');
