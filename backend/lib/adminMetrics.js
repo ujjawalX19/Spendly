@@ -47,7 +47,10 @@ function periods(now = new Date()) {
 async function count(table, apply = (q) => q) {
     const { count: n, error } = await apply(supabase.from(table).select('*', { count: 'exact', head: true }));
     if (error) throw new MetricError(error.message);
-    return n ?? 0;
+    // PostgREST answers a HEAD count on a missing table with 204, no error and
+    // no count. That is "unavailable", never zero.
+    if (n === null || n === undefined) throw new MetricError(`${table}: no count returned (table missing?)`);
+    return n;
 }
 
 /** Run a metric; a failure becomes an explained null instead of failing the page. */

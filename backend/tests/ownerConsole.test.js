@@ -255,6 +255,35 @@ test('without the v1.6 tables the dashboard says "telemetry not configured" inst
     assert.match(activity.note, /telemetry not configured/);
 });
 
+test('REGRESSION: a missing v1.6 table shows "not configured", never zero, even though PostgREST HEAD counts do not error', async () => {
+    // Production before the migration: HEAD count -> 204, error null, count null.
+    t.db.failures.push({ table: 'app_events', missing: true }, { table: 'app_installs', missing: true }, { table: 'ops_issue_states', missing: true });
+    const d = (await get('/api/admin/dashboard')).body;
+    assert.equal(d.totals.aiFallback7d.value, null);
+    assert.equal(d.totals.aiFailed7d.value, null);
+    assert.match(d.totals.aiFallback7d.note, /telemetry not configured/);
+    assert.equal(d.installs.available, false);
+
+    const settings = (await get('/api/admin/settings')).body;
+    assert.equal(settings.migrations.v1_6_owner_console.applied, false);
+    assert.deepEqual(settings.migrations.v1_6_owner_console.objects, { app_events: false, app_installs: false, ops_issue_states: false });
+
+    const ai = (await get('/api/admin/ai')).body;
+    assert.equal(ai.outcomes, null);
+    assert.match(ai.outcomesNote, /telemetry not configured/);
+    assert.equal((await get('/api/admin/activity')).body.available, false);
+    assert.equal((await get('/api/admin/pro')).body.purchaseAttempts30d.value, null);
+    const errors = (await get('/api/admin/errors?state=all&days=90')).body;
+    assert.equal(errors.available, true);
+});
+
+test('a HEAD count with no count is unavailable for the dashboard existing metrics too', async () => {
+    t.db.failures.push({ table: 'pdf_imports', missing: true });
+    const d = (await get('/api/admin/dashboard')).body;
+    assert.equal(d.totals.pdfImports.value, null);
+    assert.equal(d.usage.imports.pdfMonth.value, null);
+});
+
 test('installs report version distribution and flag outdated versions', async () => {
     seed('app_installs', [
         { install_id: uuid(), platform: 'android', app_version: '1.10.0', user_id: owner.id, first_seen_at: iso(DAY), last_seen_at: iso(1000) },

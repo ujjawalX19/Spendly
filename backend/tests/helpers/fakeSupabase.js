@@ -194,6 +194,12 @@ class Query {
 
     execute() {
         const failure = this.db.failures.find((f) => f.table === this.table && (!f.op || f.op === this.op));
+        if (failure?.missing) {
+            // What production PostgREST does for a table that does not exist:
+            // a HEAD count is 204 with no error and no count; anything else is PGRST205.
+            if (this.head) return { data: null, error: null, count: null, status: 204 };
+            return { data: null, error: { code: 'PGRST205', message: `Could not find the table 'public.${this.table}' in the schema cache` }, status: 404 };
+        }
         if (failure) return { data: null, error: { message: 'simulated failure' } };
 
         const table = this.rows();

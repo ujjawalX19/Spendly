@@ -366,7 +366,7 @@ async function aiMentor({ now = new Date() } = {}) {
     const questions = (instant) => supabase.from('ai_chat_history').select('*', { count: 'exact', head: true }).eq('role', 'user').gte('created_at', instant.toISOString());
     const countOf = async (q) => {
         const { count, error } = await q;
-        return error ? unavailable('Could not read ai_chat_history') : ok(count ?? 0);
+        return error || count === null || count === undefined ? unavailable('Could not read ai_chat_history') : ok(count);
     };
 
     const [total, today, week, month, events, opsErrors, quotaRows, memorySnapshot] = await Promise.all([
@@ -613,8 +613,8 @@ async function issueExists(fingerprint) {
     q = code === '-' ? q.is('code', null) : q.eq('code', code);
     q = status === '-' ? q.is('status_code', null) : q.eq('status_code', Number(status));
     const { count, error } = await q;
-    if (error) return null;
-    return (count || 0) > 0;
+    if (error || count === null || count === undefined) return null;
+    return count > 0;
 }
 
 // ─── Settings (read-only configuration) ────────────────────────────────────
@@ -625,8 +625,9 @@ function maskEmail(email) {
     return `${local.slice(0, 2)}${'•'.repeat(Math.max(1, local.length - 2))}@${domain}`;
 }
 
+/** Whether a table/view exists. A real select: a HEAD request on a missing table does not report an error. */
 async function probe(table) {
-    const { error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+    const { error } = await supabase.from(table).select('*').limit(1);
     return !error;
 }
 

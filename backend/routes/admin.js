@@ -277,7 +277,8 @@ router.get('/users', async (req, res) => {
 /** Count rows for one user; null when the table or query is unavailable. */
 async function userCount(table, column, userId, apply = (q) => q) {
     const { count, error } = await apply(supabase.from(table).select('*', { count: 'exact', head: true }).eq(column, userId));
-    return error ? null : count ?? 0;
+    // A missing table answers a HEAD count with no error and no count: unavailable, not zero.
+    return error || count === null || count === undefined ? null : count;
 }
 
 // @route GET /api/admin/users/:id — profile, auth facts, aggregate usage
