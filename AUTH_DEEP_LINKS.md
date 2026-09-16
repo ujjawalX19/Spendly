@@ -4,8 +4,8 @@
 
 | Flow | Web return URL | Android return URL |
 |---|---|---|
-| Google sign-in | `https://<site>/auth/callback` | `https://vittova.in/auth/callback` → `spendly://login-callback` |
-| Email signup confirmation | `https://<site>/auth/callback` | `https://vittova.in/auth/callback` → `spendly://login-callback` |
+| Google sign-in | `https://<site>/auth/callback` | `https://vittova.in/auth/app-callback` → `spendly://login-callback` |
+| Email signup confirmation | `https://<site>/auth/callback` | `https://vittova.in/auth/app-callback` → `spendly://login-callback` |
 | Password reset email | `https://<site>/reset-password` | `spendly://reset-password` |
 
 All flows use Supabase **PKCE** (`flowType: 'pkce'` in
@@ -17,23 +17,50 @@ All flows use Supabase **PKCE** (`flowType: 'pkce'` in
 
 A `code` without the verifier on *this* device is useless.
 
-## Android sign-in hand-off (`frontend/src/lib/appHandoff.js`)
+## Android sign-in hand-off (`frontend/public/auth/app-callback.*`)
 
 Chrome Custom Tabs did not reliably follow Supabase's server redirect straight
-to `spendly://login-callback`: the tab stayed on a blank `supabase.co` page.
-The app now asks Supabase to return to `https://vittova.in/auth/callback`
-(listed exactly in the Redirect URLs, with no query string). That page:
+to `spendly://login-callback` (the tab stayed on a blank `supabase.co` page),
+so the app returns through a Vittova page instead.
 
-- hands off only when the browser holds **no** PKCE verifier (so the sign-in
-  was not started on the website) and the browser is on Android;
+**2026-09-16 device test.** Production showed a Google identity created at
+Supabase during the test (17:15:39 UTC) but the one-time code never exchanged
+for a session: Google → Supabase worked and the failure was after Supabase.
+The app then shared `/auth/callback` with the website. There the full web app
+had to load before the hand-off ran, and it guessed from "Android + no PKCE
+verifier in this browser" whether the visit was the app's, which a leftover
+website sign-in in the phone's Chrome defeats.
+
+**Now** the app returns to `https://vittova.in/auth/app-callback`, a small
+static page used by nothing else (`vercel.json` rewrites it to
+`/auth/app-callback.html`, with `Referrer-Policy: no-referrer`, `no-store` and a
+`script-src 'self'` CSP). It:
+
 - forwards only a `code` matching the app's pattern, or `error`/`error_code`
-  tokens, never tokens or descriptions;
-- opens `intent://login-callback?code=…#Intent;scheme=spendly;package=com.spendly.app;end`,
-  so only the Vittova app can receive it, and shows an **Open Vittova** button
-  if Chrome wants a tap first.
+  tokens, never tokens or error descriptions;
+- removes the code from the address bar immediately;
+- opens `intent://login-callback?code=…#Intent;scheme=spendly;package=com.spendly.app;end`
+  at once (only the Vittova app can receive it) and shows **Open Vittova** in
+  case Chrome wants a tap.
 
-Flow: Google → Supabase → vittova.in/auth/callback → spendly://login-callback → app.
-The app then exchanges the code with its own verifier exactly as before.
+Flow: Google → Supabase → vittova.in/auth/app-callback → spendly://login-callback
+→ app exchanges the code with its own verifier → Dashboard.
+
+In the app, a Google sign-in started on the device in the last 15 minutes
+words failures as "Google sign-in couldn't be completed. Please try again." or
+"Google sign-in was cancelled."; email links keep their own messages
+(`src/lib/authCallbackOutcome.js`).
+
+`/auth/callback` keeps its old Android hand-off only for test builds made before
+this change; the website's own sign-in there is unchanged.
+
+**Supabase domain on Google's screen.** Google shows the domain that receives
+its redirect, `fqzqfwjjiruntrulmdnd.supabase.co`. Changing it needs either a
+Supabase custom domain (paid add-on, e.g. `auth.vittova.in`, then updating the
+Google OAuth client's redirect URI) or native Google sign-in on Android
+(Credential Manager + `signInWithIdToken`, which needs an Android OAuth client
+tied to the signing key's SHA-1). A verified OAuth consent screen shows the
+Vittova name and logo but still names the redirect domain.
 
 ## Android handling (`frontend/src/App.jsx` → `DeepLinkHandler`)
 
@@ -91,6 +118,7 @@ Supabase → Authentication → URL Configuration → **Redirect URLs** must con
 ```
 spendly://login-callback
 spendly://reset-password
+https://vittova.in/auth/app-callback
 https://vittova.in/auth/callback
 https://vittova.in/reset-password
 https://spendly-iota.vercel.app/auth/callback
