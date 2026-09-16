@@ -375,7 +375,7 @@ async function aiMentor({ now = new Date() } = {}) {
         countOf(questions(p.last7d)),
         countOf(questions(p.last30d)),
         eventsSince(p.last30d, ['ai_question_answered', 'ai_question_failed']),
-        scan(() => supabase.from('ops_events').select('type, code, route, created_at').in('type', ['ai_error', 'ai_reply_rejected']).gte('created_at', p.last30d.toISOString())),
+        scan(() => supabase.from('ops_events').select('type, severity, code, route, created_at').in('type', ['ai_error', 'ai_reply_rejected', 'ai_self_check']).gte('created_at', p.last30d.toISOString())),
         scan(() => supabase.from('profiles').select('id, is_pro, pro_expires_at, chat_messages_today, chat_messages_reset_at').eq('chat_messages_reset_at', appTime.localDateKey(now)), 'id'),
         Promise.resolve(telemetry.aiSnapshot()),
     ]);
@@ -429,7 +429,9 @@ async function aiMentor({ now = new Date() } = {}) {
         const errs = opsErrors.rows.filter((r) => r.type === 'ai_error');
         const rejected = opsErrors.rows.filter((r) => r.type === 'ai_reply_rejected');
         const isTimeout = (c) => /TIMEOUT|ABORT/i.test(String(c || ''));
-        const isHttp = (c) => /^\d{3}$/.test(String(c || ''));
+        // Codes are "<status>:<reason>" (e.g. 400:API_KEY_INVALID) or a class such as AI_TIMEOUT.
+        const isHttp = (c) => /^\d{3}(:|$)/.test(String(c || ''));
+        const check = opsErrors.rows.find((r) => r.type === 'ai_self_check');
         failures = {
             geminiErrors30d: errs.length,
             geminiErrors24h: errs.filter((r) => new Date(r.created_at) >= p.last24h).length,
@@ -438,7 +440,9 @@ async function aiMentor({ now = new Date() } = {}) {
             rejectedReplies30d: rejected.length,
             byCode: [...countBy(errs, (r) => r.code || 'UNKNOWN').entries()].map(([c, n]) => ({ code: c, count: n, kind: isTimeout(c) ? 'timeout' : isHttp(c) ? 'http' : 'other' })).sort((a, b) => b.count - a.count),
             rejectedByCode: [...countBy(rejected, (r) => r.code || 'UNKNOWN').entries()].map(([c, n]) => ({ code: c, count: n })).sort((a, b) => b.count - a.count),
-            recent: opsErrors.rows.slice(0, 25).map((r) => ({ type: r.type, code: r.code, route: r.route, at: r.created_at })),
+            recent: opsErrors.rows.filter((r) => r.type !== 'ai_self_check').slice(0, 25).map((r) => ({ type: r.type, code: r.code, route: r.route, at: r.created_at })),
+            // Startup request after each deploy (lib/gemini.selfCheck); fixed prompt, no user data.
+            lastSelfCheck: check ? { ok: check.severity !== 'error', code: check.code, at: check.created_at } : null,
         };
     }
 
@@ -481,6 +485,10 @@ async function aiMentor({ now = new Date() } = {}) {
 function aiHealth({ outcomes, failures, memory }) {
     if (!gemini.isConfigured()) {
         return { state: 'RED', detail: 'GEMINI_API_KEY is not set: the mentor can only give calculated answers; receipt scan and PDF import are off.' };
+    }
+    const check = failures?.lastSelfCheck;
+    if (check && !check.ok && !(memory.lastSuccessAt && memory.lastSuccessAt > check.at) && !(outcomes?.last24h?.geminiAnswers > 0)) {
+        return { state: 'RED', detail: `Gemini startup self-check failed (${check.code}) and no successful call since` };
     }
     const failingNow = memory.lastFailureAt && (!memory.lastSuccessAt || memory.lastFailureAt > memory.lastSuccessAt);
     if (failingNow && memory.failures >= 3) {

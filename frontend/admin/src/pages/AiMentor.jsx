@@ -35,6 +35,7 @@ export default function AiMentor() {
                   ['Gemini calls since restart', `${fmtNumber(d.sinceRestart.calls)} (${fmtNumber(d.sinceRestart.failures)} failed, ${fmtNumber(d.sinceRestart.timeouts)} timeouts)`],
                   ['Gemini latency since restart', `avg ${ms(d.sinceRestart.latencyMs.avg)} · p95 ${ms(d.sinceRestart.latencyMs.p95)}`],
                   ['Last success / failure', `${fmtRelative(d.sinceRestart.lastSuccessAt)} / ${fmtRelative(d.sinceRestart.lastFailureAt)}`],
+                  ['Startup self-check', d.failures?.lastSelfCheck ? `${d.failures.lastSelfCheck.ok ? 'passed' : 'FAILED'} · ${d.failures.lastSelfCheck.code} · ${fmtRelative(d.failures.lastSelfCheck.at)}` : 'none recorded in 30 days'],
                 ]} />
               </div>
             </Card>

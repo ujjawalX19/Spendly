@@ -313,7 +313,8 @@ test('AI monitoring shows outcomes, quota usage and error codes, never content',
     seed('ai_chat_history', [{ id: uuid(), user_id: heavy.id, role: 'user', content: 'very private question', created_at: iso(1000) }]);
     seed('ops_events', [
         { id: uuid(), type: 'ai_error', severity: 'error', route: null, code: 'AI_TIMEOUT', status_code: null, created_at: iso(1000) },
-        { id: uuid(), type: 'ai_error', severity: 'error', route: null, code: '429', status_code: null, created_at: iso(2000) },
+        { id: uuid(), type: 'ai_error', severity: 'error', route: null, code: '429:RESOURCE_EXHAUSTED', status_code: null, created_at: iso(2000) },
+        { id: uuid(), type: 'ai_self_check', severity: 'info', route: null, code: 'ok:gemini-3.5-flash@render', status_code: null, created_at: iso(3000) },
     ]);
     const res = await get('/api/admin/ai');
     assert.equal(res.status, 200);
@@ -321,6 +322,7 @@ test('AI monitoring shows outcomes, quota usage and error codes, never content',
     assert.ok(res.body.failures.timeouts30d >= 1);
     assert.ok(res.body.failures.httpErrors30d >= 1);
     assert.ok(res.body.quota.usersNearLimit >= 1);
+    assert.deepEqual({ ...res.body.failures.lastSelfCheck, at: undefined }, { ok: true, code: 'ok:gemini-3.5-flash@render', at: undefined });
     assert.equal(res.body.quota.dailyFreeLimit, 10);
     assert.ok(res.body.questions.total.value >= 1);
     const json = JSON.stringify(res.body);
@@ -338,6 +340,8 @@ test('AI health is GREEN, YELLOW, RED or UNKNOWN from the data, never assumed', 
     assert.equal(aiHealth(day({ geminiAnswers: 0, fallbackAnswers: 10, fallbackRate: 1 })).state, 'RED');
     assert.equal(aiHealth({ outcomes: null, failures: null, memory }).state, 'UNKNOWN');
     assert.equal(aiHealth({ outcomes: null, failures: null, memory: { calls: 4, failures: 4, lastFailureAt: '2026-09-16T10:00:00Z', lastSuccessAt: null, lastFailureCode: 'AI_TIMEOUT' } }).state, 'RED');
+    const failedCheck = { outcomes: null, failures: { geminiErrors24h: 1, lastSelfCheck: { ok: false, code: '400:API_KEY_INVALID', at: '2026-09-16T09:00:00Z' } }, memory };
+    assert.equal(aiHealth(failedCheck).state, 'RED');
     t.gemini.configured = false;
     assert.equal(aiHealth(day({})).state, 'RED');
 });
