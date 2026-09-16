@@ -13,6 +13,7 @@
 const { GoogleGenAI } = require('@google/genai');
 const telemetry = require('./opsTelemetry');
 const { withTimeout } = require('./timeout');
+const diagnostics = require('./geminiDiagnostics');
 
 // Verify against https://ai.google.dev/gemini-api/docs/models before release.
 const DEFAULT_MODEL = 'gemini-3.5-flash';
@@ -46,9 +47,35 @@ async function generateText(contents, options = {}) {
         telemetry.recordAiSuccess();
         return text;
     } catch (err) {
-        // Only a code or error class: provider messages can echo the prompt.
-        telemetry.recordAiFailure(err.code || err.status || err.name);
+        // Status and Google's reason (e.g. 400:API_KEY_INVALID), never the prompt.
+        telemetry.recordAiFailure(diagnostics.report(err, { model: modelName(), timeoutMs: options.timeoutMs }));
         throw err;
+    }
+}
+
+/**
+ * One tiny request at startup, so a bad key or model shows in the logs and in
+ * ops_events (type ai_self_check) right after a deploy instead of on a user's
+ * question. Uses a fixed prompt with no user data; never throws.
+ */
+async function selfCheck() {
+    if (!isConfigured()) {
+        console.warn('Gemini self-check: GEMINI_API_KEY is not set; AI wording is off.');
+        return { ok: false, code: 'AI_NOT_CONFIGURED' };
+    }
+    const model = modelName();
+    // Render sets RENDER=true, so production checks can be told from local runs.
+    const where = process.env.RENDER ? 'render' : 'local';
+    try {
+        const text = await callModel('Reply with the word OK.', { maxOutputTokens: 10, timeoutMs: 15000 });
+        const shape = diagnostics.keyShape();
+        console.log('Gemini self-check:', JSON.stringify({ ok: true, model, reply: String(text).trim().slice(0, 20), keyLength: shape.keyLength, keySuffix: shape.keySuffix }));
+        telemetry.recordEvent('ai_self_check', { severity: 'info', code: `ok:${model}@${where}`.slice(0, 60) });
+        return { ok: true, model };
+    } catch (err) {
+        const code = diagnostics.report(err, { model, timeoutMs: 15000, where: `selfCheck@${where}` });
+        telemetry.recordEvent('ai_self_check', { severity: 'error', code: `${code.slice(0, 52)}@${where}` });
+        return { ok: false, code };
     }
 }
 
@@ -82,4 +109,4 @@ async function callModel(contents, { maxOutputTokens = 800, temperature, timeout
     return response.text || '';
 }
 
-module.exports = { isConfigured, generateText, modelName, DEFAULT_MODEL };
+module.exports = { isConfigured, generateText, selfCheck, modelName, DEFAULT_MODEL };
