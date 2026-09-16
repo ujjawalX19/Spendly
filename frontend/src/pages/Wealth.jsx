@@ -207,7 +207,7 @@ export default function Wealth() {
   const noBudget = !m.budget;
 
   return (
-    <motion.div className="space-y-5 pb-28 text-white" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }}>
+    <motion.div className="space-y-5 pb-4 text-white" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }}>
       <motion.header variants={cardVariants}>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">Wealth</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Where your money stands</h1>

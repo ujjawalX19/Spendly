@@ -23,6 +23,7 @@ import { Zap, PieChart, TrendingUp, Bell, ShieldCheck, ArrowRight, Check } from 
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import { SUPPORTED_PAYMENT_APPS } from '../lib/supportedPaymentApps';
 import { recordNotificationPromptDismissed } from '../lib/notificationPrompt';
+import NotificationAccessSheet from '../components/NotificationAccessSheet';
 
 export const ONBOARDING_KEY = 'spendly.onboarded.v1';
 
@@ -71,7 +72,10 @@ const SLIDES = [
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const { isSupported, permissionGranted, openPermissionSettings } = usePaymentNotifications();
+  const {
+    isSupported, permissionGranted, openPermissionSettings, openAppSettings, restrictedSettingsLikely, checkPermissionNow,
+  } = usePaymentNotifications();
+  const [showAccessSheet, setShowAccessSheet] = useState(false);
 
   // The permission screen is Android-only; on web the third slide is the last.
   const showPermissionStep = isSupported && Capacitor.isNativePlatform() && !permissionGranted;
@@ -112,6 +116,19 @@ export default function Onboarding() {
             Skip
           </button>
         </div>
+
+        <AnimatePresence>
+          {showAccessSheet && (
+            <NotificationAccessSheet
+              permissionGranted={permissionGranted}
+              restrictedSettingsLikely={restrictedSettingsLikely}
+              checkPermissionNow={checkPermissionNow}
+              openPermissionSettings={openPermissionSettings}
+              openAppSettings={openAppSettings}
+              onClose={() => { setShowAccessSheet(false); navigate('/dash', { replace: true }); }}
+            />
+          )}
+        </AnimatePresence>
 
         <AnimatePresence mode="wait">
           {onPermissionScreen ? (
@@ -156,13 +173,12 @@ export default function Onboarding() {
               <div className="mt-auto space-y-3 pt-8">
                 <button
                   type="button"
-                  onClick={async () => {
-                    // Mark first: requestPermission sends the user out to the
-                    // Android settings screen, and they should land on the
-                    // dashboard when they come back, not here again.
+                  onClick={() => {
+                    // Mark first: the sheet sends the user out to Android
+                    // Settings, and if Android restarts the app meanwhile they
+                    // should land on the dashboard, not here again.
                     markOnboarded();
-                    await openPermissionSettings();
-                    navigate('/dash', { replace: true });
+                    setShowAccessSheet(true);
                   }}
                   className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black"
                 >

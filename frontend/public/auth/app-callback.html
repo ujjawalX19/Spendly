@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0B1220">
+  <title>Vittova sign-in</title>
+  <link rel="icon" href="/vittova-mark.svg" type="image/svg+xml">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #0B1220; }
+    body {
+      min-height: 100vh; min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      padding: calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #F4F4F5;
+    }
+    main { width: 100%; max-width: 380px; text-align: center; }
+    .brand { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .brand img { width: 64px; height: 64px; border-radius: 18px; }
+    .brand strong { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+    .brand span { font-size: 13px; color: #A1A1AA; }
+    .brand span em { font-style: normal; color: #A3E635; }
+    .card { border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); border-radius: 20px; padding: 22px 18px; }
+    h1 { margin: 0 0 8px; font-size: 20px; font-weight: 800; }
+    p { margin: 0; font-size: 14px; line-height: 1.5; color: #A1A1AA; }
+    .btn {
+      display: flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 18px;
+      border-radius: 14px; background: #A3E635; color: #0B1220; font-weight: 800; font-size: 15px; text-decoration: none;
+    }
+    .spinner { width: 28px; height: 28px; margin: 0 auto 14px; border-radius: 50%; border: 3px solid rgba(163,230,53,.25); border-top-color: #A3E635; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+    .hint { margin-top: 12px; font-size: 12px; }
+    [hidden] { display: none !important; }
+  </style>
+  <script type="module" src="/auth/app-callback.js"></script>
+</head>
+<body>
+  <main>
+    <div class="brand">
+      <img src="/vittova-mark.svg" alt="" width="64" height="64">
+      <strong>Vittova</strong>
+      <span>Your Money's <em>Pulse</em></span>
+    </div>
+
+    <section class="card" data-state="opening" role="status" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <h1>Returning to Vittova…</h1>
+      <p>Finishing your sign-in in the app.</p>
+      <a class="btn" data-open-app href="#">Open Vittova</a>
+      <p class="hint" data-slow hidden>If Vittova didn't open, tap <strong>Open Vittova</strong>.</p>
+    </section>
+
+    <section class="card" data-state="error" role="alert" hidden>
+      <h1>Sign-in wasn't completed</h1>
+      <p>Return to Vittova to try again.</p>
+      <a class="btn" data-open-app href="#">Back to Vittova</a>
+    </section>
+
+    <section class="card" data-state="invalid" role="alert" hidden>
+      <h1>This sign-in link is incomplete</h1>
+      <p>Open Vittova on your phone and start sign-in again. If you opened an email link on a computer, open it on the phone where you use Vittova.</p>
+    </section>
+
+    <noscript><p>Open Vittova on your phone to finish signing in.</p></noscript>
+  </main>
+</body>
+</html>

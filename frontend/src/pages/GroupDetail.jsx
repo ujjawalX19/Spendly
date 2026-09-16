@@ -191,7 +191,7 @@ export default function GroupDetail() {
     const mySettlements = data.settleUp.filter((s) => s.from.id === me || s.to.id === me);
 
     return (
-        <div className="space-y-5 pb-24">
+        <div className="space-y-5 pb-20">
             <Link to="/pool" className="inline-flex items-center gap-2 text-sm text-zinc-500"><ArrowLeft className="h-4 w-4" /> Groups</Link>
 
             <header className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
@@ -284,7 +284,7 @@ export default function GroupDetail() {
             </button>
 
             <button type="button" onClick={() => setSheet({ type: 'expense' })} aria-label="Add shared expense"
-                className="fixed bottom-24 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-lime-400 text-black shadow-[0_4px_24px_rgba(163,230,53,0.4)] md:bottom-8">
+                className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-lime-400 text-black shadow-[0_4px_24px_rgba(163,230,53,0.4)] md:bottom-8">
                 <Plus className="h-7 w-7" strokeWidth={3} />
             </button>
 

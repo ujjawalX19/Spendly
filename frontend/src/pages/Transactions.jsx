@@ -378,7 +378,7 @@ export default function Transactions() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className={`fixed inset-x-4 bottom-24 z-[300] mx-auto max-w-sm rounded-2xl border p-3.5 text-sm font-semibold backdrop-blur-xl md:bottom-8
+            className={`fixed inset-x-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[300] mx-auto max-w-sm rounded-2xl border p-3.5 text-sm font-semibold backdrop-blur-xl md:bottom-8
               ${toast.type === 'error'
                 ? 'border-red-500/30 bg-red-500/15 text-red-100'
                 : 'border-lime-500/30 bg-[#181818] text-lime-200'}`}

@@ -60,6 +60,8 @@ export function usePaymentNotifications() {
   const isSupported = Capacitor.getPlatform() === 'android';
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [permissionChecked, setPermissionChecked] = useState(!isSupported);
+  // Android 13+ may show "Restricted setting" for APK installs (not from a store).
+  const [restrictedSettingsLikely, setRestrictedSettingsLikely] = useState(false);
   const [pending, setPending] = useState([]);
   const resolvedRef = useRef(null);
   if (resolvedRef.current === null) resolvedRef.current = loadResolved();
@@ -77,9 +79,15 @@ export function usePaymentNotifications() {
   const checkPermissionNow = useCallback(async () => {
     if (!isSupported) return false;
     try {
-      const { granted } = await UpiNotification.checkPermission();
-      setPermissionGranted(Boolean(granted));
-      return Boolean(granted);
+      let info;
+      try {
+        info = await UpiNotification.getAccessInfo();
+        setRestrictedSettingsLikely(Boolean(info.restrictedSettingsLikely));
+      } catch {
+        info = await UpiNotification.checkPermission(); // older native build
+      }
+      setPermissionGranted(Boolean(info.granted));
+      return Boolean(info.granted);
     } catch {
       setPermissionGranted(false);
       return false;
@@ -154,13 +162,23 @@ export function usePaymentNotifications() {
     } catch { /* nothing useful to do */ }
   }, [isSupported]);
 
+  /** Vittova's App info screen (⋮ → Allow restricted settings). Only from a user tap. */
+  const openAppSettings = useCallback(async () => {
+    if (!isSupported) return;
+    try {
+      await UpiNotification.openAppSettings();
+    } catch { /* older native build: nothing useful to do */ }
+  }, [isSupported]);
+
   return {
     isSupported,
     permissionGranted,
     permissionChecked,
+    restrictedSettingsLikely,
     pending,
     resolvePayment,
     openPermissionSettings,
+    openAppSettings,
     checkPermissionNow,
   };
 }

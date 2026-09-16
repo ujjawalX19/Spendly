@@ -5,6 +5,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './lib/supabaseClient';
 import { NATIVE_SCHEME, NATIVE_HOSTS, authErrorFromUrl, isMissingVerifierError } from './lib/authRedirects';
+import { GOOGLE_PENDING_KEY, isGoogleSignInPending, loginCallbackFailure } from './lib/authCallbackOutcome';
 import { track } from './lib/telemetry';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -89,9 +90,12 @@ function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] md:pb-0 md:pl-64 md:pt-0">
+    // Mobile spacing lives here only: 16px side gutters, the status-bar inset
+    // on top, and room for the bottom navigation plus the gesture/nav-bar
+    // inset below. Pages must not add their own outer padding on top of it.
+    <div className="min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] md:pb-0 md:pl-64 md:pt-0">
       <Sidebar onLogout={handleLogout} />
-      <main className="p-4 md:p-8 max-w-7xl mx-auto">
+      <main className="px-4 pt-3 md:p-8 max-w-7xl mx-auto">
         {children}
       </main>
       <BottomNav />
@@ -145,30 +149,57 @@ function DeepLinkHandler({ onMessage }) {
       const isReset = host === NATIVE_HOSTS.reset;
       const failTo = isReset ? '/forgot-password' : '/login';
 
+      // Login callbacks: was this a Google sign-in started here, or an email link?
+      let google = false;
+      if (!isReset) {
+        try {
+          google = isGoogleSignInPending(window.localStorage.getItem(GOOGLE_PENDING_KEY));
+          window.localStorage.removeItem(GOOGLE_PENDING_KEY);
+        } catch { /* storage unavailable */ }
+      }
+      const failLogin = (details) => {
+        const outcome = loginCallbackFailure({ google, ...details });
+        track('auth_callback_failed', { method: google ? 'google' : 'email', code: outcome.code });
+        onMessage(outcome.message);
+        navigate(failTo, { replace: true });
+      };
+
       const providerError = authErrorFromUrl(url);
       if (providerError) {
-        track('auth_callback_failed', { code: isReset ? 'reset_provider_error' : 'provider_error' });
-        onMessage(providerError);
-        navigate(failTo, { replace: true });
+        if (isReset) {
+          track('auth_callback_failed', { code: 'reset_provider_error' });
+          onMessage(providerError);
+          navigate(failTo, { replace: true });
+        } else {
+          failLogin({ error: parsed.searchParams.get('error') || 'error', errorCode: parsed.searchParams.get('error_code') });
+        }
         return;
       }
 
       const code = parsed.searchParams.get('code');
       if (!code || !/^[A-Za-z0-9._~-]{8,512}$/.test(code)) {
-        track('auth_callback_failed', { code: 'invalid_link' });
-        onMessage('That link is not valid. Please try again.');
-        navigate(failTo, { replace: true });
+        if (isReset) {
+          track('auth_callback_failed', { code: 'invalid_link' });
+          onMessage('That link is not valid. Please try again.');
+          navigate(failTo, { replace: true });
+        } else {
+          failLogin({ invalidLink: true });
+        }
         return;
       }
 
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (cancelled) return;
       if (error) {
-        track('auth_callback_failed', { code: isMissingVerifierError(error) ? 'missing_verifier' : 'code_exchange_failed' });
-        onMessage(isMissingVerifierError(error)
-          ? 'Please open the link on the same device where you requested it.'
-          : 'This link has expired or has already been used. Please request a new one.');
-        navigate(failTo, { replace: true });
+        if (isReset) {
+          track('auth_callback_failed', { code: isMissingVerifierError(error) ? 'missing_verifier' : 'code_exchange_failed' });
+          onMessage(isMissingVerifierError(error)
+            ? 'Please open the link on the same device where you requested it.'
+            : 'This link has expired or has already been used. Please request a new one.');
+          navigate(failTo, { replace: true });
+        } else {
+          failLogin({ exchangeError: error });
+        }
         return;
       }
 

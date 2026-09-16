@@ -25,17 +25,21 @@ export function isNative() {
 }
 
 /**
- * The website that hosts /auth/callback. The Android app returns there too:
- * that page hands the one-time code to spendly://login-callback, because
- * Chrome does not reliably follow Supabase's redirect straight to a custom
- * scheme and left the sign-in tab blank (see lib/appHandoff.js).
+ * The website that hosts the app's sign-in return page.
+ *
+ * The Android app returns to https://vittova.in/auth/app-callback, a small
+ * static page (public/auth/app-callback.*) that immediately hands the one-time
+ * code to spendly://login-callback. It is only ever the app's return address;
+ * the website keeps /auth/callback. Supabase accepts it because the Site URL is
+ * https://vittova.in; it should also be listed in Redirect URLs.
  */
 export const WEB_ORIGIN = 'https://vittova.in';
+export const APP_CALLBACK_PATH = '/auth/app-callback';
 
 /** Google OAuth and signup confirmation. */
 export function loginRedirectUrl() {
   return isNative()
-    ? `${WEB_ORIGIN}/auth/callback`
+    ? `${WEB_ORIGIN}${APP_CALLBACK_PATH}`
     : `${window.location.origin}/auth/callback`;
 }
 

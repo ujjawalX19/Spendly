@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import PermissionBanner from '../components/PermissionBanner';
+import NotificationAccessSheet from '../components/NotificationAccessSheet';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { localDateKey } from '../lib/dates';
 
@@ -261,7 +262,7 @@ function BudgetCard({ totalSpent, monthlyBudget }) {
   return (
     <motion.div
       variants={cardVariants}
-      className={`rounded-2xl p-5 relative overflow-hidden bg-[#141414] border-0`}
+      className={`rounded-2xl p-4 relative overflow-hidden bg-[#141414] border-0`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -409,7 +410,7 @@ function RecentExpenses({ expenses, loading }) {
   const recentCount = expenses.filter(e => Date.now() - new Date(e.occurred_at || e.created_at) < 3 * 86400000).length;
 
   return (
-    <motion.div variants={cardVariants} className="rounded-2xl bg-[#141414] p-5">
+    <motion.div variants={cardVariants} className="rounded-2xl bg-[#141414] p-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
           <span className="text-lg font-black text-white">Recent Expenses</span>
@@ -767,7 +768,9 @@ export default function Dashboard() {
   // "Enable". The dashboard must never send the user to Settings on its own.
   const {
     isSupported, permissionGranted, permissionChecked, pending, resolvePayment, openPermissionSettings,
+    restrictedSettingsLikely, openAppSettings, checkPermissionNow,
   } = usePaymentNotifications();
+  const [showAccessSheet, setShowAccessSheet] = useState(false);
   const pendingPayment = pending[0] || null;
   const [savingPayment, setSavingPayment] = useState(false);
 
@@ -884,7 +887,7 @@ export default function Dashboard() {
 
   // ── RENDER ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-black text-white pb-28">
+    <div className="bg-black pb-4 text-white">
 
       {/* UPI Toast */}
       <AnimatePresence>
@@ -934,6 +937,20 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* Notification Access explanation and re-check */}
+      <AnimatePresence>
+        {showAccessSheet && (
+          <NotificationAccessSheet
+            permissionGranted={permissionGranted}
+            restrictedSettingsLikely={restrictedSettingsLikely}
+            checkPermissionNow={checkPermissionNow}
+            openPermissionSettings={openPermissionSettings}
+            openAppSettings={openAppSettings}
+            onClose={() => setShowAccessSheet(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Add Modal */}
       <AnimatePresence>
         {showAddModal && (
@@ -947,13 +964,13 @@ export default function Dashboard() {
 
       {/* ─── MAIN CONTENT ─── */}
       <motion.div
-        className="max-w-lg mx-auto px-4 pt-6 space-y-4"
+        className="max-w-lg mx-auto space-y-3"
         variants={pageVariants}
         initial="hidden"
         animate="visible"
       >
         {/* HEADER */}
-        <motion.header variants={fadeUp} className="flex items-center justify-between pt-2 pb-1">
+        <motion.header variants={fadeUp} className="flex items-center justify-between pb-1">
           <div>
             <h1 className="text-3xl font-black text-white leading-tight tracking-tight">
               {getGreeting()}, {firstName}
@@ -968,7 +985,7 @@ export default function Dashboard() {
           isSupported={isSupported}
           permissionGranted={permissionGranted}
           permissionChecked={permissionChecked}
-          onEnable={openPermissionSettings}
+          onEnable={() => setShowAccessSheet(true)}
         />
 
         {/* SAFE-TO-SPEND HERO */}
@@ -1009,7 +1026,7 @@ export default function Dashboard() {
         transition={{ delay: 0.6, type: 'spring', stiffness: 380, damping: 20 }}
         whileTap={{ scale: 0.88 }}
         whileHover={{ scale: 1.08, boxShadow: '0 0 30px rgba(57,255,20,0.5)' }}
-        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-5 z-[100] w-14 h-14 rounded-full bg-lime-400 text-black
+        className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] w-14 h-14 rounded-full bg-lime-400 text-black
                    flex items-center justify-center shadow-[0_4px_24px_rgba(57,255,20,0.4)]
                    transition-shadow cursor-pointer"
         aria-label="Add expense"

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { isNative, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/authRedirects';
 import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
+import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 
 const AuthContext = createContext();
 
@@ -160,6 +161,9 @@ export function AuthProvider({ children }) {
           track('login_failed', { method: 'google', code: 'no_provider_url' });
           return { success: false, message: 'Could not start Google sign-in. Please try again.' };
         }
+        // Lets the callback word its messages for Google rather than for an
+        // email link (the same spendly://login-callback finishes both).
+        try { window.localStorage.setItem(GOOGLE_PENDING_KEY, String(Date.now())); } catch { /* storage unavailable */ }
         await Browser.open({ url: data.url, presentationStyle: 'popover' });
       }
       return { success: true };

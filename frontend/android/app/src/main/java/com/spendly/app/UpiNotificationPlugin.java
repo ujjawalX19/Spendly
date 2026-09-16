@@ -1,6 +1,11 @@
 package com.spendly.app;
 
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -21,8 +26,11 @@ import java.util.List;
  *
  *   checkPermission() / hasNotificationAccess()  -> { granted }
  *   requestNotificationPermission() / openNotificationSettings()
- *        Opens Android's Notification Access screen. The web layer must only
- *        call this from an explicit user tap.
+ *        Opens Android's Notification Access screen (Vittova's own page on
+ *        Android 11+). The web layer must only call this from an explicit tap.
+ *   openAppSettings()                             Vittova's App info screen, where
+ *        Android 13+ offers ⋮ → "Allow restricted settings" for APK installs.
+ *   getAccessInfo()   -> { granted, restrictedSettingsLikely, sdkInt }
  *   getPendingPayments()                          -> { payments: [...] }
  *   removePendingPayment({ fingerprint })        -> { removed }
  *   event "paymentDetected"                       live copy of a queued detection
@@ -107,6 +115,22 @@ public class UpiNotificationPlugin extends Plugin {
     }
 
     private void openSettings(PluginCall call) {
+        // Android 11+: go straight to Vittova's toggle rather than the list of
+        // every app. Some manufacturers lack that screen, so fall back.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                Intent detail = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS);
+                detail.putExtra(
+                    Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                    new ComponentName(getContext(), PaymentNotificationListener.class).flattenToString());
+                detail.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(detail);
+                call.resolve();
+                return;
+            } catch (ActivityNotFoundException | SecurityException e) {
+                // fall through to the list screen
+            }
+        }
         try {
             Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -114,6 +138,43 @@ public class UpiNotificationPlugin extends Plugin {
             call.resolve();
         } catch (Exception e) {
             call.reject("Could not open notification settings");
+        }
+    }
+
+    /** App info for Vittova: where "Allow restricted settings" lives on Android 13+. */
+    @PluginMethod
+    public void openAppSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", getContext().getPackageName(), null));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not open app settings");
+        }
+    }
+
+    @PluginMethod
+    public void getAccessInfo(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("granted", isGranted());
+        result.put("sdkInt", Build.VERSION.SDK_INT);
+        result.put("restrictedSettingsLikely", InstallSource.restrictedSettingsLikely(Build.VERSION.SDK_INT, installerPackage()));
+        call.resolve(result);
+    }
+
+    /** Package that installed Vittova, or null when unknown (e.g. a downloaded APK). */
+    private String installerPackage() {
+        try {
+            PackageManager pm = getContext().getPackageManager();
+            String pkg = getContext().getPackageName();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                return pm.getInstallSourceInfo(pkg).getInstallingPackageName();
+            }
+            return pm.getInstallerPackageName(pkg);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -129,11 +190,15 @@ public class UpiNotificationPlugin extends Plugin {
 
     private void resolveGranted(PluginCall call) {
         JSObject result = new JSObject();
+        result.put("granted", isGranted());
+        call.resolve(result);
+    }
+
+    private boolean isGranted() {
         // Exact package match. The previous substring check on the secure
         // setting could report access for a different app whose package name
         // merely contained ours.
-        result.put("granted", NotificationManagerCompat.getEnabledListenerPackages(getContext())
-            .contains(getContext().getPackageName()));
-        call.resolve(result);
+        return NotificationManagerCompat.getEnabledListenerPackages(getContext())
+            .contains(getContext().getPackageName());
     }
 }

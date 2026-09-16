@@ -42,7 +42,7 @@ export default function PermissionBanner({ isSupported, permissionGranted, permi
     <motion.section
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-lime-400/20 bg-[#141414] p-5"
+      className="rounded-2xl border border-lime-400/20 bg-[#141414] p-4"
       aria-labelledby="notif-access-title"
     >
       <div className="flex gap-4">

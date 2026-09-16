@@ -45,8 +45,8 @@ export default function BottomNav() {
       transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 28 }}
       className="md:hidden fixed bottom-0 inset-x-0 z-50
                  bg-[#181818]/90 backdrop-blur-md border-t border-white/5
-                 flex items-center justify-around px-2 pt-3 rounded-t-3xl
-                 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+                 flex items-center justify-around px-2 pt-2 rounded-t-3xl
+                 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
     >
       {tabs.map(tab => {
         const Icon = tab.icon;
@@ -55,9 +55,9 @@ export default function BottomNav() {
           <Link key={tab.id} to={tab.id} className="flex-1">
             <motion.div
               whileTap={{ scale: 0.88 }}
-              className="flex flex-col items-center gap-1"
+              className="flex flex-col items-center gap-0.5"
             >
-              <div className={`px-4 py-1.5 rounded-full transition-all ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
+              <div className={`px-4 py-1 rounded-full transition-all ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
                 <Icon
                   className={`w-6 h-6 transition-colors ${isActive ? 'text-black' : 'text-[#71717a]'}`}
                   strokeWidth={isActive ? 2.5 : 2}

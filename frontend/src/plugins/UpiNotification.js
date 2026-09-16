@@ -7,6 +7,8 @@ import { registerPlugin } from '@capacitor/core';
  *   checkPermission()                    -> { granted: boolean }
  *   requestNotificationPermission()      opens Android Notification Access settings
  *                                        (call only from an explicit user tap)
+ *   openAppSettings()                    opens Vittova's App info (⋮ → Allow restricted settings)
+ *   getAccessInfo()                      -> { granted, restrictedSettingsLikely, sdkInt }
  *   getPendingPayments()                 -> { payments: PendingPayment[] }
  *   removePendingPayment({ fingerprint }) -> { removed: boolean }
  *   addListener('paymentDetected', cb)   live copy of a newly queued detection
