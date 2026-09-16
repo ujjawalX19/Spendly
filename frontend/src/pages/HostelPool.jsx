@@ -22,7 +22,7 @@ function Sheet({ title, onClose, children }) {
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
             <motion.div
                 role="dialog" aria-label={title}
-                className="relative z-10 w-full max-w-md rounded-t-3xl border border-zinc-800 bg-zinc-900 p-6 pb-8 sm:rounded-3xl"
+                className="relative z-10 w-full max-w-md rounded-t-3xl border border-zinc-800 bg-zinc-900 p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:rounded-3xl"
                 initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 340, damping: 30 }}
             >
                 <div className="mb-4 flex items-center justify-between">

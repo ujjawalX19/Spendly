@@ -203,7 +203,7 @@ function App() {
           <Router>
             <DeepLinkHandler onMessage={setAuthMessage} />
             {authMessage ? (
-              <div role="alert" className="fixed top-0 inset-x-0 z-50 bg-red-500/95 text-white text-sm px-4 py-3 flex items-start gap-3">
+              <div role="alert" className="fixed top-0 inset-x-0 z-50 bg-red-500/95 text-white text-sm px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-start gap-3">
                 <span className="flex-1">{authMessage}</span>
                 <button type="button" onClick={() => setAuthMessage('')} aria-label="Dismiss" className="shrink-0 px-2 -my-1 text-lg leading-none">
                   &times;

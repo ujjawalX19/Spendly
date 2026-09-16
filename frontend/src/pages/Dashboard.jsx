@@ -678,7 +678,7 @@ function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -40, scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-      className="fixed top-4 inset-x-4 z-[300] max-w-sm mx-auto
+      className="fixed top-[calc(1rem+env(safe-area-inset-top))] inset-x-4 z-[300] max-w-sm mx-auto
                  bg-zinc-900 border border-lime-500/30 rounded-2xl p-4
                  shadow-[0_0_30px_rgba(57,255,20,0.2)] backdrop-blur-xl"
       role="dialog"

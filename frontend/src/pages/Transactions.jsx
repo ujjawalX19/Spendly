@@ -439,7 +439,7 @@ function EditSheet({ expense, onCancel, onSave }) {
         onClick={(e) => e.stopPropagation()}
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-        className="w-full max-w-md space-y-4 rounded-t-3xl border border-white/10 bg-[#141414] p-5 sm:rounded-3xl"
+        className="w-full max-w-md space-y-4 rounded-t-3xl border border-white/10 bg-[#141414] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-3xl"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-black text-white">Edit expense</h2>
