@@ -64,3 +64,4 @@ frontend/android/app/google-services.json
 
 # Built app artifacts (never commit)
 release-artifacts/
+release-final/

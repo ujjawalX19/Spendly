@@ -37,11 +37,11 @@ Timeline (UTC):
 | 17:28:43 → 17:34:00 | **No input sent to the emulator** (transcript). |
 | 17:34:00 | New APK installed and launched on the emulator. |
 | 17:34:51 | Production: **18** auth users, **10** profiles — one account *with* a profile was created in this window. |
-| 17:35:22 | Emulator screenshot, Settings: signed in as **`fnjkw@gmail.com`** (read from that account's profile row). `527e4f3a` still had no profile (its profile was created at 18:06:07 by the backfill), so the emulator session was no longer `527e4f3a`. |
+| 17:35:22 | Emulator screenshot, Settings: signed in as **`[redacted-email]`** (read from that account's profile row). `527e4f3a` still had no profile (its profile was created at 18:06:07 by the backfill), so the emulator session was no longer `527e4f3a`. |
 | ~17:35:43 | Last emulator input before the deletion: one `adb shell input tap` (bottom navigation). |
 | **17:36:33.257** | `ops_events`: **`account_deleted`, route `DELETE /api/account`**. This row is written only after that endpoint succeeded, i.e. after `protect` accepted a valid token and the body contained `DELETE_MY_ACCOUNT`. It is the only deletion event in the log. `admin_audit_log` is empty. |
 | 17:36:05–17:39:27 | Assistant tool calls: file reads/edits, lint, frontend unit tests, build — no network calls to the API and no emulator input. |
-| 18:02:06 | Production: **17** auth users, **9** profiles; `fnjkw@gmail.com` no longer exists. |
+| 18:02:06 | Production: **17** auth users, **9** profiles; `[redacted-email]` no longer exists. |
 | 18:06:07 | Backfill created missing profiles (owner ran `v1_5_backfill_profiles.sql`). |
 
 Findings, by source:
@@ -49,7 +49,7 @@ Findings, by source:
 1. **Android app** — *consistent with the evidence.* The deletion went through the
    app's endpoint with the app's exact confirmation body; the only client that
    sends it is Settings → Delete Account, which requires typing `DELETE`. The
-   account shown on the emulator (`fnjkw@gmail.com`) is the one that disappeared.
+   account shown on the emulator (`[redacted-email]`) is the one that disappeared.
    **No `adb input text` command was ever sent** (transcript), so the text field
    could not have been filled by the assistant's automation. The emulator was
    started with a normal, interactive desktop window, and between 17:28:43 and
@@ -62,7 +62,7 @@ Findings, by source:
    `ops_events` row; the account and profile counts fell by exactly one while
    exactly one API deletion was recorded.
 4. **Another authenticated session/device** — *cannot be excluded* without
-   request logs: any client holding a valid `fnjkw@gmail.com` session could
+   request logs: any client holding a valid `[redacted-email]` session could
    send the same request (web app at `spendly-iota.vercel.app`, or a direct
    API call). No evidence found for it either.
 5. **Automated process** — *no evidence.* No job, trigger, test or script can
@@ -71,7 +71,7 @@ Findings, by source:
 6. **Unknown** — the remaining uncertainty is *which client* sent the request.
 
 **Most likely cause, as far as the evidence goes:** a person using an
-interactive client signed in as `fnjkw@gmail.com` — most consistently the
+interactive client signed in as `[redacted-email]` — most consistently the
 emulator window on this computer, where that account appeared at 17:35 —
 used Settings → Delete Account, typed `DELETE` and confirmed at 17:36:33.
 There is no evidence of a bug, an automated deletion, or a cross-account
@@ -79,7 +79,7 @@ deletion.
 
 **How to confirm (Supabase keeps Auth logs for a limited time — check soon):**
 Supabase Dashboard → Logs → Auth, 17:25–17:40 UTC on 2026-09-14:
-- `/signup` or `/token` for `fnjkw@gmail.com` between 17:28 and 17:34, and its client IP;
+- `/signup` or `/token` for `[redacted-email]` between 17:28 and 17:34, and its client IP;
 - `GET /user` followed by `DELETE /admin/users/<id>` at 17:36:33 (the backend's
   calls, from Render). The user id there confirms which account was deleted.
 

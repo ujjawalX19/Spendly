@@ -46,6 +46,18 @@ test('static pages need no JavaScript and carry the current date and contact', (
   assert.match(read('src/pages/TermsOfService.jsx'), new RegExp(`Last updated: ${lastUpdated}`));
 });
 
+test('the support address survives Cloudflare email obfuscation', () => {
+  // Scrape Shield rewrites plain mailto links into "[email protected]", which
+  // hides the address from anyone without JavaScript, including Play reviewers.
+  // Cloudflare skips anything between these comments.
+  for (const page of PAGES) {
+    const html = read(page.html);
+    for (const link of html.match(/<a href="mailto:[^"]*">[^<]*<\/a>/g) || []) {
+      assert.ok(html.includes(`<!--email_off-->${link}<!--email_on-->`), `${page.html}: ${link}`);
+    }
+  }
+});
+
 test('every section heading matches between the static and in-app pages', () => {
   const privacyJsxTitles = [...read('src/pages/PrivacyPolicy.jsx').matchAll(/<Section title="([^"]+)"/g)].map((m) => m[1]);
   const termsJsxTitles = [...read('src/pages/TermsOfService.jsx').matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((m) => m[1].trim());
