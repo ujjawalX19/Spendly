@@ -2,7 +2,7 @@
  * Apps whose notifications Vittova reads to detect payments.
  *
  * MUST stay identical to KNOWN_PACKAGES in
- * android/app/src/main/java/com/spendly/app/PaymentNotificationParser.java —
+ * android/app/src/main/java/com/vittova/app/PaymentNotificationParser.java —
  * this list is what the onboarding screen and privacy policy promise.
  * tests/supportedPaymentApps.test.js fails if the two lists drift apart.
  * Notifications from any app not listed here are ignored without being read.

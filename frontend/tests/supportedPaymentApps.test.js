@@ -7,7 +7,7 @@ import { SUPPORTED_PAYMENT_APPS } from '../src/lib/supportedPaymentApps.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const parserSource = readFileSync(
-  join(here, '../android/app/src/main/java/com/spendly/app/PaymentNotificationParser.java'),
+  join(here, '../android/app/src/main/java/com/vittova/app/PaymentNotificationParser.java'),
   'utf8'
 );
 

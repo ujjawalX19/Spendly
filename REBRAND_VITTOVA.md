@@ -9,11 +9,20 @@ everywhere; a small set of technical identifiers keeps the old name on purpose.
 `frontend/tests/brand.test.js` fails the build if "Spendly" reappears in client
 code outside the allow-list below.
 
+## Android package: `com.vittova.app` (changed 2026-09-17)
+
+The application ID, namespace, Java package, Capacitor `appId`, `strings.xml`
+and ProGuard rules moved from `com.spendly.app` to `com.vittova.app` before the
+app was ever published, while the ID could still change (it is permanent once
+on Google Play). Android treats it as a different app: test builds with the old
+ID must be uninstalled, and their on-device data (session, queued payments) does
+not carry over. The sign-in hand-off pages pin the intent to the new package, so
+old `com.spendly.app` test builds can no longer finish Google sign-in.
+
 ## Legacy identifiers kept on purpose
 
 | Identifier | Where | Why it stays |
 |---|---|---|
-| `com.spendly.app` | `build.gradle` applicationId/namespace, `capacitor.config.json` appId, Java package, `strings.xml` package_name/custom_url_scheme, ProGuard rules | The Play application ID is permanent once published and is the identity existing installs update from. Users never see it. Renaming the Java package gains nothing. |
 | `spendly://login-callback`, `spendly://reset-password` | `AndroidManifest.xml`, `authRedirects.js`, Supabase redirect allow-list | Google sign-in, email confirmation and password reset return through these. Emails already sent and installed APKs depend on them. Not user-visible. |
 | `spendly.seenPayments.v1`, `spendly.notificationPrompt.v1`, `spendly.recovery`, `spendly.onboarded.v1` | WebView local/session storage | Renaming would re-show onboarding, re-prompt for notification access and forget resolved payments for existing users. |
 | `spendly_pending_payments` (SharedPreferences), `SpendlyNLS` / `SpendlyQueue` (logcat tags) | Android Java | Renaming the prefs file would drop payments queued while the app was closed. Tags are developer-only. |

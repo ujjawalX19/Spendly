@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

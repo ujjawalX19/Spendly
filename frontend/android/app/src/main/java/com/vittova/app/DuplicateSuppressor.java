@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

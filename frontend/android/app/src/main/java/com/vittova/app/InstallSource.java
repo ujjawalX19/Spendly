@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 /**
  * Whether Android is likely to show "Restricted setting" for Notification

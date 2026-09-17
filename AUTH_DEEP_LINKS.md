@@ -39,7 +39,7 @@ static page used by nothing else (`vercel.json` rewrites it to
 - forwards only a `code` matching the app's pattern, or `error`/`error_code`
   tokens, never tokens or error descriptions;
 - removes the code from the address bar immediately;
-- opens `intent://login-callback?code=…#Intent;scheme=spendly;package=com.spendly.app;end`
+- opens `intent://login-callback?code=…#Intent;scheme=spendly;package=com.vittova.app;end`
   at once (only the Vittova app can receive it) and shows **Open Vittova** in
   case Chrome wants a tap.
 
@@ -99,7 +99,7 @@ and are feasible:
 
 1. Use the Vittova domain (`vittova.in`) once DNS and HTTPS are verified.
 2. Publish `https://<domain>/.well-known/assetlinks.json` containing package
-   `com.spendly.app` and the **SHA-256 fingerprint of the Play App Signing key**
+   `com.vittova.app` and the **SHA-256 fingerprint of the Play App Signing key**
    (Play Console → Setup → App signing), plus the upload key for testing.
 3. Add an intent filter with `android:autoVerify="true"`, `scheme="https"`,
    `host="<domain>"`, `pathPrefix="/auth"`.

@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import java.util.Arrays;
 import java.util.List;

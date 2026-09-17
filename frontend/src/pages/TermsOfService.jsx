@@ -8,7 +8,7 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-black text-white p-6 max-w-2xl mx-auto pb-28">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
-      <p className="text-zinc-400 mb-8">Last updated: 13 September 2026</p>
+      <p className="text-zinc-400 mb-8">Last updated: 17 September 2026</p>
 
       <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
         <section>
@@ -70,7 +70,7 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">8. Limitation of Liability</h2>
           <p>
-            Vittova is provided "as is" without warranties of any kind. We are not liable for any financial losses resulting from reliance on the app's features, projections, or AI-generated suggestions. Our total liability shall not exceed the amount you paid for Vittova Pro in the preceding 12 months.
+            Vittova is provided "as is" without warranties of any kind. To the extent permitted by applicable law, we are not liable for any financial losses resulting from reliance on the app's features, projections, or AI-generated suggestions. Nothing in these terms limits any liability that cannot be limited under the laws of India.
           </p>
         </section>
 

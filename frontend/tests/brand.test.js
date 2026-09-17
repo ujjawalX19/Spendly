@@ -14,7 +14,6 @@ const ROOTS = ['src', 'admin/src', 'admin/index.html', 'index.html', 'public/man
 
 // Intentional legacy identifiers that must not change.
 const ALLOWED = [
-  /com[./]spendly[./]app/g, // Android package / applicationId
   /spendly:\/\//g, // auth deep-link scheme
   /NATIVE_SCHEME = 'spendly'/g,
   /android:scheme="spendly"/g,
@@ -45,11 +44,15 @@ test('no user-facing Spendly branding remains in the app or admin console', () =
   assert.deepEqual(offenders, []);
 });
 
-test('Android app label is Vittova while the package id stays com.spendly.app', () => {
+test('Android app label is Vittova and the package id is com.vittova.app', () => {
   const strings = readFileSync(join(frontend, 'android/app/src/main/res/values/strings.xml'), 'utf8');
   assert.match(strings, /<string name="app_name">Vittova<\/string>/);
-  assert.match(strings, /<string name="package_name">com\.spendly\.app<\/string>/);
+  assert.match(strings, /<string name="package_name">com\.vittova\.app<\/string>/);
+  const gradle = readFileSync(join(frontend, 'android/app/build.gradle'), 'utf8');
+  assert.match(gradle, /namespace = "com\.vittova\.app"/);
+  assert.match(gradle, /applicationId "com\.vittova\.app"/);
+  assert.ok(statSync(join(frontend, 'android/app/src/main/java/com/vittova/app/MainActivity.java')).isFile());
   const cap = JSON.parse(readFileSync(join(frontend, 'capacitor.config.json'), 'utf8'));
-  assert.equal(cap.appId, 'com.spendly.app');
+  assert.equal(cap.appId, 'com.vittova.app');
   assert.equal(cap.appName, 'Vittova');
 });

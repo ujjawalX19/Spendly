@@ -17,11 +17,11 @@
 # ─── Custom Vittova Plugins ──────────────────────────────────
 # UPI Notification Plugin — must not be obfuscated since Capacitor
 # resolves plugin classes by name via reflection.
--keep class com.spendly.app.UpiNotificationPlugin { *; }
--keep class com.spendly.app.PaymentNotificationListener { *; }
--keep class com.spendly.app.PaymentNotificationParser { *; }
--keep class com.spendly.app.PaymentNotificationParser$* { *; }
--keep class com.spendly.app.MainActivity { *; }
+-keep class com.vittova.app.UpiNotificationPlugin { *; }
+-keep class com.vittova.app.PaymentNotificationListener { *; }
+-keep class com.vittova.app.PaymentNotificationParser { *; }
+-keep class com.vittova.app.PaymentNotificationParser$* { *; }
+-keep class com.vittova.app.MainActivity { *; }
 
 # ─── AndroidX / Support Libraries ────────────────────────────
 -keep class androidx.core.content.FileProvider { *; }

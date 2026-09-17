@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;

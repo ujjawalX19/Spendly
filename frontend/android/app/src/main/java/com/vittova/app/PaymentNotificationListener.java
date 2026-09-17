@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import android.content.ComponentName;
 import android.os.Bundle;
@@ -101,7 +101,7 @@ public class PaymentNotificationListener extends NotificationListenerService {
 
         private static boolean isDebug() {
             try {
-                Class<?> c = Class.forName("com.spendly.app.BuildConfig");
+                Class<?> c = Class.forName("com.vittova.app.BuildConfig");
                 return c.getField("DEBUG").getBoolean(null);
             } catch (Throwable t) {
                 return false;

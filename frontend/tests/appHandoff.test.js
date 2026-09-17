@@ -12,7 +12,7 @@ const cb = (q) => `https://vittova.in/auth/callback${q}`;
 test('app sign-in on Android hands the code to the Vittova app only', () => {
   const r = appHandoff(cb(`?code=${CODE}`), { hasVerifier: false, userAgent: ANDROID });
   assert.equal(r.appUrl, `spendly://login-callback?code=${CODE}`);
-  assert.equal(r.intentUrl, `intent://login-callback?code=${CODE}#Intent;scheme=spendly;package=com.spendly.app;end`);
+  assert.equal(r.intentUrl, `intent://login-callback?code=${CODE}#Intent;scheme=spendly;package=com.vittova.app;end`);
 });
 
 test('a sign-in started on the website is left to the website', () => {

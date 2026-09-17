@@ -27,6 +27,18 @@
       "destination": "/auth/app-callback.html"
     },
     {
+      "source": "/privacy",
+      "destination": "/legal/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/legal/terms.html"
+    },
+    {
+      "source": "/delete-account",
+      "destination": "/legal/delete-account.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

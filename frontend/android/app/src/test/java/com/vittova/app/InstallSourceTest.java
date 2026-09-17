@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
 
         <div className="mt-8 space-y-8 text-sm leading-7">
           <p>
-            This policy explains what information the Vittova Android app and web app collect, why, who processes it, how long
+            This policy explains what information the Vittova Android app (package com.vittova.app) and web app collect, why, who processes it, how long
             it is kept, and how to delete it. Vittova is an expense tracker. It does not move money, connect to your bank
             account, or sell your data.
           </p>

@@ -12,10 +12,10 @@ if (hasSigningConfig) {
 }
 
 android {
-    namespace = "com.spendly.app"
+    namespace = "com.vittova.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.spendly.app"
+        applicationId "com.vittova.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Bump versionCode for every upload to Play. versionName is what

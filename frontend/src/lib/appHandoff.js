@@ -15,7 +15,7 @@
  * No imports, so the rules can be unit tested in plain Node.
  */
 
-export const APP_PACKAGE = 'com.spendly.app';
+export const APP_PACKAGE = 'com.vittova.app';
 // Legacy scheme kept from before the Vittova rebrand (see REBRAND_VITTOVA.md).
 export const APP_LOGIN_URL = 'spendly://login-callback';
 const [APP_SCHEME, APP_LOGIN_HOST] = APP_LOGIN_URL.split('://');

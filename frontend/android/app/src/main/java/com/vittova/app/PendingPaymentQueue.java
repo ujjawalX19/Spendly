@@ -1,4 +1,4 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import java.util.ArrayList;
 import java.util.Iterator;

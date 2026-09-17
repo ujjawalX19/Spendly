@@ -1,12 +1,12 @@
-package com.spendly.app;
+package com.vittova.app;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.spendly.app.PaymentNotificationParser.Kind;
-import com.spendly.app.PaymentNotificationParser.Result;
+import com.vittova.app.PaymentNotificationParser.Kind;
+import com.vittova.app.PaymentNotificationParser.Result;
 
 import org.junit.Test;
 

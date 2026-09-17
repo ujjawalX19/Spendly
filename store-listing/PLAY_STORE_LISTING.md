@@ -1,8 +1,8 @@
 # Vittova — Google Play listing (draft)
 
 Prepared content only. **Nothing has been published.** Every item below needs
-to be entered manually in Play Console. Package: `com.spendly.app` (unchanged
-legacy identifier; users never see it).
+to be entered manually in Play Console. Package: `com.vittova.app`
+(permanent once published; users never see it).
 
 | Field | Value | Limit |
 |---|---|---|

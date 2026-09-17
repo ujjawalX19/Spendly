@@ -2,7 +2,7 @@
 
 **Your Money's Pulse.** Website: https://vittova.in
 
-> Vittova was previously branded **Spendly**. Some technical identifiers keep the old name on purpose (Android package `com.spendly.app`, the `spendly://` auth deep links, database/storage keys, the GitHub repository and Render service names). See [REBRAND_VITTOVA.md](REBRAND_VITTOVA.md).
+> Vittova was previously branded **Spendly**. Some technical identifiers keep the old name on purpose (the `spendly://` auth deep links, database/storage keys, the GitHub repository and Render service names). See [REBRAND_VITTOVA.md](REBRAND_VITTOVA.md).
 
 A personal financial co-pilot for India. Vittova tracks what you spend — mostly
 without you typing anything — explains where it went, and tells you what you

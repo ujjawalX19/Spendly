@@ -2,7 +2,7 @@ import { registerPlugin } from '@capacitor/core';
 
 /**
  * UpiNotification — native bridge to the Android payment-notification listener
- * (android/app/src/main/java/com/spendly/app/UpiNotificationPlugin.java).
+ * (android/app/src/main/java/com/vittova/app/UpiNotificationPlugin.java).
  *
  *   checkPermission()                    -> { granted: boolean }
  *   requestNotificationPermission()      opens Android Notification Access settings

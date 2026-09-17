@@ -16,7 +16,7 @@ test('a code is handed only to the Vittova app, by package', () => {
   const r = handoffFor(page(`?code=${CODE}`));
   assert.equal(r.kind, 'code');
   assert.equal(r.appUrl, `spendly://login-callback?code=${CODE}`);
-  assert.equal(r.intentUrl, `intent://login-callback?code=${CODE}#Intent;scheme=spendly;package=com.spendly.app;end`);
+  assert.equal(r.intentUrl, `intent://login-callback?code=${CODE}#Intent;scheme=spendly;package=com.vittova.app;end`);
 });
 
 test('no user-agent or storage guess: the page is only the app\'s return address', () => {
