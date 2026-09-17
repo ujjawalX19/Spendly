@@ -54,7 +54,7 @@ test account (manual).
 
 ### Owner admin API (Owner Console at https://vittova.in/admin, `frontend/admin`)
 
-All behind `protect` + `requireOwner`: confirmed email = `ADMIN_EMAIL` **and** `profiles.role = 'admin'`. Non-owners get `404`. See [ADMIN_PANEL.md](ADMIN_PANEL.md).
+All behind `protect` + `requireOwner`: confirmed email = `ADMIN_EMAIL` **and** `profiles.role = 'admin'`. No/invalid token → `401`; signed-in non-owners → `403`. See [ADMIN_PANEL.md](ADMIN_PANEL.md).
 
 | Method | Path | Admin app page | Notes | Status |
 |---|---|---|---|---|

@@ -139,7 +139,7 @@ test('timeline groups activity per day and contains no financial details', async
 
 test('timeline is owner-only and validates the id', async () => {
     const target = t.db.addUser();
-    assert.equal((await t.request('GET', `/api/admin/users/${target.id}/timeline`, { token: target.token })).status, 404);
+    assert.equal((await t.request('GET', `/api/admin/users/${target.id}/timeline`, { token: target.token })).status, 403);
     assert.equal((await get('/api/admin/users/nope/timeline')).status, 400);
     assert.equal((await get(`/api/admin/users/${crypto.randomUUID()}/timeline`)).status, 404);
 });
@@ -168,7 +168,7 @@ test('Pro page summarises entitlements with source and history', async () => {
     const expiring = await get('/api/admin/pro?state=expiring&pageSize=100');
     assert.ok(expiring.body.users.some((u) => u.id === target.id));
     assert.ok(!expiring.body.users.some((u) => u.id === legacy.id));
-    assert.equal((await t.request('GET', '/api/admin/pro', { token: target.token })).status, 404);
+    assert.equal((await t.request('GET', '/api/admin/pro', { token: target.token })).status, 403);
 });
 
 test('extend Pro adds days to the current expiry and is audited', async () => {
@@ -197,5 +197,5 @@ test('extend Pro adds days to the current expiry and is audited', async () => {
     assert.equal((await post(`/api/admin/users/${forever.id}/pro/extend`, { days: 7, reason: 'x y z' })).status, 400);
 
     const outsider = t.db.addUser();
-    assert.equal((await t.request('POST', url, { token: outsider.token, body: { days: 7, reason: 'self' } })).status, 404);
+    assert.equal((await t.request('POST', url, { token: outsider.token, body: { days: 7, reason: 'self' } })).status, 403);
 });

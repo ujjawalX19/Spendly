@@ -39,17 +39,28 @@ const ADMIN_GETS = ['/me', '/overview', '/dashboard', '/activity', '/installs', 
 
 // ─── Authorization ──────────────────────────────────────────────────────────
 
-test('a normal user gets 404 from every admin endpoint, reads and writes alike', async () => {
+test('a normal user gets 403 from every admin endpoint, reads and writes alike', async () => {
     const user = t.db.addUser();
     for (const path of ADMIN_GETS) {
         const res = await get(`/api/admin${path}`, user.token);
-        assert.equal(res.status, 404, path);
-        assert.equal(res.body.message, 'Not found', path);
+        assert.equal(res.status, 403, path);
+        assert.equal(res.body.message, 'Forbidden', path);
+        assert.equal(JSON.stringify(res.body).includes(OWNER_EMAIL), false, path);
     }
     const fingerprint = 'http_5xx|POST /api/expenses|-|500';
-    assert.equal((await post('/api/admin/errors/resolve', { fingerprint }, user.token)).status, 404);
-    assert.equal((await post('/api/admin/errors/reopen', { fingerprint, reason: 'nope' }, user.token)).status, 404);
+    assert.equal((await post('/api/admin/errors/resolve', { fingerprint }, user.token)).status, 403);
+    assert.equal((await post('/api/admin/errors/reopen', { fingerprint, reason: 'nope' }, user.token)).status, 403);
     assert.equal(rows('ops_issue_states').length, 0);
+});
+
+test('a normal user refused by the admin API is audited, and the owner email is never revealed', async () => {
+    const user = t.db.addUser();
+    require('../middleware/requireOwner').resetDenialLog();
+    const res = await get('/api/admin/users', user.token);
+    assert.equal(res.status, 403);
+    assert.deepEqual(res.body, { success: false, code: 'FORBIDDEN', message: 'Forbidden' });
+    const denial = rows('admin_audit_log', (a) => a.action === 'admin_access_denied' && a.actor_id === user.id);
+    assert.equal(denial.length, 1);
 });
 
 test('unauthenticated and forged-token requests never reach admin data', async () => {
@@ -62,7 +73,7 @@ test('unauthenticated and forged-token requests never reach admin data', async (
 test('a client cannot make itself admin through any request field', async () => {
     const user = t.db.addUser();
     for (const headers of [{ 'X-Admin': 'true' }, { 'X-Role': 'admin' }]) {
-        assert.equal((await t.request('GET', '/api/admin/dashboard?role=admin', { token: user.token, headers })).status, 404);
+        assert.equal((await t.request('GET', '/api/admin/dashboard?role=admin', { token: user.token, headers })).status, 403);
     }
     // No API accepts `role`: the profile row is unchanged after trying.
     await t.request('PUT', '/api/account/budget', { token: user.token, body: { monthly_budget: 5000, role: 'admin' } });

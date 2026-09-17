@@ -664,7 +664,7 @@ async function settings() {
         ],
         security: [
             'Admin API: verified Supabase session + confirmed email equal to ADMIN_EMAIL + profiles.role = admin, checked on every request',
-            'Non-owners receive 404; refused attempts are audited',
+            'Signed-in non-owners receive 403; refused attempts are audited',
             'Service-role and Gemini keys exist only on the backend',
             'Console session is kept in this browser tab only and signs out after 30 minutes idle',
         ],

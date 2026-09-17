@@ -12,8 +12,8 @@ project's output under `/admin/`, talking to the backend's owner-only API
 |---|---|
 | Authorization | Every `/api/admin/*` route runs `protect` then `requireOwner` (`backend/middleware/requireOwner.js`). A request passes only if **all** hold: `ADMIN_EMAIL` is set to a single address; the Supabase-verified user's email equals it (case-insensitive) and is **confirmed**; `profiles.role = 'admin'`; `profiles.email` also equals it; the account is not suspended. Checked from Supabase Auth and the database on every request. |
 | Fail closed | `ADMIN_EMAIL` missing or malformed → admin API refuses everyone. |
-| No client trust | No route reads a role, owner flag or email from the request. `role` is not client-writable (`v1_2_security_p0.sql`). The console's `/me` check only decides what to render. |
-| Concealment | Non-owners get `404 Not found`, not `403`. Refusals are audited (throttled per user). |
+| No client trust | `ADMIN_EMAIL` is read only by the backend (`process.env` in `requireOwner.js`); it is never in a `VITE_*` variable, the web bundle or the Android app. No route reads a role, owner flag or email from the request. `role` is not client-writable (`v1_2_security_p0.sql`, tested in `supabase/tests/rls.test.mjs`). The console's `/me` check only decides what to render. |
+| Refusals | No or invalid token → `401`. A verified user who is not the owner → `403 Forbidden` (the response never says which check failed or who the owner is). Refusals are audited as `admin_access_denied` (throttled per user). |
 | IDOR | A user id in an admin path is only ever the *target* of an owner action; ids are UUID-validated. |
 | Data minimisation | Profile fields, counts, event names, outcome categories and error codes. No expense amounts, descriptions, merchants, receipt data, bank names, bill names, AI questions or answers. |
 | Audit | `admin_audit_log`: console sign-in (`admin_login`, once per 30 min), every user-detail view, suspend/reinstate, Pro grant/extend/revoke, error resolve/re-open, every refused access. Mutations are **refused** if their audit entry cannot be written. **Append-only at the database** (trigger in `v1_6`). |

@@ -74,8 +74,8 @@ test("a user cannot change another user's Pro status or suspend them", async () 
     const a = t.db.addUser();
     const b = t.db.addUser({ is_pro: true });
     const body = { reason: 'trying it' };
-    assert.equal((await t.request('POST', `/api/admin/users/${b.id}/suspend`, { token: a.token, body })).status, 404);
-    assert.equal((await t.request('DELETE', `/api/admin/users/${b.id}/pro`, { token: a.token, body })).status, 404);
+    assert.equal((await t.request('POST', `/api/admin/users/${b.id}/suspend`, { token: a.token, body })).status, 403);
+    assert.equal((await t.request('DELETE', `/api/admin/users/${b.id}/pro`, { token: a.token, body })).status, 403);
     assert.equal(t.db.profile(b.id).is_banned, false);
     assert.equal(t.db.profile(b.id).is_pro, true);
 });
@@ -85,7 +85,7 @@ test("a user cannot change another user's Pro status or suspend them", async () 
 test('a normal user cannot use admin endpoints', async () => {
     const a = t.db.addUser();
     for (const url of ['/api/admin/me', '/api/admin/users', '/api/admin/overview', '/api/admin/health', '/api/admin/audit-log']) {
-        assert.equal((await t.request('GET', url, { token: a.token })).status, 404, url);
+        assert.equal((await t.request('GET', url, { token: a.token })).status, 403, url);
     }
 });
 

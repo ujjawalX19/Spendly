@@ -21,8 +21,10 @@ const { audit } = require('../lib/adminAudit');
  * someone who registers the owner's address elsewhere without the role, gets
  * nothing. There is no client-supplied "isAdmin" anywhere.
  *
- * Refusals return 404 so the admin API does not advertise itself, and are
+ * Refusals: no or invalid token -> 401 (from `protect`); a verified user who
+ * is not the owner -> 403 Forbidden. Every refusal of a signed-in user is
  * written to the audit log (throttled per user so a probe cannot flood it).
+ * The response never says which check failed.
  */
 
 const DENIAL_LOG_MS = 10 * 60 * 1000;
@@ -47,7 +49,7 @@ function deny(req, res, reason) {
         audit(req, 'admin_access_denied', { details: { reason, method: req.method, path: req.baseUrl } }).catch(() => {});
     }
     res.set('Cache-Control', 'no-store');
-    return res.status(404).json({ success: false, message: 'Not found' });
+    return res.status(403).json({ success: false, code: 'FORBIDDEN', message: 'Forbidden' });
 }
 
 async function requireOwner(req, res, next) {

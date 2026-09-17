@@ -150,7 +150,7 @@ test('a normal user cannot reach any admin route', async () => {
     const a = t.db.addUser();
     for (const [method, url] of [['GET', '/api/admin/users'], ['POST', `/api/admin/users/${crypto.randomUUID()}/suspend`], ['DELETE', `/api/admin/users/${crypto.randomUUID()}/pro`]]) {
         const res = await t.request(method, url, { token: a.token, body: method === 'GET' ? undefined : { reason: 'x' } });
-        assert.equal(res.status, 404, `${method} ${url}`);
+        assert.equal(res.status, 403, `${method} ${url}`);
     }
     assert.equal(deletions().length, 0);
 });

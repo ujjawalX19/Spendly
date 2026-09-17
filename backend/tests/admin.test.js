@@ -50,31 +50,31 @@ test('email matching is case-insensitive', async () => {
 test('admin role without the owner email is refused', async () => {
     const impostor = t.db.addUser({ role: 'admin' });
     const res = await t.request('GET', '/api/admin/users', { token: impostor.token });
-    assert.equal(res.status, 404);
-    assert.equal(res.body.message, 'Not found');
+    assert.equal(res.status, 403);
+    assert.equal(res.body.message, 'Forbidden');
 });
 
 test('owner email without the admin role is refused', async () => {
     const owner = addOwner({ role: 'user' });
-    assert.equal((await t.request('GET', '/api/admin/users', { token: owner.token })).status, 404);
+    assert.equal((await t.request('GET', '/api/admin/users', { token: owner.token })).status, 403);
 });
 
 test('owner email that is not confirmed is refused', async () => {
     const owner = addOwner({ emailConfirmed: false });
-    assert.equal((await t.request('GET', '/api/admin/users', { token: owner.token })).status, 404);
+    assert.equal((await t.request('GET', '/api/admin/users', { token: owner.token })).status, 403);
 });
 
 test('a profile email that no longer matches ADMIN_EMAIL is refused', async () => {
     const owner = addOwner();
     t.db.profile(owner.id).email = 'changed@example.com';
-    assert.equal((await t.request('GET', '/api/admin/me', { token: owner.token })).status, 404);
+    assert.equal((await t.request('GET', '/api/admin/me', { token: owner.token })).status, 403);
 });
 
 test('the admin API is closed to everyone when ADMIN_EMAIL is missing or not a single address', async () => {
     const owner = addOwner();
     for (const value of ['', 'not-an-email', `${OWNER_EMAIL},other@example.com`]) {
         process.env.ADMIN_EMAIL = value;
-        assert.equal((await t.request('GET', '/api/admin/me', { token: owner.token })).status, 404, JSON.stringify(value));
+        assert.equal((await t.request('GET', '/api/admin/me', { token: owner.token })).status, 403, JSON.stringify(value));
     }
 });
 
@@ -84,9 +84,9 @@ test('client-supplied admin hints are ignored', async () => {
         token: user.token,
         headers: { 'X-Admin': 'true', 'X-User-Role': 'admin', 'X-User-Email': OWNER_EMAIL },
     });
-    assert.equal(res.status, 404);
+    assert.equal(res.status, 403);
     const post = await t.request('POST', `/api/admin/users/${user.id}/pro`, { token: user.token, body: { reason: 'self grant', expiresAt: null, isAdmin: true, role: 'admin' } });
-    assert.equal(post.status, 404);
+    assert.equal(post.status, 403);
     assert.equal(t.db.profile(user.id).is_pro, false);
 });
 
@@ -279,5 +279,5 @@ test('audit log is readable by the owner only', async () => {
     const res = await t.request('GET', '/api/admin/audit-log', { token: owner.token });
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.entries));
-    assert.equal((await t.request('GET', '/api/admin/audit-log', { token: user.token })).status, 404);
+    assert.equal((await t.request('GET', '/api/admin/audit-log', { token: user.token })).status, 403);
 });
