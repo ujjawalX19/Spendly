@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Email **ujjawalshrivastava270@gmail.com** with a description, reproduction
+Email **support@vittova.in** with a description, reproduction
 steps, and impact. Please do not open a public issue for anything that exposes
 user data. Expect an acknowledgement within 72 hours.
 
