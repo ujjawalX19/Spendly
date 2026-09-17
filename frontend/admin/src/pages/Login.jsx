@@ -25,7 +25,13 @@ export default function Login({ denied, onClearDenied }) {
     onClearDenied?.();
     const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
-    if (authError) setError(authError.status === 429 ? 'Too many attempts. Wait a few minutes.' : 'Sign-in failed.');
+    if (!authError) return;
+    if (authError.status === 429) setError('Too many attempts. Wait a few minutes.');
+    // Same wording for every account, so it does not reveal the owner's address.
+    // Accounts created with Google have no password until one is set.
+    else if (/invalid login credentials/i.test(authError.message || '')) {
+      setError('Email or password is incorrect. If you created your account with Google, use Continue with Google.');
+    } else setError('Sign-in failed. Please try again.');
   };
 
   const google = async () => {
