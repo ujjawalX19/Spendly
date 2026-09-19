@@ -148,8 +148,10 @@ checks as (
            (select count(*)::text || ' admin(s); must also match ADMIN_EMAIL on the server' from public.profiles where role = 'admin')
 
     union all
-    -- 12. Every table referencing profiles cascades on delete (no orphaned data)
+    -- 12. Every Vittova table referencing profiles cascades on delete (no orphaned data)
     -- Telemetry rows are anonymised (SET NULL) instead: counts survive, the link to the person does not.
+    -- Only tables in the public schema are ours; Supabase's own auth.* tables
+    -- (e.g. auth.scim_users) are managed by Supabase and excluded.
     select 'ON DELETE CASCADE: ' || con.conrelid::regclass::text || '.' || con.conname,
            con.confdeltype = 'c'
              or (con.confdeltype = 'n' and (select relname from pg_class where oid = con.conrelid) in ('app_events', 'app_installs')),
@@ -157,6 +159,7 @@ checks as (
     from pg_constraint con
     where con.contype = 'f'
       and con.confrelid in ('public.profiles'::regclass, 'auth.users'::regclass)
+      and con.connamespace = 'public'::regnamespace
 )
 select case when ok then 'PASS' else 'FAIL' end as result, check_name, detail
 from checks
