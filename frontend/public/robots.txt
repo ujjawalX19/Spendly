@@ -1,0 +1,10 @@
+# Vittova — https://vittova.in
+# Public pages are indexable. The owner console and sign-in hand-off pages are
+# not for search; signed-in app screens send X-Robots-Tag: noindex instead of
+# being blocked here, so search engines can see that instruction.
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /auth/
+
+Sitemap: https://vittova.in/sitemap.xml

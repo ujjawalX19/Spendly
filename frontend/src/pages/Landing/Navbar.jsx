@@ -40,7 +40,7 @@ export default function Navbar() {
       >
         <div className="max-w-7xl mx-auto px-5 md:px-8 flex items-center justify-between h-16">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-2 group">
+          <a href="/" aria-label="Vittova home" className="flex items-center gap-2 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400/10">
               <VittovaLogo size={28} />
             </div>

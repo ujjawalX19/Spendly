@@ -2,30 +2,86 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/vittova-logo.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0B1220" />
-    <title>Vittova — Your Money's Pulse</title>
+    <title>Vittova — Expense Tracker & Budget App | Your Money's Pulse</title>
     <meta name="description" content="Vittova is a personal financial copilot: track expenses, see what you can safely spend this month, split shared bills and get answers from your own numbers." />
     <link rel="canonical" href="https://vittova.in/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Vittova" />
-    <meta property="og:title" content="Vittova — Your Money's Pulse" />
+    <meta property="og:title" content="Vittova — Expense Tracker & Budget App | Your Money's Pulse" />
     <meta property="og:description" content="Personal financial copilot: track expenses, know what you can safely spend, and split shared bills." />
     <meta property="og:url" content="https://vittova.in/" />
-    <meta property="og:image" content="https://vittova.in/icons/icon-512.png" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Vittova — Your Money's Pulse" />
+    <meta property="og:image" content="https://vittova.in/og-image.png" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="500" />
+    <meta property="og:image:alt" content="Vittova — Your Money's Pulse" />
+    <meta property="og:locale" content="en_IN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Vittova — Expense Tracker & Budget App | Your Money's Pulse" />
     <meta name="twitter:description" content="Personal financial copilot: track expenses, know what you can safely spend, and split shared bills." />
+    <meta name="twitter:image" content="https://vittova.in/og-image.png" />
     <link rel="manifest" href="/manifest.json" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://vittova.in/#organization",
+          "name": "Vittova",
+          "url": "https://vittova.in/",
+          "logo": "https://vittova.in/icons/icon-512.png",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "support@vittova.in",
+            "areaServed": "IN",
+            "availableLanguage": "en"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://vittova.in/#website",
+          "name": "Vittova",
+          "url": "https://vittova.in/",
+          "inLanguage": "en-IN",
+          "publisher": {
+            "@id": "https://vittova.in/#organization"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://vittova.in/#app",
+          "name": "Vittova",
+          "url": "https://vittova.in/",
+          "applicationCategory": "FinanceApplication",
+          "operatingSystem": "Web, Android",
+          "description": "Track expenses, see what you can safely spend this month, split shared bills and get answers from your own spending data.",
+          "publisher": {
+            "@id": "https://vittova.in/#organization"
+          }
+        }
+      ]
+    }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <main style="max-width:720px;margin:48px auto;padding:0 16px;font-family:system-ui,sans-serif;color:#e4e4e7;background:#0B1220">
+        <h1>Vittova — expense tracker and budget app</h1>
+        <p>Vittova helps you track expenses, see what you can safely spend this month after bills and savings, split shared bills with friends, and ask questions about your own spending. Vittova needs JavaScript to run.</p>
+        <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/delete-account">Delete your account</a> · <a href="mailto:support@vittova.in">support@vittova.in</a></p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

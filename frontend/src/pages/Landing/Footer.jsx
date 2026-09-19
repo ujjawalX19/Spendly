@@ -9,7 +9,7 @@ export default function Footer() {
         
         {/* Brand */}
         <div className="flex flex-col items-center md:items-start gap-4">
-          <a href="#" className="flex items-center gap-2 group">
+          <a href="/" aria-label="Vittova home" className="flex items-center gap-2 group">
             <VittovaLogo size={28} />
             <span className="text-lg font-bold tracking-tight text-lime-400">
               Vittova
