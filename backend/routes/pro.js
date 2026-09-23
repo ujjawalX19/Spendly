@@ -25,7 +25,7 @@ function usedFor(profile, feature, now) {
 router.get('/status', protect, async (req, res) => {
     const { data: profile, error } = await supabase
         .from('profiles')
-        .select('is_pro, pro_expires_at, streak_freezes_remaining, receipt_scans_this_month, receipt_scans_reset_month, chat_messages_today, chat_messages_reset_at, expenses_today, expenses_reset_at')
+        .select('is_pro, pro_expires_at, streak_freezes_remaining, receipt_scans_this_month, receipt_scans_reset_month, chat_messages_today, chat_messages_reset_at, expenses_today, expenses_reset_at, money_checks_today, money_checks_reset_at')
         .eq('id', req.user.id)
         .maybeSingle();
 
@@ -56,6 +56,8 @@ router.get('/status', protect, async (req, res) => {
             chatMessagesLimit: isPro ? null : FREE_LIMITS.chat_message,
             expensesToday: usedFor(profile, 'add_expense', now),
             expensesLimit: isPro ? null : FREE_LIMITS.add_expense,
+            moneyChecksUsed: usedFor(profile, 'money_check', now),
+            moneyChecksLimit: isPro ? null : FREE_LIMITS.money_check,
         },
     });
 });

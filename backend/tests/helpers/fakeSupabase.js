@@ -18,13 +18,16 @@ const UNIQUE_KEYS = {
     streak_activities: ['user_id', 'activity', 'activity_date'],
     paisa_scores: ['user_id', 'week_start'],
     group_members: ['group_id', 'user_id'],
+    money_streak_days: ['user_id', 'day'],
+    money_xp_ledger: ['user_id', 'reason', 'ref_key'],
 };
 
 // Rows that belong to a user and cascade when the auth user is deleted.
 const CASCADE = [
     ['expenses', 'user_id'], ['recurring_bills', 'user_id'], ['streak_activities', 'user_id'],
     ['paisa_scores', 'user_id'], ['pdf_imports', 'user_id'], ['ai_chat_history', 'user_id'],
-    ['group_members', 'user_id'], ['groups', 'created_by'], ['profiles', 'id'],
+    ['group_members', 'user_id'], ['groups', 'created_by'],
+    ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['profiles', 'id'],
 ];
 
 function ilikeTest(c, pattern) {
@@ -339,6 +342,7 @@ function createFakeSupabase() {
             receipt_scans_this_month: 0, receipt_scans_reset_month: null,
             chat_messages_today: 0, chat_messages_reset_at: null,
             expenses_today: 0, expenses_reset_at: null,
+            money_checks_today: 0, money_checks_reset_at: null, money_streak_started_on: null,
             ...overrides,
         });
         return { id, email, token };

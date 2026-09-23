@@ -83,6 +83,8 @@ function createApp() {
     app.use('/api/account', require('./routes/account'));
     app.use('/api/wealth', require('./routes/wealth'));
     app.use('/api/telemetry', require('./routes/telemetry'));
+    app.use('/api/decisions', require('./routes/decisions'));
+    app.use('/api/money-streak', require('./routes/moneyStreak'));
 
     // Unknown API routes are JSON 404s, never the SPA's index.html.
     app.use('/api', (req, res) => res.status(404).json({ success: false, message: 'Not found' }));

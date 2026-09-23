@@ -19,6 +19,8 @@ const USER_TABLES = [
     ['pdf_imports', 'user_id'],
     ['ai_chat_history', 'user_id'],
     ['group_members', 'user_id'],
+    ['money_streak_days', 'user_id'],
+    ['money_xp_ledger', 'user_id'],
     ['profiles', 'id'],
 ];
 

@@ -6,6 +6,7 @@ const { protect } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
 const { receiptScanLimiter, exportLimiter } = require('../middleware/rateLimits');
 const { applyProfileStats, roundupFor } = require('../lib/profileStats');
+const { awardExpenseXp } = require('../lib/moneyXp');
 const gemini = require('../lib/gemini');
 const appTime = require('../lib/appTime');
 const { toCsv } = require('../lib/csv');
@@ -191,12 +192,16 @@ router.post('/', protect, proGate('add_expense'), async (req, res) => {
         return res.status(500).json({ success: false, message: 'Server error saving expense' });
     }
 
-    const stats = await applyProfileStats(req.user.id, { chillar: roundupChillar });
+    const [stats, xpEarned] = await Promise.all([
+        applyProfileStats(req.user.id, { chillar: roundupChillar }),
+        awardExpenseXp(req.user.id),
+    ]);
 
     res.status(201).json({
         success: true,
         expense,
         roundupChillar,
+        xpEarned,
         totalChillar: stats?.total_chillar ?? null,
         streak: {
             currentDays: stats?.streak_current ?? null,
@@ -287,12 +292,16 @@ Return ONLY raw JSON, no markdown:
         return res.status(500).json({ success: false, message: 'Server error saving expense' });
     }
 
-    const stats = await applyProfileStats(req.user.id, { chillar: roundupChillar });
+    const [stats, xpEarned] = await Promise.all([
+        applyProfileStats(req.user.id, { chillar: roundupChillar }),
+        awardExpenseXp(req.user.id),
+    ]);
 
     res.status(201).json({
         success: true,
         expense,
         roundupChillar,
+        xpEarned,
         totalChillar: stats?.total_chillar ?? null,
         streak: {
             currentDays: stats?.streak_current ?? null,

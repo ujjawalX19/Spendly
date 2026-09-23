@@ -125,6 +125,7 @@ const CURRENT = [
     'v1_3_product_core.sql',
     'v1_4_admin_ops.sql',
     'v1_6_owner_console.sql',
+    'v1_7_money_decisions.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -349,11 +350,105 @@ test('v1_6 Owner Console telemetry', async (t) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+
+    await t.test('the migration is idempotent and keeps existing activities valid', async () => {
+        await db.exec(sql('v1_7_money_decisions.sql'));
+        await db.exec(`insert into public.streak_activities (user_id, activity, activity_date) values ('${USERS.alice}', 'log_expense', '2026-09-01')`);
+        const bad = await svc(`insert into public.streak_activities (user_id, activity, activity_date) values ('${USERS.alice}', 'free_xp', '2026-09-01')`);
+        assert.ok(!bad.ok && /check constraint/i.test(bad.error), JSON.stringify(bad));
+    });
+
+    await t.test('the backend records streak days, XP and no-spend days', async () => {
+        for (const statement of [
+            `insert into public.money_streak_days (user_id, day, mission, kept, spent, day_limit) values ('${USERS.alice}', '2026-09-01', 'under_limit', true, 120, 450)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', '2026-09-01', 20)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.bob}', 'expense_logged', '2026-09-01:1', 5)`,
+            `insert into public.streak_activities (user_id, activity, activity_date) values ('${USERS.alice}', 'no_spend_day', '2026-09-02')`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(r.ok, `${statement}: ${r.error}`);
+        }
+    });
+
+    await t.test('an XP award can never be paid twice, even by the backend', async () => {
+        const dup = await svc(`insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', '2026-09-01', 20)`);
+        assert.ok(!dup.ok && /money_xp_ledger_once|duplicate key/i.test(dup.error), JSON.stringify(dup));
+        const dayTwice = await svc(`insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.alice}', '2026-09-01', 'log_today', false)`);
+        assert.ok(!dayTwice.ok, 'a locked day cannot be re-inserted');
+    });
+
+    await t.test('XP values, reasons and missions are constrained', async () => {
+        for (const statement of [
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', 'x1', 100000)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', 'x2', -50)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'admin_gift', 'x3', 10)`,
+            `insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.alice}', '2026-09-05', 'spend_more', true)`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+    });
+
+    await t.test('a user reads only their own streak days and XP', async () => {
+        const mine = await asUser(db, USERS.alice, 'select user_id from public.money_xp_ledger');
+        assert.ok(mine.ok, mine.error);
+        assert.ok(mine.rows.length >= 1 && mine.rows.every((r) => r.user_id === USERS.alice));
+        const other = await asUser(db, USERS.carol, 'select * from public.money_xp_ledger');
+        assert.deepEqual(other.rows, []);
+        const days = await asUser(db, USERS.bob, 'select * from public.money_streak_days');
+        assert.deepEqual(days.rows, []);
+    });
+
+    await t.test('clients cannot write XP, streak days or the server-owned profile columns', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.carol}', 'daily_mission', 'forged', 100)`)), `${role} insert xp`);
+            assert.ok(denied(await as(db, role, USERS.alice, `update public.money_xp_ledger set xp = 100 where user_id = '${USERS.alice}'`)), `${role} update xp`);
+            assert.ok(denied(await as(db, role, USERS.alice, `delete from public.money_streak_days where user_id = '${USERS.alice}'`)), `${role} delete days`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.carol}', '2026-09-03', 'log_today', true)`)), `${role} insert day`);
+            for (const col of ['money_checks_today = 0', 'money_checks_reset_at = null', "money_streak_started_on = '2020-01-01'"]) {
+                assert.ok(denied(await as(db, role, USERS.carol, `update public.profiles set ${col} where id = '${USERS.carol}'`)), `${role} update ${col}`);
+            }
+        }
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.money_xp_ledger')));
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.money_streak_days')));
+    });
+
+    await t.test('deleting the account removes streak days and XP', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['money_streak_days', 'money_xp_ledger']) {
+            const r = await db.query(`select count(*)::int as n from public.${table} where user_id = '${USERS.alice}'`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_7 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
+    const db = await buildDatabase(CURRENT.filter((f) => f !== 'v1_7_money_decisions.sql'));
+    await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
+    const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+    const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
+    assert.ok(failing.includes('RLS enabled: money_xp_ledger'), failing.join('\n'));
+    assert.ok(failing.includes('streak_activities accepts no_spend_day'), failing.join('\n'));
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 test('production-like database: partial v1 extension, v1_1 applied, no v1_2', async (t) => {
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 
