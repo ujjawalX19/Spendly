@@ -42,7 +42,7 @@ export default function DeleteAccountInfo() {
                     <ul className="list-disc space-y-1 pl-5">
                         <li>Your login (email or Google sign-in link) and all active sessions</li>
                         <li>Your profile, budget and savings target</li>
-                        <li>All expenses, recurring bills, import history, streak records and score history</li>
+                        <li>All expenses, recurring bills, import history, streak records (including Money Streak and Money XP) and score history</li>
                         <li>Your AI coach conversation history</li>
                         <li>Group pools you created (including entries other members added to them) and your membership of other pools</li>
                     </ul>

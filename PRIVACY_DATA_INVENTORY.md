@@ -16,6 +16,11 @@ Google Play **Data safety** form. Update all three together.
 | Payment notification data (Android, opt-in) | Notification from an allowlisted app | **Device only**: SharedPreferences queue with kind, amount, payee, app name, time, fingerprint. Raw text never stored. | Nothing, unless user taps *Add expense* (then amount/payee/time as an expense) | ≤7 days or until add/dismiss | Dismiss, sign-out clears JS state, uninstall |
 | Session tokens | Sign-in | Device (WebView localStorage), excluded from backup | Supabase | Until sign-out/expiry | Sign-out, deletion |
 | Server logs | Every request | Render | — | Provider default (limited) | Rotation |
+| Afford-It / SIP stress-test amount and description (v1.1) | User runs a check | **Not stored**; used to compute the answer only | API (memory) | Request lifetime | — |
+| Money check counter (v1.1) | Afford-It / SIP check | `profiles.money_checks_today`, `money_checks_reset_at` | API, Supabase | Resets daily | Account deletion |
+| Money Streak days (v1.1) | First open of Money Streak, then each finished day | `money_streak_days`: day, mission, kept, amount spent that day, that day's limit; `profiles.money_streak_started_on` | API, Supabase | Until account deletion | Account deletion (cascade) |
+| Money XP (v1.1) | Logging expenses, missions, weekly/month goals, streak milestones | `money_xp_ledger`: reason, reference (date/week/month), XP | API, Supabase | Until account deletion | Account deletion (cascade) |
+| No-spend days (v1.1) | User marks today as a no-spend day | `streak_activities` (`no_spend_day`) | API, Supabase | Until account deletion | Account deletion (cascade) |
 | Installation ID, platform, app version, first/last seen | First launch / app open (web and Android builds from v1.6) | `app_installs` | Vittova API, Supabase | Kept for install totals | Account link set to null on account deletion (FK `on delete set null`) |
 | App usage & diagnostic events (install, open, sign-in outcome + reason category, expense added/edited/deleted, scan/import/export outcome, coach answer outcome + intent category, group actions, error-screen error class) | App use | `app_events` | Vittova API, Supabase | 400 days (manual purge) | Account link set to null on account deletion |
 
