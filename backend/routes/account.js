@@ -21,6 +21,7 @@ const USER_TABLES = [
     ['group_members', 'user_id'],
     ['money_streak_days', 'user_id'],
     ['money_xp_ledger', 'user_id'],
+    ['play_purchases', 'user_id'],
     ['profiles', 'id'],
 ];
 

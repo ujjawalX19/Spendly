@@ -126,6 +126,7 @@ const CURRENT = [
     'v1_4_admin_ops.sql',
     'v1_6_owner_console.sql',
     'v1_7_money_decisions.sql',
+    'v1_8_play_billing.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -434,7 +435,7 @@ test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
 });
 
 test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
-    const db = await buildDatabase(CURRENT.filter((f) => f !== 'v1_7_money_decisions.sql'));
+    const db = await buildDatabase(CURRENT.filter((f) => f !== 'v1_7_money_decisions.sql' && f !== 'v1_8_play_billing.sql'));
     await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
     const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
     const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
@@ -444,11 +445,56 @@ test('verify_production.sql flags a database where v1_7 has not been applied', a
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_8 Google Play purchases (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    const HASH = 'a'.repeat(64);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_8_play_billing.sql'));
+    });
+
+    await t.test('the backend records a verified purchase; a token binds to one account', async () => {
+        const ok = await svc(`insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state, expires_at, entitled) values ('${HASH}', '${USERS.alice}', 'purchase-token-123', 'vittova_pro', 'SUBSCRIPTION_STATE_ACTIVE', now() + interval '30 days', true)`);
+        assert.ok(ok.ok, ok.error);
+        const reuse = await svc(`insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state) values ('${HASH}', '${USERS.carol}', 'purchase-token-123', 'vittova_pro', 'SUBSCRIPTION_STATE_ACTIVE')`);
+        assert.ok(!reuse.ok && /duplicate key|play_purchases_pkey/i.test(reuse.error), JSON.stringify(reuse));
+        const badHash = await svc(`insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state) values ('not-a-hash', '${USERS.carol}', 'purchase-token-456', 'vittova_pro', 'x')`);
+        assert.ok(!badHash.ok && /check constraint/i.test(badHash.error));
+    });
+
+    await t.test('clients can neither read nor write purchases, nor set pro_source', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.alice, 'select * from public.play_purchases')), `${role} select`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state, entitled) values ('${'b'.repeat(64)}', '${USERS.carol}', 'forged-token-000', 'vittova_pro', 'SUBSCRIPTION_STATE_ACTIVE', true)`)), `${role} insert`);
+            assert.ok(denied(await as(db, role, USERS.alice, `update public.play_purchases set entitled = true`)), `${role} update`);
+            assert.ok(denied(await as(db, role, USERS.carol, `update public.profiles set pro_source = 'manual' where id = '${USERS.carol}'`)), `${role} pro_source`);
+        }
+        const badSource = await svc(`update public.profiles set pro_source = 'gift' where id = '${USERS.carol}'`);
+        assert.ok(!badSource.ok && /profiles_pro_source_valid/.test(badSource.error));
+    });
+
+    await t.test('deleting the account removes its purchase records', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        const r = await db.query(`select count(*)::int as n from public.play_purchases where user_id = '${USERS.alice}'`);
+        assert.equal(r.rows[0].n, 0);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_8 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 test('production-like database: partial v1 extension, v1_1 applied, no v1_2', async (t) => {
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 

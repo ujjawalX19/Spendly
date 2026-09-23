@@ -58,7 +58,7 @@ checks as (
                                  where table_schema = 'public' and table_name = 'profiles' and column_name = col) then 'column missing' else '' end
     from unnest(array['is_pro', 'pro_expires_at', 'role', 'is_banned', 'total_chillar',
                       'streak_current', 'streak_longest', 'chat_messages_today',
-                      'money_checks_today', 'money_checks_reset_at', 'money_streak_started_on']) as col
+                      'money_checks_today', 'money_checks_reset_at', 'money_streak_started_on', 'pro_source']) as col
 
     union all
     -- 5. The self-join group policy is gone
@@ -162,6 +162,19 @@ checks as (
     select 'Money XP awards are unique per (user, reason, ref_key)',
            exists (select 1 from pg_constraint where conname = 'money_xp_ledger_once' and contype = 'u'),
            'run v1_7_money_decisions.sql'
+
+    union all
+    -- v1.8 (app v1.1): Google Play purchases are backend-only
+    select r || ' cannot SELECT/INSERT play_purchases',
+           case when to_regclass('public.play_purchases') is null then false
+                else not (has_table_privilege(r, 'public.play_purchases', 'SELECT') or has_table_privilege(r, 'public.play_purchases', 'INSERT')) end,
+           case when to_regclass('public.play_purchases') is null then 'missing — run v1_8_play_billing.sql' else '' end
+    from unnest(array['anon', 'authenticated']) as r
+
+    union all
+    select 'RLS enabled: play_purchases',
+           coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.play_purchases')), false),
+           case when to_regclass('public.play_purchases') is null then 'missing — run v1_8_play_billing.sql' else '' end
 
     union all
     select 'Exactly one admin account (owner)',

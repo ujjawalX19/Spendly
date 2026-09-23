@@ -20,6 +20,7 @@ const UNIQUE_KEYS = {
     group_members: ['group_id', 'user_id'],
     money_streak_days: ['user_id', 'day'],
     money_xp_ledger: ['user_id', 'reason', 'ref_key'],
+    play_purchases: ['token_hash'],
 };
 
 // Rows that belong to a user and cascade when the auth user is deleted.
@@ -27,7 +28,7 @@ const CASCADE = [
     ['expenses', 'user_id'], ['recurring_bills', 'user_id'], ['streak_activities', 'user_id'],
     ['paisa_scores', 'user_id'], ['pdf_imports', 'user_id'], ['ai_chat_history', 'user_id'],
     ['group_members', 'user_id'], ['groups', 'created_by'],
-    ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['profiles', 'id'],
+    ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['play_purchases', 'user_id'], ['profiles', 'id'],
 ];
 
 function ilikeTest(c, pattern) {
@@ -338,7 +339,7 @@ function createFakeSupabase() {
             id, email, full_name: overrides.full_name || 'Test User', role: 'user', is_banned: false, created_at: new Date().toISOString(),
             monthly_budget: 10000, investment_target: 0, karma_score: 100,
             streak_current: 0, streak_longest: 0, streak_last_log: null, total_chillar: 0,
-            is_pro: false, pro_expires_at: null, streak_freezes_remaining: 0, paisa_score: 0,
+            is_pro: false, pro_expires_at: null, pro_source: null, streak_freezes_remaining: 0, paisa_score: 0,
             receipt_scans_this_month: 0, receipt_scans_reset_month: null,
             chat_messages_today: 0, chat_messages_reset_at: null,
             expenses_today: 0, expenses_reset_at: null,
