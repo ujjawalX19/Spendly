@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { API_URL } from '../lib/apiConfig';
+import { isAndroidApp, restorePurchases } from '../lib/billing';
 
 const ProContext = createContext();
 
@@ -64,6 +65,16 @@ export function ProProvider({ children }) {
   useEffect(() => {
     fetchProStatus();
   }, [fetchProStatus]);
+
+  // Once per signed-in session on Android: hand any Play purchases to the
+  // server, so none is left unverified (Google refunds unacknowledged ones).
+  const [synced, setSynced] = useState(null);
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!purchasesAvailable || !userId || synced === userId || !isAndroidApp()) return;
+    setSynced(userId);
+    restorePurchases(session).then((outcome) => { if (outcome !== 'none') fetchProStatus(); }).catch(() => {});
+  }, [purchasesAvailable, session, synced, fetchProStatus]);
 
   const remaining = (used, limit) => (limit === null || limit === undefined ? Infinity : Math.max(0, limit - used));
 
