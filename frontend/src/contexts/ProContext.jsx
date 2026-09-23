@@ -13,6 +13,8 @@ const FREE_DEFAULTS = {
     chatMessagesLimit: 10,
     expensesToday: 0,
     expensesLimit: 20,
+    moneyChecksUsed: 0,
+    moneyChecksLimit: 5,
   },
 };
 

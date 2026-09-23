@@ -16,9 +16,10 @@ import { useAuth } from '../contexts/AuthContext';
 import InvestmentDisclaimer from '../components/InvestmentDisclaimer';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
+import { compactInr } from '../lib/moneyDisplay';
+import { MonthShapeCard, SafeToInvestCard, SipStressTestCard } from '../components/MoneyDecisionCards';
 
 const inr = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
-const compactInr = (v) => (Math.abs(v) >= 100000 ? `₹${(v / 100000).toFixed(1)}L` : Math.abs(v) >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${Math.round(v)}`);
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -161,14 +162,23 @@ export default function Wealth() {
   const [error, setError] = useState('');
   const [waking, setWaking] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [shape, setShape] = useState(null);
+  const [sti, setSti] = useState(null);
 
   const load = useCallback(async () => {
     if (!session?.access_token) return;
     setLoading(true);
     setError('');
     try {
-      const data = await apiJson('/wealth', { session, onRetry: () => setWaking(true) });
+      // Month Shape and Safe-to-Invest are extras: if they fail, the screen still loads.
+      const [data, shapeData, stiData] = await Promise.all([
+        apiJson('/wealth', { session, onRetry: () => setWaking(true) }),
+        apiJson('/decisions/month-shape', { session }).catch(() => null),
+        apiJson('/decisions/safe-to-invest', { session }).catch(() => null),
+      ]);
       setWealth(data.wealth);
+      setShape(shapeData?.monthShape || null);
+      setSti(stiData?.safeToInvest || null);
     } catch (err) {
       setError(friendlyError(err, "We couldn't load your wealth figures."));
     } finally {
@@ -238,6 +248,8 @@ export default function Wealth() {
         </div>
       </motion.section>
 
+      <MonthShapeCard shape={shape} variants={cardVariants} />
+
       <motion.section variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-bold">Spending, last 6 months</h2>
@@ -259,6 +271,10 @@ export default function Wealth() {
           <p className="mt-1 text-xs text-zinc-500">{m.savingsTarget ? 'Set aside before Safe-to-Spend is calculated' : <Link to="/settings" className="underline">Set a target in Settings</Link>}</p>
         </motion.div>
       </div>
+
+      <SafeToInvestCard sti={sti} variants={cardVariants} />
+
+      <SipStressTestCard variants={cardVariants} />
 
       <Illustration illustration={wealth.illustration} />
 

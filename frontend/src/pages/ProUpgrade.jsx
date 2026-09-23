@@ -13,14 +13,18 @@
  */
 
 import { motion } from 'framer-motion';
-import { Sparkles, Zap, FileText, MessageCircle, ArrowLeft, Clock } from 'lucide-react';
+import { Sparkles, Zap, FileText, MessageCircle, ArrowLeft, Clock, ShoppingBag, Gauge } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePro } from '../contexts/ProContext';
 
+// Pro is built around decisions: "Before you spend, know if you can afford it."
+// Money Streak, Month Shape and Safe-to-Invest stay free for everyone.
 const PLANNED = [
-  { icon: FileText, title: 'Bank statement import', desc: 'Import a bank statement PDF instead of adding past expenses one by one.' },
+  { icon: ShoppingBag, title: 'Unlimited Afford-It checks', desc: 'Check any purchase against your month, as often as you like (free: 5 a day).' },
+  { icon: Gauge, title: 'Unlimited SIP stress tests', desc: 'Try different monthly amounts to see what your cash flow can carry.' },
+  { icon: MessageCircle, title: 'More Vittova AI questions', desc: 'Ask your money mentor more than 10 questions a day.' },
   { icon: Zap, title: 'More receipt scans', desc: 'Scan more than 3 receipts a month.' },
-  { icon: MessageCircle, title: 'More coach questions', desc: 'Ask the money coach more than 10 questions a day.' },
+  { icon: FileText, title: 'Bank statement import', desc: 'Import a bank statement PDF instead of adding past expenses one by one.' },
 ];
 
 export default function ProUpgrade() {
@@ -44,6 +48,7 @@ export default function ProUpgrade() {
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-black mb-2">Vittova Pro</h1>
+          <p className="mb-3 text-sm font-semibold text-zinc-300">Before you spend, know if you can afford it.</p>
           {isPro ? (
             <p className="text-zinc-400">Pro features are active on your account.</p>
           ) : (
@@ -81,6 +86,7 @@ export default function ProUpgrade() {
               <li>Receipt scans this month: {limits.receiptScansUsed} of {limits.receiptScansLimit}</li>
               <li>Coach questions today: {limits.chatMessagesUsed} of {limits.chatMessagesLimit}</li>
               <li>Expenses today: {limits.expensesToday} of {limits.expensesLimit}</li>
+              {limits.moneyChecksLimit != null && <li>Money checks today: {limits.moneyChecksUsed ?? 0} of {limits.moneyChecksLimit}</li>}
             </ul>
           </div>
         )}

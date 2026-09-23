@@ -20,6 +20,8 @@ import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import PermissionBanner from '../components/PermissionBanner';
 import NotificationAccessSheet from '../components/NotificationAccessSheet';
+import AffordItCard from '../components/AffordItCard';
+import MoneyStreakCard from '../components/MoneyStreakCard';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { localDateKey } from '../lib/dates';
 
@@ -122,26 +124,6 @@ function formatRelativeDate(dateStr) {
   if (isToday) return `Today, ${time}`;
   if (isYesterday) return 'Yesterday';
   return d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-function StreakDots({ current, total = 7 }) {
-  return (
-    <div className="flex items-center gap-1.5 mt-3">
-      {Array.from({ length: total }).map((_, i) => (
-        <motion.div
-          key={i}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.4 + i * 0.06, type: 'spring', stiffness: 500, damping: 20 }}
-          className={`h-1.5 rounded-full ${
-            i < current
-              ? 'w-5 bg-orange-400 shadow-[0_0_6px_rgba(251,146,60,0.7)]'
-              : 'w-3.5 bg-zinc-700'
-          }`}
-        />
-      ))}
-    </div>
-  );
 }
 
 // ─── ADD EXPENSE MODAL ────────────────────────────────────────
@@ -316,28 +298,6 @@ function BudgetCard({ totalSpent, monthlyBudget }) {
           <span className="text-[#a3e635] font-bold">{'\u20b9'}{remaining.toLocaleString('en-IN')}</span> remaining this month
         </p>
       )}
-    </motion.div>
-  );
-}
-
-// ─── STREAK CARD ──────────────────────────────────────────────
-function StreakCard({ streakDays }) {
-  return (
-    <motion.div
-      variants={cardVariants}
-      className="rounded-2xl p-4 bg-[#141414] relative overflow-hidden"
-    >
-      <div className="w-10 h-10 rounded-xl bg-[#ea580c]/20 flex items-center justify-center mb-3">
-        <Flame className="w-5 h-5 text-[#f97316]" />
-      </div>
-      <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-2xl font-black text-[#f97316]">{streakDays} Days</span>
-          <span className="text-[#f97316] font-black uppercase text-sm">SAFE</span>
-        </div>
-        <p className="text-xs text-[#a1a1aa] font-bold mt-1">Finance Streak</p>
-      </div>
-      <StreakDots current={Math.min(streakDays, 6)} total={6} />
     </motion.div>
   );
 }
@@ -759,6 +719,7 @@ export default function Dashboard() {
   const [safeToSpend, setSafeToSpend]       = useState(null);
   const [burnRate, setBurnRate]             = useState(null);
   const [paisaScore, setPaisaScore]         = useState(null);
+  const [moneyStreak, setMoneyStreak]       = useState(null);
   const [scanToast, setScanToast]           = useState(null); // { type: 'success'|'error', message: string }
   const fileInputRef = useRef(null);
 
@@ -796,8 +757,17 @@ export default function Dashboard() {
     load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend));
     load('/burn-rate', (d) => setBurnRate(d.burnRate));
     load('/paisa-score', (d) => setPaisaScore(d.paisaScore));
+    load('/money-streak', (d) => setMoneyStreak(d.moneyStreak));
     return () => { cancelled = true; };
   }, [token, expensesVersion]);
+
+  // After marking a no-spend day, refresh the streak on its own.
+  const reloadMoneyStreak = useCallback(async () => {
+    if (!token) return;
+    const response = await apiFetch(`${API_URL}/money-streak`, { headers: { Authorization: `Bearer ${token}` } });
+    const d = await response.json().catch(() => ({}));
+    if (response.ok && d.success) setMoneyStreak(d.moneyStreak);
+  }, [token]);
 
   // Record the streak check-in for viewing Safe-to-Spend, once per session.
   useEffect(() => {
@@ -811,7 +781,6 @@ export default function Dashboard() {
 
   // ── Derived Values ─────────────────────────────────────────
   const monthlyBudget = user?.monthly_budget || 5000;
-  const streakDays    = user?.streak_current  || 0;
   const totalChillar  = parseFloat(user?.total_chillar || 0);
 
   const today = localDateKey(new Date());
@@ -991,6 +960,9 @@ export default function Dashboard() {
         {/* SAFE-TO-SPEND HERO */}
         <SafeToSpendCard safeData={safeToSpend} />
 
+        {/* AFFORD-IT CHECK */}
+        <AffordItCard variants={cardVariants} />
+
         {/* BUDGET CARD */}
         <BudgetCard totalSpent={totalSpent} monthlyBudget={monthlyBudget} />
 
@@ -999,7 +971,7 @@ export default function Dashboard() {
 
         {/* BENTO GRID */}
         <div className="grid grid-cols-2 gap-3">
-          <StreakCard streakDays={streakDays} />
+          <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} variants={cardVariants} />
           <ChillarCard totalChillar={totalChillar} todayRoundup={todayRoundup} />
         </div>
 
