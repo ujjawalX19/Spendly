@@ -78,6 +78,11 @@ export default function Login({ denied, onClearDenied }) {
           <Button type="submit" variant="primary" loading={busy} className="w-full py-2.5">Sign in</Button>
           <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-zinc-600"><span className="h-px flex-1 bg-zinc-800" />or<span className="h-px flex-1 bg-zinc-800" /></div>
           <Button onClick={google} className="w-full py-2.5">Continue with Google</Button>
+          <p className="pt-1 text-center text-[11px] leading-relaxed text-zinc-500">
+            No password yet, or Google sign-in blocked?{' '}
+            <a href="/forgot-password" className="text-zinc-400 underline hover:text-zinc-200">Set a password</a>{' '}
+            on the Vittova app, then sign in above.
+          </p>
         </form>
       </div>
     </div>
