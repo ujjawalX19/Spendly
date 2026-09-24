@@ -505,7 +505,7 @@ router.post('/users/:id/pro', async (req, res) => {
 
     const { data: updated, error } = await supabase
         .from('profiles')
-        .update({ is_pro: true, pro_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null })
+        .update({ is_pro: true, pro_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null, pro_source: 'manual' })
         .eq('id', target.id)
         .select(USER_COLUMNS_LEGACY)
         .single();
@@ -531,7 +531,7 @@ router.delete('/users/:id/pro', async (req, res) => {
 
     const { data: updated, error } = await supabase
         .from('profiles')
-        .update({ is_pro: false, pro_expires_at: null })
+        .update({ is_pro: false, pro_expires_at: null, pro_source: null })
         .eq('id', target.id)
         .select(USER_COLUMNS_LEGACY)
         .single();

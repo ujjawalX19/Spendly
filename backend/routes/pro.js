@@ -92,6 +92,8 @@ router.get('/billing-config', protect, (req, res) => {
         success: true,
         purchasesAvailable: true,
         productIds: billing.productIds(),
+        // Plans the app may show; prices come from Google Play, never from here.
+        plans: require('../lib/billingPlans').offeredPlans({ studentVerified: false }),
         // Passed to Google Play as obfuscatedAccountId, so a purchase is bound
         // to this account and cannot be claimed by another.
         obfuscatedAccountId: billing.accountIdFor(req.user.id),

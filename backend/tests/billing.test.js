@@ -289,3 +289,54 @@ test('deleting the account removes its purchase records', async () => {
     assert.equal((await t.request('DELETE', '/api/account', { token: u.token, body: { confirmation: 'DELETE_MY_ACCOUNT' } })).status, 200);
     assert.equal((t.db.tables.play_purchases || []).filter((r) => r.user_id === u.id).length, 0);
 });
+
+// ─── Plans: monthly, yearly, limited offer, student ────────────────────────
+
+const withPlan = (userId, basePlanId, offerId = null, over = {}) => subscription(userId, {
+    lineItems: [{ productId: 'vittova_pro', expiryTime: new Date(Date.now() + (basePlanId.includes('year') ? 365 : 30) * DAY).toISOString(), offerDetails: { basePlanId, offerId } }],
+    ...over,
+});
+
+test('monthly, yearly and the limited yearly offer all grant Pro and record the plan', async () => {
+    for (const [basePlanId, offerId] of [['monthly', null], ['yearly', null], ['yearly', 'launch-199']]) {
+        const u = t.db.addUser();
+        const tok = token();
+        t.play.subs.set(tok, withPlan(u.id, basePlanId, offerId));
+        const res = await verify(u, tok);
+        assert.equal(res.status, 200, `${basePlanId}/${offerId}: ${JSON.stringify(res.body)}`);
+        assert.equal(t.db.profile(u.id).is_pro, true);
+        const row = t.db.tables.play_purchases.find((r) => r.purchase_token === tok);
+        assert.equal(row.base_plan_id, basePlanId);
+        assert.equal(row.offer_id, offerId);
+        assert.ok(t.play.acks.includes(tok));
+    }
+});
+
+test('a student-plan purchase is refused and never acknowledged while verification does not exist', async () => {
+    for (const plan of ['student-monthly', 'student-yearly']) {
+        const u = t.db.addUser();
+        const tok = token();
+        t.play.subs.set(tok, withPlan(u.id, plan));
+        const res = await verify(u, tok);
+        assert.equal(res.status, 403);
+        assert.equal(res.body.code, 'STUDENT_NOT_VERIFIED');
+        assert.match(res.body.message, /refunds purchases that are not confirmed within 3 days/);
+        assert.equal(t.db.profile(u.id).is_pro, false);
+        assert.ok(!t.play.acks.includes(tok), 'must not be acknowledged, so Google refunds it');
+    }
+});
+
+test('billing config lists plans without prices; the limited offer only with its flag; never student plans', async () => {
+    const u = t.db.addUser();
+    delete process.env.LIMITED_OFFER_ENABLED;
+    process.env.STUDENT_PLAN_ENABLED = 'true';
+    let plans = (await t.request('GET', '/api/pro/billing-config', { token: u.token })).body.plans;
+    assert.deepEqual(plans.map((p) => p.key), ['monthly', 'yearly']);
+    assert.ok(plans.every((p) => !('price' in p)));
+    process.env.LIMITED_OFFER_ENABLED = 'true';
+    plans = (await t.request('GET', '/api/pro/billing-config', { token: u.token })).body.plans;
+    assert.deepEqual(plans.map((p) => p.key), ['monthly', 'yearly', 'limited_yearly']);
+    assert.deepEqual(plans[2], { key: 'limited_yearly', basePlanId: 'yearly', offerId: 'launch-199' });
+    delete process.env.LIMITED_OFFER_ENABLED;
+    delete process.env.STUDENT_PLAN_ENABLED;
+});

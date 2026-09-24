@@ -23,6 +23,7 @@
 const crypto = require('node:crypto');
 const { supabase } = require('../config/supabase');
 const play = require('./playDeveloperApi');
+const plans = require('./billingPlans');
 
 /** States in which the subscription still grants access until its expiry. */
 const ENTITLED_STATES = new Set([
@@ -60,13 +61,19 @@ const tokenHash = (token) => crypto.createHash('sha256').update(String(token)).d
  * Decide what a subscriptionsv2 resource means for this user. Pure.
  * @returns {{ok:boolean, code?:string, productId?:string, state?:string, expiresAt?:string|null, entitled?:boolean, needsAck?:boolean, linkedTokenHash?:string|null, orderId?:string|null, testPurchase?:boolean}}
  */
-function evaluateSubscription(sub, { userId, now = new Date() }) {
+function evaluateSubscription(sub, { userId, now = new Date(), studentVerified = false }) {
     const items = Array.isArray(sub?.lineItems) ? sub.lineItems : [];
     const ours = items.filter((i) => productIds().includes(i.productId));
     if (!ours.length) return { ok: false, code: 'UNKNOWN_PRODUCT' };
 
     const bound = sub?.externalAccountIdentifiers?.obfuscatedExternalAccountId;
     if (!bound || bound !== accountIdFor(userId)) return { ok: false, code: 'ACCOUNT_MISMATCH' };
+
+    const offer = ours[0].offerDetails || {};
+    const plan = plans.planKeyFor(offer.basePlanId, offer.offerId);
+    // Student pricing needs verified eligibility, which does not exist yet.
+    // Such a purchase is refused and never acknowledged, so Google refunds it.
+    if (plans.isStudentPlan(plan) && !studentVerified) return { ok: false, code: 'STUDENT_NOT_VERIFIED', productId: ours[0].productId, plan };
 
     const expiries = ours.map((i) => Date.parse(i.expiryTime)).filter(Number.isFinite);
     const expiry = expiries.length ? Math.max(...expiries) : null;
@@ -76,6 +83,9 @@ function evaluateSubscription(sub, { userId, now = new Date() }) {
     return {
         ok: true,
         productId: ours[0].productId,
+        plan,
+        basePlanId: offer.basePlanId || null,
+        offerId: offer.offerId || null,
         state,
         expiresAt: expiry !== null ? new Date(expiry).toISOString() : null,
         entitled,
@@ -119,6 +129,8 @@ async function saveRow(userId, token, result, now) {
         token_hash: tokenHash(token),
         purchase_token: token,
         product_id: result.productId,
+        base_plan_id: result.basePlanId,
+        offer_id: result.offerId,
         state: result.state,
         expires_at: result.expiresAt,
         entitled: result.entitled,
@@ -151,6 +163,9 @@ async function verifyAndStore(userId, purchaseToken, now = new Date()) {
     const result = evaluateSubscription(sub, { userId, now });
     if (!result.ok) {
         if (result.code === 'ACCOUNT_MISMATCH') throw new BillingError('ACCOUNT_MISMATCH', 403, 'This purchase was made for a different Vittova account.');
+        if (result.code === 'STUDENT_NOT_VERIFIED') {
+            throw new BillingError('STUDENT_NOT_VERIFIED', 403, "Student pricing needs student verification, which isn't available yet, so this purchase was not activated. Google Play refunds purchases that are not confirmed within 3 days.");
+        }
         throw new BillingError('UNKNOWN_PRODUCT', 400, 'This purchase is not a Vittova Pro subscription.');
     }
 

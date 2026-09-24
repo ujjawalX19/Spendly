@@ -34,6 +34,8 @@ create table if not exists public.play_purchases (
     user_id            uuid not null references public.profiles (id) on delete cascade,
     purchase_token     text not null check (char_length(purchase_token) between 10 and 4096),
     product_id         text not null check (char_length(product_id) between 1 and 100),
+    base_plan_id       text check (char_length(base_plan_id) <= 100),
+    offer_id           text check (char_length(offer_id) <= 100),
     state              text not null check (char_length(state) between 1 and 60),
     expires_at         timestamptz,
     entitled           boolean not null default false,
