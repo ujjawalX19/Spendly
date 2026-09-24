@@ -138,6 +138,11 @@ class Query {
     lte(c, v) { this.filters.push((r) => r[c] != null && compare(r[c], v) <= 0); return this; }
     in(c, vs) { this.filters.push((r) => vs.some((v) => same(r[c], v))); return this; }
     is(c, v) { this.filters.push((r) => (v === null ? r[c] === null || r[c] === undefined : r[c] === v)); return this; }
+    not(c, op, v) {
+        if (op !== 'is') throw new Error(`fake not(): unsupported operator ${op}`);
+        this.filters.push((r) => (v === null ? r[c] !== null && r[c] !== undefined : r[c] !== v));
+        return this;
+    }
     ilike(c, pattern) {
         this.filters.push(ilikeTest(c, pattern));
         return this;

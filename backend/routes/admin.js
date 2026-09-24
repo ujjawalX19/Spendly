@@ -41,6 +41,9 @@ const PAGE_SIZE_MAX = 100;
 
 router.use(protect, requireOwner, adminWriteLimiter);
 
+// Sponsored campaign dashboard (owner-only, behind CAMPAIGN_DASHBOARD_ENABLED).
+router.use('/campaigns', require('./adminCampaigns'));
+
 // Columns the admin user list and detail may expose. Deliberately excludes
 // quota counters' raw internals, chillar totals and score internals.
 const USER_COLUMNS = 'id, email, full_name, role, is_banned, is_pro, pro_expires_at, created_at, last_active_at';

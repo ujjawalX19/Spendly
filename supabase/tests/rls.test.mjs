@@ -128,6 +128,7 @@ const CURRENT = [
     'v1_7_money_decisions.sql',
     'v1_8_play_billing.sql',
     'v1_9_subscription_audit.sql',
+    'v1_10_sponsored_challenges.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -436,7 +437,7 @@ test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
 });
 
 test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
-    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql'].includes(f)));
+    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql'].includes(f)));
     await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
     const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
     const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
@@ -550,11 +551,103 @@ test('v1_9 Subscription audit (app v1.1)', async (t) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_10 Sponsored challenges (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    const S = '66666666-6666-4666-8666-666666666666';
+    const C = '77777777-7777-4777-8777-777777777777';
+    const E = '88888888-8888-4888-8888-888888888888';
+    const V = '99999999-9999-4999-8999-999999999999';
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_10_sponsored_challenges.sql'));
+    });
+
+    await t.test('the backend runs a campaign end to end', async () => {
+        for (const statement of [
+            `insert into public.sponsors (id, name, website) values ('${S}', 'Example Brand', 'https://brand.example')`,
+            `insert into public.campaigns (id, sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms, status)
+             values ('${C}', '${S}', '7-Day Zero Food-Delivery', 'no_food_delivery', 7, '₹200 voucher', 200, now() - interval '1 day', now() + interval '30 days', 'Pro members', 'One reward per person, while stocks last.', 'scheduled')`,
+            `insert into public.campaign_vouchers (id, campaign_id, code) values ('${V}', '${C}', 'BRAND-200-A')`,
+            `insert into public.challenge_enrollments (id, campaign_id, user_id, starts_on, ends_on) values ('${E}', '${C}', '${USERS.alice}', '2026-09-08', '2026-09-14')`,
+            `update public.challenge_enrollments set status = 'completed' where id = '${E}'`,
+            `insert into public.challenge_completions (enrollment_id, campaign_id) values ('${E}', '${C}')`,
+            `update public.campaign_vouchers set issued_at = now(), issued_to = '${E}' where id = '${V}'`,
+            `insert into public.reward_issuances (enrollment_id, campaign_id, voucher_id) values ('${E}', '${C}', '${V}')`,
+            `update public.reward_issuances set revealed_at = now() where enrollment_id = '${E}'`,
+            `insert into public.campaign_impressions (campaign_id, kind) values ('${C}', 'view')`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(r.ok, `${statement}: ${r.error}`);
+        }
+    });
+
+    await t.test('completions, issuances and issued vouchers cannot be rewritten, even by the backend', async () => {
+        const cases = [
+            [`update public.challenge_completions set completed_at = now() - interval '9 days'`, /immutable/],
+            [`update public.reward_issuances set revealed_at = null`, /revealed once/],
+            [`update public.reward_issuances set voucher_id = '${V}', redemption_id = gen_random_uuid()`, /revealed once/],
+            [`update public.campaign_vouchers set issued_at = null, issued_to = null where id = '${V}'`, /cannot be reissued/],
+            [`update public.campaign_vouchers set code = 'OTHER' where id = '${V}'`, /fixed/],
+        ];
+        for (const [statement, re] of cases) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && re.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+        const twice = await svc(`insert into public.challenge_enrollments (campaign_id, user_id, starts_on, ends_on) values ('${C}', '${USERS.alice}', '2026-09-20', '2026-09-26')`);
+        assert.ok(!twice.ok, 'one enrolment per user and campaign');
+        const secondReward = await svc(`insert into public.reward_issuances (enrollment_id, campaign_id, voucher_id) values ('${E}', '${C}', '${V}')`);
+        assert.ok(!secondReward.ok, 'one reward per completion');
+    });
+
+    await t.test('campaign values are constrained (no paid entry, fixed positive rewards, responsible types)', async () => {
+        for (const statement of [
+            `insert into public.campaigns (sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms) values ('${S}', 'Spin to win', 'lucky_draw', 7, 'Prize', 200, now(), now() + interval '1 day', 'All', 'Terms that are long enough here.')`,
+            `insert into public.campaigns (sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms) values ('${S}', 'Negative', 'no_impulse', 7, 'Prize', -1, now(), now() + interval '1 day', 'All', 'Terms that are long enough here.')`,
+            `insert into public.campaigns (sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms) values ('${S}', 'Backwards', 'no_impulse', 7, 'Prize', 10, now(), now() - interval '1 day', 'All', 'Terms that are long enough here.')`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+    });
+
+    await t.test('no campaign table is readable or writable by clients', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            for (const table of ['sponsors', 'campaigns', 'campaign_vouchers', 'challenge_enrollments', 'challenge_completions', 'reward_issuances', 'campaign_impressions']) {
+                assert.ok(denied(await as(db, role, USERS.alice, `select * from public.${table}`)), `${role} select ${table}`);
+            }
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.challenge_completions (enrollment_id, campaign_id) values ('${E}', '${C}')`)), `${role} forge completion`);
+            assert.ok(denied(await as(db, role, USERS.carol, `update public.campaigns set reward_value_inr = 100000`)), `${role} change reward`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.campaign_vouchers (campaign_id, code) values ('${C}', 'FREE')`)), `${role} add inventory`);
+        }
+    });
+
+    await t.test('deleting the account removes enrolments and rewards but keeps the voucher used', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['challenge_enrollments', 'challenge_completions', 'reward_issuances']) {
+            const r = await db.query(`select count(*)::int as n from public.${table}`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+        const v = await db.query(`select issued_at, issued_to from public.campaign_vouchers where id = '${V}'`);
+        assert.ok(v.rows[0].issued_at);
+        assert.equal(v.rows[0].issued_to, null);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_10 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 test('production-like database: partial v1 extension, v1_1 applied, no v1_2', async (t) => {
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 

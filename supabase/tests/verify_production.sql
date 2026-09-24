@@ -179,6 +179,20 @@ checks as (
            case when to_regclass('public.play_purchases') is null then 'missing — run v1_8_play_billing.sql' else '' end
 
     union all
+    -- v1.10 (app v1.1): sponsored challenge tables are backend-only
+    select r || ' cannot SELECT/INSERT ' || o,
+           case when to_regclass('public.' || o) is null then false
+                else not (has_table_privilege(r, 'public.' || o, 'SELECT') or has_table_privilege(r, 'public.' || o, 'INSERT')) end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_10_sponsored_challenges.sql' else '' end
+    from unnest(array['sponsors', 'campaigns', 'campaign_vouchers', 'challenge_enrollments', 'challenge_completions', 'reward_issuances', 'campaign_impressions']) as o,
+         unnest(array['anon', 'authenticated']) as r
+
+    union all
+    select 'Challenge completions are immutable (trigger)',
+           exists (select 1 from pg_trigger where tgname = 'trg_challenge_completions_immutable'),
+           'run v1_10_sponsored_challenges.sql'
+
+    union all
     select 'Exactly one admin account (owner)',
            (select count(*) from public.profiles where role = 'admin') = 1,
            (select count(*)::text || ' admin(s); must also match ADMIN_EMAIL on the server' from public.profiles where role = 'admin')
