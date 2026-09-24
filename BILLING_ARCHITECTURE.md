@@ -40,10 +40,24 @@ notification, manual grant, account deletion), `backend/tests/playDeveloperApi.t
 **Not tested:** a real purchase against Google Play (needs the manual steps below
 and a licence tester on a testing track).
 
+## Plans (lib/billingPlans.js)
+
+| Plan | Play Console | Intended price | Server |
+|---|---|---|---|
+| Pro Monthly | base plan `monthly` (env `PLAY_PLAN_MONTHLY`) | ₹49 / month | listed |
+| Pro Yearly | base plan `yearly` (`PLAY_PLAN_YEARLY`) | ₹449 / year | listed |
+| Offer | offer `launch-199` on `yearly` (`PLAY_OFFER_LIMITED`) | ₹199 first year, then ₹449 / year | listed only with `LIMITED_OFFER_ENABLED=true`, and shown only if Google returns it to that user |
+| Student Monthly / Yearly | `student-monthly` / `student-yearly` | ₹29 / ₹249 | **never listed**; a purchase is refused and not acknowledged (Google refunds it) until a real student-verification process exists |
+
+Prices are never stored in the app or server; the paywall renders Google
+Play's pricing phases ("₹199 for the first year · Renews at ₹449/year after
+the offer period unless cancelled").
+
 ## Manual steps before switching billing on
 
-1. **Play Console → Monetise → Subscriptions:** create `vittova_pro` with a
-   monthly base plan (auto-renewing) and a price. Optional: a yearly base plan.
+1. **Play Console → Monetise → Subscriptions:** create `vittova_pro` with
+   base plans `monthly` (₹49, auto-renewing) and `yearly` (₹449), and, if
+   wanted, the offer `launch-199` on `yearly` with its eligibility rule.
 2. **Play Console → Setup → Licence testing:** add tester Gmail accounts.
 3. **Google Cloud:** create a service account; download its JSON key.
    **Play Console → Users and permissions:** invite the service account with
