@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
   ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
-  Users, Repeat
+  Users, Repeat, Radar, Gift
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
@@ -240,7 +240,7 @@ function DeleteAccountModal({ onClose, onDelete }) {
 export default function Settings() {
   const navigate = useNavigate();
   const { user, session, logout, applyServerProfile } = useAuth();
-  const { isPro } = usePro();
+  const { isPro, features } = usePro();
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -411,6 +411,24 @@ export default function Settings() {
           color="text-amber-400" onClick={() => navigate('/import')}
         />
       </div>
+
+      {(features.subscriptionAuditEnabled || features.sponsoredChallengesEnabled) && (
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Pro</p>
+          {features.subscriptionAuditEnabled && (
+            <SettingRow
+              icon={Radar} label="Subscription audit" value={isPro ? 'Recurring payments, price rises, debit reminders' : 'Part of Vittova Pro'}
+              color="text-lime-400" onClick={() => navigate('/subscription-audit')}
+            />
+          )}
+          {features.sponsoredChallengesEnabled && (
+            <SettingRow
+              icon={Gift} label="Money challenges" value="Sponsored · fixed voucher rewards"
+              color="text-amber-400" onClick={() => navigate('/challenges')}
+            />
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Your Data</p>

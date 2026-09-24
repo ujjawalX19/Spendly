@@ -13,6 +13,7 @@ import { ProProvider } from './contexts/ProContext';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
+import { onReminderOpened } from './lib/debitReminders';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
 // out user sees, and a lazy chunk there would add a spinner to cold start.
@@ -29,6 +30,8 @@ const Wealth = lazy(() => import('./pages/Wealth'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ProUpgrade = lazy(() => import('./pages/ProUpgrade'));
 const SubscriptionGraveyard = lazy(() => import('./pages/SubscriptionGraveyard'));
+const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'));
+const Challenges = lazy(() => import('./pages/Challenges'));
 const PdfImport = lazy(() => import('./pages/PdfImport'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
@@ -88,6 +91,9 @@ function Layout({ children }) {
     await logout();
     navigate('/login');
   };
+
+  // Tapping an "expected debit tomorrow" reminder opens the audit.
+  useEffect(() => onReminderOpened((route) => navigate(route)), [navigate]);
 
   return (
     // Mobile spacing lives here only: 16px side gutters, the status-bar inset
@@ -272,6 +278,8 @@ function App() {
                 <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
                 <Route path="/graveyard" element={<ProtectedRoute><Layout><SubscriptionGraveyard /></Layout></ProtectedRoute>} />
                 <Route path="/import" element={<ProtectedRoute><Layout><PdfImport /></Layout></ProtectedRoute>} />
+                <Route path="/subscription-audit" element={<ProtectedRoute><Layout><SubscriptionAudit /></Layout></ProtectedRoute>} />
+                <Route path="/challenges" element={<ProtectedRoute><Layout><Challenges /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />

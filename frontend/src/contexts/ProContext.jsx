@@ -32,6 +32,8 @@ export function ProProvider({ children }) {
   const [proStatus, setProStatus] = useState(FREE_DEFAULTS.pro);
   const [limits, setLimits] = useState(FREE_DEFAULTS.limits);
   const [purchasesAvailable, setPurchasesAvailable] = useState(false);
+  // Server feature flags (GET /api/features). Display only: routes enforce them.
+  const [features, setFeatures] = useState({});
   const [loading, setLoading] = useState(true);
 
   const fetchProStatus = useCallback(async () => {
@@ -40,9 +42,15 @@ export function ProProvider({ children }) {
       setProStatus(FREE_DEFAULTS.pro);
       setLimits(FREE_DEFAULTS.limits);
       setPurchasesAvailable(false);
+      setFeatures({});
       setLoading(false);
       return;
     }
+
+    fetch(`${API_URL}/features`, { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.success) setFeatures(d.features || {}); })
+      .catch(() => {});
 
     try {
       const res = await fetch(`${API_URL}/pro/status`, {
@@ -118,6 +126,7 @@ export function ProProvider({ children }) {
       limits,
       loading,
       purchasesAvailable,
+      features,
       canUse,
       getRemaining,
       applyQuota,

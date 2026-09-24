@@ -28,3 +28,67 @@ export function pickPlan(products = [], productIds = []) {
 /** Only completed purchases are sent for verification; pending ones wait for Google. */
 export const tokensToVerify = (purchases = []) => purchases.filter((p) => p?.state === 'purchased' && p.purchaseToken).map((p) => p.purchaseToken);
 
+const UNIT = new Set(['day', 'week', 'month', 'year']);
+const perPeriod = (iso) => {
+  const w = periodLabel(iso);
+  return UNIT.has(w) ? `/${w}` : w ? ` every ${w}` : '';
+};
+const firstPeriod = (iso, cycles) => {
+  const w = periodLabel(iso);
+  if (!w) return '';
+  return cycles === 1 ? `for the first ${w}` : `for the first ${cycles} ${UNIT.has(w) ? `${w}s` : `× ${w}`}`;
+};
+
+/**
+ * Words for a Google Play offer, built only from its pricing phases so the
+ * paywall says exactly what Play will charge (recurrenceMode 1 = renews,
+ * 2 = finite intro, 3 = once):
+ *   [₹199 × 1 × P1Y, ₹449 / P1Y] → '₹199 for the first year',
+ *                                  'Renews at ₹449/year after the offer period unless cancelled.'
+ *   [₹49 / P1M]                  → '₹49/month', 'Renews automatically every month until cancelled.'
+ */
+export function describeOffer(offer) {
+  const phases = Array.isArray(offer?.pricingPhases) ? offer.pricingPhases : [];
+  if (!phases.length) return null;
+  const last = phases[phases.length - 1];
+  const intro = phases.length > 1 ? phases[0] : null;
+  if (!intro) {
+    return { price: `${last.price}${perPeriod(last.billingPeriod)}`, renewal: `Renews automatically every ${periodLabel(last.billingPeriod)} until cancelled.`, intro: false };
+  }
+  const cycles = Number(intro.billingCycleCount) || 1;
+  const free = Number(intro.priceMicros) === 0;
+  return {
+    price: `${free ? 'Free' : intro.price} ${firstPeriod(intro.billingPeriod, cycles)}`,
+    renewal: `Renews at ${last.price}${perPeriod(last.billingPeriod)} after the offer period unless cancelled.`,
+    intro: true,
+  };
+}
+
+const PLAN_TITLES = {
+  monthly: 'Pro Monthly',
+  yearly: 'Pro Yearly',
+  limited_yearly: 'Offer',
+  student_monthly: 'Student Monthly',
+  student_yearly: 'Student Yearly',
+};
+
+/**
+ * Paywall cards: the plans the server allows, matched to what Google Play
+ * actually returned for this user. A plan Google did not return (not set up,
+ * or the user is not eligible for an offer) is simply not shown.
+ */
+export function planCards(products = [], plans = []) {
+  const cards = [];
+  for (const plan of plans) {
+    for (const product of products) {
+      const offer = (product.offers || []).find((o) => o.basePlanId === plan.basePlanId && (plan.offerId ? o.offerId === plan.offerId : !o.offerId));
+      const words = offer && describeOffer(offer);
+      if (offer?.offerToken && words) {
+        cards.push({ key: plan.key, title: PLAN_TITLES[plan.key] || 'Pro', productId: product.productId, offerToken: offer.offerToken, ...words });
+        break;
+      }
+    }
+  }
+  return cards;
+}
+
