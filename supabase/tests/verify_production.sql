@@ -12,7 +12,9 @@ app_tables(t) as (
            ('group_expense_splits'), ('settlements'), ('recurring_bills'), ('paisa_scores'),
            ('pdf_imports'), ('streak_activities'), ('ai_chat_history'),
            -- v1_7_money_decisions.sql (app v1.1)
-           ('money_streak_days'), ('money_xp_ledger')
+           ('money_streak_days'), ('money_xp_ledger'),
+           -- v1_9_subscription_audit.sql
+           ('recurring_decisions'), ('recurring_expectations')
 ),
 checks as (
     -- 1. RLS enabled on every app table

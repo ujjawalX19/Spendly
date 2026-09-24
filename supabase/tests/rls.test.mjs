@@ -127,6 +127,7 @@ const CURRENT = [
     'v1_6_owner_console.sql',
     'v1_7_money_decisions.sql',
     'v1_8_play_billing.sql',
+    'v1_9_subscription_audit.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -435,7 +436,7 @@ test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
 });
 
 test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
-    const db = await buildDatabase(CURRENT.filter((f) => f !== 'v1_7_money_decisions.sql' && f !== 'v1_8_play_billing.sql'));
+    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql'].includes(f)));
     await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
     const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
     const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
@@ -490,11 +491,70 @@ test('v1_8 Google Play purchases (app v1.1)', async (t) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_9 Subscription audit (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_9_subscription_audit.sql'));
+    });
+
+    await t.test('the backend stores decisions and expectations; values are constrained', async () => {
+        for (const statement of [
+            `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.alice}', 'netflix', 'unwanted')`,
+            `insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount) values ('${USERS.alice}', 'netflix', '2026-10-05', 649)`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(r.ok, `${statement}: ${r.error}`);
+        }
+        for (const statement of [
+            `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.alice}', 'spotify', 'cancel_now')`,
+            `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.alice}', 'Bad<Key>', 'confirmed')`,
+            `insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount, status) values ('${USERS.alice}', 'x', '2026-10-05', 10, 'charged')`,
+            `insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount) values ('${USERS.alice}', 'y', '2026-10-05', -5)`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+        const dup = await svc(`insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount) values ('${USERS.alice}', 'netflix', '2026-10-05', 649)`);
+        assert.ok(!dup.ok, 'one expectation per payment and date');
+    });
+
+    await t.test('users read only their own rows and cannot write any', async () => {
+        const own = await asUser(db, USERS.alice, 'select merchant_key from public.recurring_decisions');
+        assert.deepEqual(own.rows.map((r) => r.merchant_key), ['netflix']);
+        assert.deepEqual((await asUser(db, USERS.carol, 'select * from public.recurring_decisions')).rows, []);
+        assert.deepEqual((await asUser(db, USERS.carol, 'select * from public.recurring_expectations')).rows, []);
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.carol}', 'netflix', 'confirmed')`)), role);
+            assert.ok(denied(await as(db, role, USERS.alice, `update public.recurring_expectations set status = 'matched'`)), role);
+        }
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.recurring_decisions')));
+    });
+
+    await t.test('deleting the account removes decisions and expectations', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['recurring_decisions', 'recurring_expectations']) {
+            const r = await db.query(`select count(*)::int as n from public.${table} where user_id = '${USERS.alice}'`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_9 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 test('production-like database: partial v1 extension, v1_1 applied, no v1_2', async (t) => {
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 

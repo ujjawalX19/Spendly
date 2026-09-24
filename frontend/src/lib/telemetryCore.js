@@ -21,12 +21,16 @@ export const EVENTS = new Set([
   'first_launch', 'app_open', 'signup', 'signup_failed', 'login', 'login_failed', 'logout',
   'google_sign_in_started', 'auth_callback_failed', 'password_reset_requested', 'password_reset_failed',
   'password_updated', 'ai_mentor_opened', 'app_crash',
+  // v1.1 monetization: names and enum props only, never amounts or merchants
+  'subscription_audit_opened', 'debit_reminder_scheduled', 'debit_reminder_opened',
+  'pro_paywall_viewed', 'plan_selected', 'purchase_started', 'challenge_viewed',
 ]);
 
 const PROP_RULES = {
   method: (v) => v === 'email' || v === 'google',
   code: (v) => typeof v === 'string' && /^[a-z0-9_]{1,40}$/.test(v),
   kind: (v) => typeof v === 'string' && /^[A-Za-z]{1,40}$/.test(v),
+  plan: (v) => ['monthly', 'yearly', 'student_monthly', 'student_yearly', 'limited_yearly'].includes(v),
 };
 
 const APP_OPEN_INTERVAL_MS = 30 * 60 * 1000;

@@ -23,7 +23,7 @@ const { hasActivePro } = require('../lib/entitlements');
  * CLOSED (503): the failure mode must not be unlimited free AI usage.
  */
 
-const PRO_ONLY_FEATURES = new Set(['pdf_import']);
+const PRO_ONLY_FEATURES = new Set(['pdf_import', 'subscription_audit', 'sponsored_challenges']);
 
 const FREE_LIMITS = {
     receipt_scan: 3,   // per calendar month
@@ -152,7 +152,9 @@ function proGate(feature) {
                     success: false,
                     code: 'PRO_REQUIRED',
                     feature,
-                    message: 'This feature is part of Vittova Pro, which is not available yet.',
+                    message: require('../lib/entitlements').purchasesEnabled()
+                        ? 'This feature is part of Vittova Pro.'
+                        : 'This feature is part of Vittova Pro, which is not available yet.',
                 });
             }
 
