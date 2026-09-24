@@ -8,7 +8,7 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-black text-white p-6 max-w-2xl mx-auto pb-28">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
-      <p className="text-zinc-400 mb-8">Last updated: 23 September 2026</p>
+      <p className="text-zinc-400 mb-8">Last updated: 24 September 2026</p>
 
       <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
         <section>
@@ -42,14 +42,21 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">5. Free plan limits</h2>
+          <h2 className="text-lg font-bold text-white mb-2">5. Sponsored challenges</h2>
+          <p>
+            Sponsored challenges are optional promotions run with third-party sponsors and are always labelled as sponsored. Joining is free and no purchase is needed. Each challenge shows its rule, its fixed reward, how many rewards are left, its dates and its terms before you join. Rewards are vouchers supplied by the sponsor, given in the order challenges are completed while stocks last, and subject to the sponsor's own terms. Vittova decides whether a challenge was completed from the spending you record in Vittova and may withhold a reward where records appear to have been manipulated. A sponsored challenge is not a recommendation of the sponsor's products.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-bold text-white mb-2">6. Free plan limits</h2>
           <p>
             The free plan includes daily and monthly limits (for example on money-coach questions and receipt scans) and rate limits that protect the service. Limits are shown in the app and may change with notice.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">6. Acceptable Use</h2>
+          <h2 className="text-lg font-bold text-white mb-2">7. Acceptable Use</h2>
           <p>You agree not to:</p>
           <ul className="list-disc pl-5 mt-2 space-y-1 text-zinc-400">
             <li>Store sensitive data unrelated to expense tracking (credit card numbers, passwords, government IDs)</li>
@@ -61,35 +68,35 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">7. Data Accuracy</h2>
+          <h2 className="text-lg font-bold text-white mb-2">8. Data Accuracy</h2>
           <p>
             While we strive for accuracy in AI-powered features (receipt scanning, transaction categorization, subscription detection), automated processing may occasionally produce errors. You are responsible for verifying the accuracy of imported and categorized data.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">8. Limitation of Liability</h2>
+          <h2 className="text-lg font-bold text-white mb-2">9. Limitation of Liability</h2>
           <p>
             Vittova is provided "as is" without warranties of any kind. To the extent permitted by applicable law, we are not liable for any financial losses resulting from reliance on the app's features, projections, or AI-generated suggestions. Nothing in these terms limits any liability that cannot be limited under the laws of India.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">9. Account Termination</h2>
+          <h2 className="text-lg font-bold text-white mb-2">10. Account Termination</h2>
           <p>
             We reserve the right to suspend or terminate accounts that violate these terms. You may delete your account at any time from Settings or by following the steps on the account deletion page. Deletion is permanent; see the Privacy Policy for what is removed and what backups may temporarily retain.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">10. Governing Law</h2>
+          <h2 className="text-lg font-bold text-white mb-2">11. Governing Law</h2>
           <p>
             These terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in New Delhi, India.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">11. Contact</h2>
+          <h2 className="text-lg font-bold text-white mb-2">12. Contact</h2>
           <p>
             For questions about these terms, contact us at:{' '}
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-lime-400 underline">{SUPPORT_EMAIL}</a>
