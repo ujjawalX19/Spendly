@@ -47,11 +47,18 @@ export default function Login() {
         setError('');
         setGoogleLoading(true);
         const res = await loginWithGoogle();
+        if (res.cancelled) {
+            // The user closed Google's account picker: stay here, no error.
+            setGoogleLoading(false);
+            return;
+        }
         if (!res.success) {
             setError(res.message || 'Google login failed');
             setGoogleLoading(false);
         }
-        // On success the browser (web) or Custom Tab (Android) takes over.
+        // On success: Android signs in natively (the session change routes to
+        // the app); the web and the Android fallback continue in the browser.
+        if (res.native) setGoogleLoading(false);
     };
 
     return (

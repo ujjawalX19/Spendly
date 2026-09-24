@@ -10,6 +10,8 @@ public class MainActivity extends BridgeActivity {
         // Register the UPI Notification plugin BEFORE super.onCreate()
         registerPlugin(UpiNotificationPlugin.class);
         registerPlugin(PlayBillingPlugin.class);
+        registerPlugin(GoogleAuthPlugin.class);
+        registerPlugin(DebitRemindersPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

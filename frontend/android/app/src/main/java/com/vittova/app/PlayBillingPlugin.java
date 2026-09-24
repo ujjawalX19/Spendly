@@ -163,6 +163,20 @@ public class PlayBillingPlugin extends Plugin {
                                     offer.put("price", last.getFormattedPrice());
                                     offer.put("billingPeriod", last.getBillingPeriod());
                                 }
+                                JSArray phaseList = new JSArray();
+                                for (ProductDetails.PricingPhase ph : phases) {
+                                    JSObject phase = new JSObject();
+                                    phase.put("price", ph.getFormattedPrice());
+                                    phase.put("priceMicros", ph.getPriceAmountMicros());
+                                    phase.put("currency", ph.getPriceCurrencyCode());
+                                    phase.put("billingPeriod", ph.getBillingPeriod());
+                                    phase.put("billingCycleCount", ph.getBillingCycleCount());
+                                    // 1 = infinite (renews), 2 = finite (intro), 3 = non-recurring
+                                    phase.put("recurrenceMode", ph.getRecurrenceMode());
+                                    phaseList.put(phase);
+                                }
+                                offer.put("pricingPhases", phaseList);
+                                offer.put("offerTags", new JSArray(o.getOfferTags()));
                                 offers.put(offer);
                             }
                         }

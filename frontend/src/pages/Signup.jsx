@@ -43,6 +43,11 @@ export default function Signup() {
         setError('');
         setGoogleLoading(true);
         const res = await loginWithGoogle();
+        if (res.cancelled) {
+            // The user closed Google's account picker: stay here, no error.
+            setGoogleLoading(false);
+            return;
+        }
         if (!res.success) {
             setError(res.message || 'Google signup failed');
             setGoogleLoading(false);

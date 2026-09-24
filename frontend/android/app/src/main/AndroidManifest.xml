@@ -60,6 +60,12 @@
 
         </activity>
 
+        <!-- Shows a scheduled expected-debit reminder. Not exported: only this
+             app's own alarms can trigger it. -->
+        <receiver
+            android:name=".DebitReminderReceiver"
+            android:exported="false" />
+
         <!-- UPI Payment Notification Listener Service -->
         <service
             android:name=".PaymentNotificationListener"
@@ -92,4 +98,7 @@
         SMS permissions are not requested.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Expected-debit reminders (Vittova Pro). Asked at runtime on Android 13+
+         only when the user turns reminders on. No exact-alarm permission. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

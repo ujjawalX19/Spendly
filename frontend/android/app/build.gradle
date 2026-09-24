@@ -77,6 +77,10 @@ dependencies {
     // Google Play Billing for Vittova Pro. The app only starts the purchase and
     // passes the token to the backend, which verifies it with Google.
     implementation "com.android.billingclient:billing:$playBillingVersion"
+    // Native "Sign in with Google" (Credential Manager) — no browser hand-off.
+    implementation "androidx.credentials:credentials:$credentialsVersion"
+    implementation "androidx.credentials:credentials-play-services-auth:$credentialsVersion"
+    implementation "com.google.android.libraries.identity.googleid:googleid:$googleIdVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
