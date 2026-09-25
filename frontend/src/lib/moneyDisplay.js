@@ -92,3 +92,12 @@ export function compactInr(v) {
   if (abs >= 1000) return `₹${trim(Math.round((n / 1000) * 10) / 10)}k`;
   return `₹${Math.round(n)}`;
 }
+
+/** When a monthly bill falls due, from its day of the month: "today", "tomorrow", "in 5 days". */
+export function billDueIn(dueDay, todayDay) {
+  const days = Number(dueDay) - Number(todayDay);
+  if (!(days >= 0)) return `on the ${dueDay}`;
+  if (days === 0) return 'due today';
+  if (days === 1) return 'due tomorrow';
+  return `in ${days} days`;
+}

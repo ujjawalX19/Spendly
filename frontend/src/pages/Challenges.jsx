@@ -16,6 +16,7 @@ import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { track } from '../lib/telemetry';
 import { formatDay } from '../lib/auditDisplay';
+import { Skeleton } from '../components/ui';
 
 const STATUS = {
   active: 'In progress',
@@ -128,7 +129,7 @@ export default function Challenges() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-6 text-white">
-      <Link to="/settings" className="inline-flex items-center gap-1 text-sm text-zinc-400"><ArrowLeft className="h-4 w-4" /> Back</Link>
+      <Link to="/settings" className="-ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm text-zinc-400"><ArrowLeft className="h-4 w-4" /> Back</Link>
       <header>
         <p className="text-xs font-bold uppercase tracking-widest text-amber-300">Sponsored</p>
         <h1 className="mt-1 text-2xl font-black">Money challenges</h1>
@@ -143,7 +144,7 @@ export default function Challenges() {
       ) : (
         <>
           {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
-          {!list && !error && <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-lime-400" /></div>}
+          {!list && !error && <div className="space-y-3" aria-busy="true" aria-label="Loading challenges">{[0, 1].map((i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}</div>}
           {list && !list.length && <p className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-400">No sponsored challenges are running right now.</p>}
           {list && list.length > 0 && (
             <ul className="space-y-4">

@@ -6,7 +6,7 @@
  * server writes it). Animations stay to a tap scale and the sheet slide.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, X, Loader2, Target, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,7 +16,7 @@ import { dayDot, inr, missionStatus, TONE_CLASSES } from '../lib/moneyDisplay';
 
 function WeekDots({ week, size = 'sm' }) {
   // Seven 16px dots fit the half-width dashboard tile on a 360px-wide phone.
-  const box = size === 'sm' ? 'h-4 w-4 text-[8px]' : 'h-9 w-9 text-xs';
+  const box = size === 'sm' ? 'h-4 w-4 text-[8px]' : size === 'md' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs';
   return (
     <ol className={`flex justify-between ${size === 'sm' ? 'gap-0.5' : 'gap-1'}`} aria-label="This week">
       {week.map((d) => {
@@ -134,31 +134,56 @@ function StreakSheet({ streak, onClose, onChanged }) {
  * @param {{streak: object|null, onChanged: () => Promise<void>, variants?: object}} props
  *        `streak` is the moneyStreak object from GET /api/money-streak, or null while loading.
  */
-export default function MoneyStreakCard({ streak, onChanged, variants }) {
+const LAST_SEEN_KEY = 'vittova.streakSeen.v1';
+
+/** True once when the streak is higher than the last time Home showed it. */
+function useStreakIncreased(current) {
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (typeof current !== 'number') return;
+    let last = null;
+    try { last = Number(window.localStorage.getItem(LAST_SEEN_KEY)); } catch { /* storage unavailable */ }
+    if (last !== null && Number.isFinite(last) && current > last && last > 0) setCelebrate(true);
+    try { window.localStorage.setItem(LAST_SEEN_KEY, String(current)); } catch { /* storage unavailable */ }
+  }, [current]);
+  return celebrate;
+}
+
+/**
+ * @param {{streak: object|null, onChanged: () => Promise<void>}} props
+ *        `streak` is the moneyStreak object from GET /api/money-streak, or null while loading.
+ */
+export default function MoneyStreakCard({ streak, onChanged }) {
   const [open, setOpen] = useState(false);
+  const celebrate = useStreakIncreased(streak?.current);
   return (
     <>
-      <motion.button
-        type="button" variants={variants} onClick={() => streak && setOpen(true)} whileTap={{ scale: 0.97 }}
-        className="relative overflow-hidden rounded-2xl bg-[#141414] p-4 text-left"
-        aria-label={streak ? `Money Streak: ${streak.current} days. Open details` : 'Money Streak loading'}
-      >
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#ea580c]/20"><Flame className="h-5 w-5 text-[#f97316]" /></div>
-        {streak ? (
-          <>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-[#f97316]">{streak.current} Day{streak.current === 1 ? '' : 's'}</span>
-            </div>
-            <p className="mt-1 text-xs font-bold text-[#a1a1aa]">Money Streak · Lv {streak.xp.level}</p>
-            <div className="mt-3"><WeekDots week={streak.week} /></div>
-          </>
-        ) : (
-          <>
-            <div className="h-7 w-20 animate-pulse rounded bg-zinc-800" />
-            <p className="mt-1 text-xs font-bold text-[#a1a1aa]">Money Streak</p>
-          </>
-        )}
-      </motion.button>
+      <section className="v-enter rounded-[20px] border border-white/[0.06] bg-[#111113] p-4">
+        <div className="flex items-center gap-3">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 ${celebrate ? 'v-celebrate' : ''}`}>
+            <Flame className="h-5 w-5 text-orange-400" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            {streak ? (
+              <>
+                <p className="text-base font-bold text-white">{streak.current}-day streak</p>
+                <p className="text-xs text-zinc-500">Level {streak.xp.level} · {streak.xp.levelName}</p>
+              </>
+            ) : (
+              <>
+                <span className="block h-5 w-28 animate-pulse rounded bg-zinc-800" />
+                <p className="mt-1 text-xs text-zinc-500">Money Streak</p>
+              </>
+            )}
+          </div>
+          <button type="button" disabled={!streak} onClick={() => setOpen(true)}
+            className="v-press min-h-[44px] shrink-0 rounded-xl border border-white/10 px-3 text-xs font-bold text-zinc-100 disabled:opacity-40"
+            aria-label={streak ? `View today's challenge. Money Streak: ${streak.current} days` : 'Money Streak loading'}>
+            View challenge
+          </button>
+        </div>
+        {streak && <div className="mt-3"><WeekDots week={streak.week} size="md" /></div>}
+      </section>
       <AnimatePresence>{open && streak && <StreakSheet streak={streak} onClose={() => setOpen(false)} onChanged={onChanged} />}</AnimatePresence>
     </>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -14,6 +14,7 @@ import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
 import { onReminderOpened } from './lib/debitReminders';
+import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
 // out user sees, and a lazy chunk there would add a spinner to cold start.
@@ -86,6 +87,7 @@ function ProtectedRoute({ children }) {
 function Layout({ children }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const handleLogout = async () => {
     await logout();
@@ -102,7 +104,8 @@ function Layout({ children }) {
     <div className="app-layout min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] md:pb-0 md:pl-64 md:pt-0">
       <Sidebar onLogout={handleLogout} />
       <main className="px-4 pt-3 md:p-8 max-w-7xl mx-auto">
-        {children}
+        {/* A short fade/rise on each screen change (v-page, 240 ms). */}
+        <div key={pathname} className="v-page">{children}</div>
       </main>
       <BottomNav />
     </div>
@@ -236,9 +239,13 @@ function DeepLinkHandler({ onMessage }) {
 
 function App() {
   const [authMessage, setAuthMessage] = useState('');
+  // The brand moment runs over the app on a cold start while auth and data
+  // load underneath; it never replays on navigation.
+  const [splash, setSplash] = useState(() => shouldShowSplash(window.location.pathname, Capacitor.isNativePlatform()));
 
   return (
     <ThemeProvider>
+      {splash && <StartupSplash onDone={() => setSplash(false)} />}
       <AuthProvider>
         <ProProvider>
           <Router>

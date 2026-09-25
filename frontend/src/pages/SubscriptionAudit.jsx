@@ -55,12 +55,12 @@ function Item({ item, today, onDecide, busy }) {
         <div className="mt-3 flex flex-wrap gap-1.5">
           {DECISIONS.map((d) => (
             <button key={d.value} type="button" disabled={busy} onClick={() => onDecide(item, d.value)}
-              className="rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-[11px] font-bold text-zinc-200 disabled:opacity-50">{d.label}</button>
+              className="v-press min-h-[44px] rounded-xl border border-zinc-700 bg-zinc-800 px-3 text-xs font-bold text-zinc-200 disabled:opacity-50">{d.label}</button>
           ))}
         </div>
       )}
 
-      <button type="button" onClick={() => setOpen((v) => !v)} className="mt-3 flex items-center gap-1 text-xs font-semibold text-zinc-400" aria-expanded={open}>
+      <button type="button" onClick={() => setOpen((v) => !v)} className="mt-1 flex min-h-[44px] items-center gap-1 text-xs font-semibold text-zinc-400" aria-expanded={open}>
         History and how to stop it <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -138,7 +138,7 @@ export default function SubscriptionAudit() {
   if (!isPro) {
     return (
       <div className="mx-auto max-w-lg space-y-4 p-1 text-white">
-        <Link to="/settings" className="inline-flex items-center gap-1 text-sm text-zinc-400"><ArrowLeft className="h-4 w-4" /> Back</Link>
+        <Link to="/settings" className="-ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm text-zinc-400"><ArrowLeft className="h-4 w-4" /> Back</Link>
         <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5">
           <Sparkles className="h-6 w-6 text-amber-300" />
           <h1 className="mt-2 text-xl font-black">Subscription leak audit</h1>
@@ -157,7 +157,7 @@ export default function SubscriptionAudit() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-6 text-white">
-      <Link to="/settings" className="inline-flex items-center gap-1 text-sm text-zinc-400"><ArrowLeft className="h-4 w-4" /> Back</Link>
+      <Link to="/settings" className="-ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm text-zinc-400"><ArrowLeft className="h-4 w-4" /> Back</Link>
       <header>
         <p className="text-xs font-bold uppercase tracking-widest text-lime-400">Pro · Subscription audit</p>
         <h1 className="mt-1 text-2xl font-black">Recurring payments</h1>
@@ -181,9 +181,12 @@ export default function SubscriptionAudit() {
               <p className="flex items-center gap-2 text-sm font-bold">{reminders ? <Bell className="h-4 w-4 text-lime-400" /> : <BellOff className="h-4 w-4 text-zinc-500" />} Remind me the day before</p>
               <p className="text-xs text-zinc-500">For confirmed and high-confidence payments. {remindersSupported() ? 'Shown on this phone only.' : 'Android app only.'}</p>
             </div>
-            <button type="button" role="switch" aria-checked={reminders} onClick={toggleReminders}
-              className={`h-7 w-12 rounded-full p-1 transition-colors ${reminders ? 'bg-lime-400' : 'bg-zinc-700'}`}>
-              <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${reminders ? 'translate-x-5' : ''}`} />
+            <button type="button" role="switch" aria-checked={reminders} aria-label="Debit reminders" onClick={toggleReminders}
+              className="v-press flex min-h-[44px] shrink-0 items-center gap-2">
+              <span className="text-xs font-bold text-zinc-400">{reminders ? 'On' : 'Off'}</span>
+              <span className={`h-7 w-12 rounded-full p-1 transition-colors ${reminders ? 'bg-lime-400' : 'bg-zinc-700'}`}>
+                <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${reminders ? 'translate-x-5' : ''}`} />
+              </span>
             </button>
           </section>
           {reminderNote && <p className="text-xs text-amber-200">{reminderNote}</p>}

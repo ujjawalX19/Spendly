@@ -279,10 +279,11 @@ function remindersFor(audit, now = new Date()) {
             expectedDate: due,
             expectedAmount: item.amount,
             notifyAt: notifyAt.toISOString(),
-            title: `🔔 Tomorrow: ${item.merchant}`,
+            // Scannable in the notification shade: what, how much, what to do.
+            title: certain ? '🔔 Expected tomorrow' : '🔔 Possibly due tomorrow',
             body: certain
-                ? `Expected debit tomorrow: about ₹${item.amount.toLocaleString('en-IN')}. Your recurring payments: ₹${audit.totals.monthly.toLocaleString('en-IN')} a month.`
-                : `We detected a recurring payment of about ₹${item.amount.toLocaleString('en-IN')} that is likely due around tomorrow.`,
+                ? `${item.merchant} — about ₹${item.amount.toLocaleString('en-IN')} · Review recurring payments`
+                : `${item.merchant} — about ₹${item.amount.toLocaleString('en-IN')}, likely due around tomorrow · Review recurring payments`,
         });
     }
     return out.sort((a, b) => a.notifyAt.localeCompare(b.notifyAt));

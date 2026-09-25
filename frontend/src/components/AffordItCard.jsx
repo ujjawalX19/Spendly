@@ -9,78 +9,67 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, X, Loader2, CalendarClock, Receipt, PieChart, Info } from 'lucide-react';
+import { ShoppingBag, X, Loader2, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
-import { inr, parseAmount, quotaLine, verdictBadge } from '../lib/moneyDisplay';
+import { billDueIn, inr, parseAmount, quotaLine, verdictBadge } from '../lib/moneyDisplay';
 
-function Result({ check, quota, onAgain, onClose }) {
-  const badge = verdictBadge(check.verdict);
-  const quotaText = quotaLine(quota);
+const VERDICT_WORD = { can_afford: 'Comfortable', wait: 'Wait', not_comfortable: 'Too tight' };
+const VERDICT_TONE = { can_afford: 'text-lime-300', wait: 'text-amber-300', not_comfortable: 'text-rose-300' };
+
+function Fact({ label, value, sub }) {
   return (
-    <div className="space-y-4" aria-live="polite">
-      <div className="flex items-start gap-3">
-        <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-lg font-black ${badge.className}`} aria-hidden="true">{badge.symbol}</span>
-        <div>
-          <p className={`inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wider ${badge.className}`}>{badge.label}</p>
-          <h3 className="mt-1.5 text-base font-bold leading-snug text-white">{check.headline}</h3>
-        </div>
-      </div>
-      <p className="text-sm leading-relaxed text-zinc-300">{check.detail}</p>
-
-      <dl className="space-y-2 rounded-2xl border border-zinc-800 bg-black/30 p-3.5 text-sm">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="flex shrink-0 items-center gap-2 whitespace-nowrap text-zinc-400"><Receipt className="h-4 w-4" /> {check.shortfall ? 'Short by' : 'Left after buying'}</dt>
-          <dd className={`font-mono font-bold ${check.shortfall ? 'text-rose-300' : 'text-white'}`}>{inr(check.shortfall || check.leftAfter)}</dd>
-        </div>
-        {!check.shortfall && check.daysLeft > 0 && (
-          <div className="flex items-center justify-between gap-3">
-            <dt className="pl-6 text-xs text-zinc-500">About {inr(check.leftAfterPerDay)} a day for {check.daysLeft} day{check.daysLeft === 1 ? '' : 's'}</dt>
-          </div>
-        )}
-        {check.nextBill && (
-          <div className="flex items-center justify-between gap-3">
-            <dt className="flex shrink-0 items-center gap-2 whitespace-nowrap text-zinc-400"><CalendarClock className="h-4 w-4" /> Next bill</dt>
-            <dd className="text-right text-zinc-200">{check.nextBill.name} · <span className="font-mono">{inr(check.nextBill.amount)}</span> on the {check.nextBill.dueDay}{ordinal(check.nextBill.dueDay)}</dd>
-          </div>
-        )}
-        {check.budgetImpactPercent !== null && (
-          <div className="flex items-center justify-between gap-3">
-            <dt className="flex shrink-0 items-center gap-2 whitespace-nowrap text-zinc-400"><PieChart className="h-4 w-4" /> Budget impact</dt>
-            <dd className="text-zinc-200"><span className="font-mono">{check.budgetImpactPercent}%</span> of your monthly budget</dd>
-          </div>
-        )}
-      </dl>
-
-      {check.saferDate && (
-        <p className="rounded-xl border border-lime-400/25 bg-lime-400/10 px-3 py-2 text-sm text-lime-200">Safer from <strong>{check.saferDate.label}</strong>, when your new month's budget starts.</p>
-      )}
-
-      {(check.confidence !== 'good' || check.missing?.length > 0) && (
-        <details className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-400">
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-zinc-300"><Info className="h-3.5 w-3.5" /> {check.confidence === 'low' ? 'Based on limited data' : 'What this is based on'}</summary>
-          <ul className="mt-2 list-disc space-y-1 pl-4">
-            {check.assumptions.map((a) => <li key={a}>{a}</li>)}
-            {check.missing.map((m) => <li key={m}>Not known: {m}</li>)}
-          </ul>
-        </details>
-      )}
-
-      {quotaText && <p className="text-center text-[11px] text-zinc-500">{quotaText}</p>}
-
-      <div className="flex gap-2">
-        <button type="button" onClick={onAgain} className="flex-1 rounded-2xl border border-zinc-700 bg-zinc-800 py-3 text-sm font-bold text-zinc-200">Check another</button>
-        <button type="button" onClick={onClose} className="flex-1 rounded-2xl bg-lime-400 py-3 text-sm font-black text-black">Done</button>
-      </div>
+    <div className="flex min-h-[44px] items-center justify-between gap-3 py-1.5">
+      <dt className="shrink-0 whitespace-nowrap text-sm text-zinc-400">{label}</dt>
+      <dd className="text-right">
+        <span className="block font-mono-finance text-base font-bold text-white">{value}</span>
+        {sub && <span className="block text-xs text-zinc-500">{sub}</span>}
+      </dd>
     </div>
   );
 }
 
-function ordinal(n) {
-  const v = n % 100;
-  if (v >= 11 && v <= 13) return 'th';
-  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th';
+function Result({ check, quota, onAgain, onClose }) {
+  const badge = verdictBadge(check.verdict);
+  const quotaText = quotaLine(quota);
+  const bill = check.nextBill;
+  return (
+    <div className="v-enter space-y-4" aria-live="polite">
+      <div>
+        <p className={`flex items-center gap-2 text-4xl font-black tracking-tight ${VERDICT_TONE[check.verdict] || 'text-white'}`}>
+          <span aria-hidden="true" className="text-3xl">{badge.symbol}</span>{VERDICT_WORD[check.verdict] || badge.label}
+        </p>
+        <p className="mt-1 text-sm text-zinc-300">{check.headline}</p>
+      </div>
+
+      <dl className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-black/30 px-3.5">
+        {check.shortfall
+          ? <Fact label="Short by" value={inr(check.shortfall)} sub="over what's safe this month" />
+          : <Fact label="After this purchase" value={`${inr(check.leftAfter)} left`} sub={check.daysLeft > 0 ? `about ${inr(check.leftAfterPerDay)}/day` : null} />}
+        {bill && <Fact label="Upcoming bill" value={inr(bill.amount)} sub={`${bill.name} · ${billDueIn(bill.dueDay, new Date().getDate())}`} />}
+        {check.saferDate && <Fact label="Safer date" value={check.saferDate.label} sub="when your new month starts" />}
+      </dl>
+
+      <details className="rounded-xl px-1 text-xs text-zinc-400">
+        <summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-1.5 font-semibold text-zinc-300">
+          <Info className="h-3.5 w-3.5" aria-hidden="true" /> {check.confidence === 'low' ? 'Why? (limited data)' : 'Why?'}
+        </summary>
+        <p className="mt-1 text-zinc-300">{check.detail}</p>
+        <ul className="mt-2 list-disc space-y-1 pl-4">
+          {check.assumptions.map((x) => <li key={x}>{x}</li>)}
+          {check.missing.map((m) => <li key={m}>Not known: {m}</li>)}
+        </ul>
+      </details>
+
+      {quotaText && <p className="text-center text-[11px] text-zinc-500">{quotaText}</p>}
+
+      <div className="flex gap-2">
+        <button type="button" onClick={onAgain} className="v-press h-12 flex-1 rounded-2xl border border-white/10 bg-zinc-800 text-sm font-bold text-zinc-200">Check another</button>
+        <button type="button" onClick={onClose} className="v-press h-12 flex-1 rounded-2xl bg-lime-400 text-sm font-black text-black">Done</button>
+      </div>
+    </div>
+  );
 }
 
 function AffordItSheet({ onClose }) {
@@ -120,7 +109,7 @@ function AffordItSheet({ onClose }) {
       >
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-zinc-700 sm:hidden" />
         <div className="mb-5 flex items-center justify-between">
-          <h2 id="afford-title" className="text-lg font-bold text-zinc-100">Can I afford it?</h2>
+          <h2 id="afford-title" className="text-lg font-bold text-zinc-100">Can I afford this?</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl bg-zinc-800 p-2 text-zinc-400"><X className="h-4 w-4" /></button>
         </div>
 
@@ -159,21 +148,23 @@ function AffordItSheet({ onClose }) {
   );
 }
 
-export default function AffordItCard({ variants }) {
+export default function AffordItCard() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <motion.button
-        type="button" variants={variants} onClick={() => setOpen(true)} whileTap={{ scale: 0.98 }}
-        className="flex w-full items-center gap-3 rounded-2xl border border-lime-400/20 bg-[#141414] p-4 text-left"
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime-400/15"><ShoppingBag className="h-5 w-5 text-lime-400" /></span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold text-white">Can I afford something?</span>
-          <span className="block text-xs text-[#a1a1aa]">Know before you spend</span>
-        </span>
-        <span className="shrink-0 rounded-xl bg-lime-400 px-3 py-2 text-xs font-black text-black">Check a purchase</span>
-      </motion.button>
+      <section className="v-enter rounded-[20px] border border-lime-400/20 bg-[#111113] p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime-400/15"><ShoppingBag className="h-5 w-5 text-lime-300" aria-hidden="true" /></span>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-white">Can I afford something?</h2>
+            <p className="text-xs text-zinc-400">Check a purchase before you spend.</p>
+          </div>
+        </div>
+        <button type="button" onClick={() => setOpen(true)}
+          className="v-press mt-3 h-12 w-full rounded-2xl bg-lime-400 text-[15px] font-black text-black">
+          Check a purchase
+        </button>
+      </section>
       <AnimatePresence>{open && <AffordItSheet onClose={() => setOpen(false)} />}</AnimatePresence>
     </>
   );

@@ -10,14 +10,16 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutGrid, Receipt, Bot, BarChart2, Settings as SettingsIcon } from 'lucide-react';
+import { Home, Receipt, BarChart2, Users, UserRound } from 'lucide-react';
 
+// Five destinations. Everything else (Ask Vittova, subscription audit,
+// challenges, import, Pro) is one tap deeper, from Home, Wealth or Profile.
 const tabs = [
-  { id: '/dash',     label: 'Dashboard',  icon: LayoutGrid   },
-  { id: '/transactions', label: 'History', icon: Receipt      },
-  { id: '/bot',      label: 'Vittova AI', icon: Bot           },
-  { id: '/wealth',   label: 'Wealth',     icon: BarChart2     },
-  { id: '/settings', label: 'Settings',   icon: SettingsIcon  },
+  { id: '/dash',         label: 'Home',     icon: Home,      match: ['/dash'] },
+  { id: '/transactions', label: 'Activity', icon: Receipt,   match: ['/transactions'] },
+  { id: '/wealth',       label: 'Wealth',   icon: BarChart2, match: ['/wealth'] },
+  { id: '/pool',         label: 'Groups',   icon: Users,     match: ['/pool'] },
+  { id: '/settings',     label: 'Profile',  icon: UserRound, match: ['/settings', '/subscription-audit', '/challenges', '/graveyard', '/import'] },
 ];
 
 export default function BottomNav() {
@@ -62,9 +64,7 @@ export default function BottomNav() {
 
   return (
     <motion.nav
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 28 }}
+      initial={false}
       className="md:hidden fixed bottom-0 inset-x-0 z-50
                  bg-[#181818]/90 backdrop-blur-md border-t border-white/5
                  flex items-center justify-around px-2 pt-2 rounded-t-3xl
@@ -72,14 +72,14 @@ export default function BottomNav() {
     >
       {tabs.map(tab => {
         const Icon = tab.icon;
-        const isActive = pathname === tab.id;
+        const isActive = tab.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
         return (
-          <Link key={tab.id} to={tab.id} className="flex-1">
+          <Link key={tab.id} to={tab.id} className="flex-1" aria-label={tab.label} aria-current={isActive ? 'page' : undefined}>
             <motion.div
               whileTap={{ scale: 0.88 }}
               className="flex flex-col items-center gap-0.5"
             >
-              <div className={`px-4 py-1 rounded-full transition-all ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
+              <div className={`px-4 py-1.5 rounded-full transition-colors duration-150 ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
                 <Icon
                   className={`w-6 h-6 transition-colors ${isActive ? 'text-black' : 'text-[#71717a]'}`}
                   strokeWidth={isActive ? 2.5 : 2}

@@ -139,8 +139,8 @@ test('reminders: about 24 hours before, at 10:00 IST, never promising the debit'
     const [rem] = remindersFor(a, ist('2026-09-20'));
     assert.equal(rem.expectedDate, '2026-10-05');
     assert.equal(rem.notifyAt, ist('2026-10-04 10:00').toISOString());
-    assert.equal(rem.title, '🔔 Tomorrow: Netflix');
-    assert.match(rem.body, /^Expected debit tomorrow: about ₹649/);
+    assert.equal(rem.title, '🔔 Expected tomorrow');
+    assert.match(rem.body, /^Netflix — about ₹649 · Review recurring payments$/);
     assert.doesNotMatch(rem.body, /\bwill\b|definitely/i);
 });
 

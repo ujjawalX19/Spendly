@@ -14,11 +14,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, Clock, Sparkles, ShoppingBag, Gauge, Repeat, Bell, TrendingUp, MessageCircle, BarChart3, Gift, FileText, Check,
-} from 'lucide-react';
+import { ArrowLeft, Clock, Sparkles, FileText, Check } from 'lucide-react';
 import { usePro } from '../contexts/ProContext';
 import { useAuth } from '../contexts/AuthContext';
 import { friendlyError } from '../lib/errors';
@@ -26,16 +23,15 @@ import { track } from '../lib/telemetry';
 import { isAndroidApp, loadPlans, subscribe, restorePurchases, MANAGE_SUBSCRIPTIONS_URL } from '../lib/billing';
 
 // Pro is built around decisions. Money Streak, Month Shape and Safe-to-Invest
-// stay free for everyone.
+// stay free for everyone. Kept to seven lines so the list can be read at a glance.
 const INCLUDES = [
-  { icon: ShoppingBag, title: 'Purchase decisions', desc: 'Unlimited Afford-It checks before you spend (free: 5 a day).' },
-  { icon: Gauge, title: 'Spending velocity insights', desc: 'Unlimited SIP stress tests and month-shape checks.' },
-  { icon: Repeat, title: 'Subscription leak detection', desc: 'Find recurring payments and what they cost a year.' },
-  { icon: Bell, title: 'Recurring debit alerts', desc: 'A reminder the day before an expected debit.' },
-  { icon: TrendingUp, title: 'Price-rise alerts', desc: 'Spot when a recurring payment goes up.' },
-  { icon: MessageCircle, title: 'Advanced AI Mentor', desc: 'Ask your money mentor more than 10 questions a day.' },
-  { icon: BarChart3, title: 'Advanced money insights', desc: 'More receipt scans and bank statement import.' },
-  { icon: Gift, title: 'Sponsored money challenges', desc: 'Optional sponsor challenges with fixed voucher rewards.' },
+  { title: 'Unlimited Afford-It checks', desc: 'Free plan: 5 a day' },
+  { title: 'Unlimited SIP stress tests and month checks' },
+  { title: 'Subscription leak audit', desc: 'Every recurring payment and its yearly cost' },
+  { title: 'Debit reminders and price-rise alerts', desc: 'The day before an expected debit' },
+  { title: 'More Ask Vittova questions', desc: 'Free plan: 10 a day' },
+  { title: 'More receipt scans and statement import' },
+  { title: 'Sponsored money challenges', desc: 'Optional, with fixed voucher rewards', sponsored: true },
 ];
 
 export default function ProUpgrade() {
@@ -85,7 +81,7 @@ export default function ProUpgrade() {
 
   return (
     <div className="min-h-screen bg-black p-4 pb-16 text-white md:p-6">
-      <button type="button" onClick={() => navigate(-1)} aria-label="Back" className="mb-6 flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900">
+      <button type="button" onClick={() => navigate(-1)} aria-label="Back" className="v-press mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900">
         <ArrowLeft className="h-5 w-5" />
       </button>
 
@@ -96,7 +92,6 @@ export default function ProUpgrade() {
           </div>
           <h1 className="text-3xl font-black">Vittova Pro</h1>
           <p className="mt-1 text-base font-bold text-zinc-200">Save smarter. Decide better.</p>
-          <p className="mt-1 text-sm text-zinc-400">Make smarter money decisions every day, and catch recurring leaks before they cost you more.</p>
           {isPro && <p className="mt-3 text-sm text-lime-300">Pro is active on your account.</p>}
           {!isPro && !purchasesAvailable && (
             <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-sm font-bold text-amber-300">
@@ -112,7 +107,7 @@ export default function ProUpgrade() {
             <div className="space-y-2" role="radiogroup">
               {offer.cards.map((c) => (
                 <button key={c.key} type="button" role="radio" aria-checked={selected === c.key} onClick={() => { setSelected(c.key); track('plan_selected', { plan: c.key }); }}
-                  className={`flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-left ${selected === c.key ? 'border-amber-400 bg-amber-400/10' : 'border-zinc-800 bg-zinc-900'}`}>
+                  className={`v-press flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-left ${selected === c.key ? 'border-amber-400 bg-amber-400/10' : 'border-zinc-800 bg-zinc-900'}`}>
                   <span>
                     <span className="block text-xs font-black uppercase tracking-wider text-zinc-400">{c.title}</span>
                     <span className="mt-1 block text-lg font-black">{c.price}</span>
@@ -125,7 +120,7 @@ export default function ProUpgrade() {
             {card && (
               <>
                 <button type="button" disabled={!!busy} onClick={() => run('buy')}
-                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 py-3.5 text-sm font-black text-black disabled:opacity-60">
+                  className="v-press mt-4 h-12 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-sm font-black text-black disabled:opacity-60">
                   {busy === 'buy' ? 'Opening Google Play…' : 'Continue with Google Play'}
                 </button>
                 <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
@@ -140,15 +135,14 @@ export default function ProUpgrade() {
         )}
 
         <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-500">{purchasesAvailable ? 'Pro includes' : 'Planned for Pro'}</h2>
-        <div className="mb-6 space-y-2.5">
-          {INCLUDES.filter((f) => f.icon !== Gift || features.sponsoredChallengesEnabled).map((feat, idx) => (
-            <motion.div key={feat.title} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.04 }}
-              className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10"><feat.icon className="h-4.5 w-4.5 text-amber-400" /></div>
-              <div><p className="text-sm font-bold">{feat.title}</p><p className="mt-0.5 text-xs text-zinc-500">{feat.desc}</p></div>
-            </motion.div>
+        <ul className="mb-4 divide-y divide-white/[0.06] rounded-[20px] border border-white/[0.06] bg-[#111113] px-4">
+          {INCLUDES.filter((f) => !f.sponsored || features.sponsoredChallengesEnabled).map((feat) => (
+            <li key={feat.title} className="flex min-h-[48px] items-start gap-3 py-3">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
+              <span><span className="block text-sm font-semibold text-white">{feat.title}</span>{feat.desc && <span className="block text-xs text-zinc-500">{feat.desc}</span>}</span>
+            </li>
           ))}
-        </div>
+        </ul>
         <p className="mb-6 text-center text-xs text-zinc-500">Identify potential spending leaks and make more informed decisions. Results depend on your own choices; no savings are guaranteed.</p>
 
         {!isPro && limits && (
@@ -165,12 +159,12 @@ export default function ProUpgrade() {
 
         <div className="mt-6 flex flex-col items-center gap-2 text-xs">
           {purchasesAvailable && isAndroidApp() && (
-            <button type="button" disabled={!!busy} onClick={() => run('restore')} className="font-bold text-zinc-300 underline disabled:opacity-60">
+            <button type="button" disabled={!!busy} onClick={() => run('restore')} className="min-h-[44px] px-3 font-bold text-zinc-300 underline disabled:opacity-60">
               {busy === 'restore' ? 'Checking…' : 'Restore purchases'}
             </button>
           )}
           {isPro && isAndroidApp() && <a href={MANAGE_SUBSCRIPTIONS_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 underline">Manage subscription in Google Play</a>}
-          <p className="text-zinc-500"><Link to="/terms" className="underline">Terms</Link> · <Link to="/privacy" className="underline">Privacy</Link></p>
+          <p className="text-zinc-500"><Link to="/terms" className="inline-flex min-h-[44px] items-center px-2 underline">Terms</Link> · <Link to="/privacy" className="inline-flex min-h-[44px] items-center px-2 underline">Privacy</Link></p>
         </div>
 
         {message && <p role="status" className="mt-4 text-center text-sm text-zinc-200">{message}</p>}

@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Wallet, Target, PiggyBank, Calculator, Loader2, ArrowUpRight, Info, RefreshCw } from 'lucide-react';
+import { Calculator, ArrowUpRight, Info } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import InvestmentDisclaimer from '../components/InvestmentDisclaimer';
@@ -18,6 +18,9 @@ import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { compactInr } from '../lib/moneyDisplay';
 import { MonthShapeCard, SafeToInvestCard, SipStressTestCard } from '../components/MoneyDecisionCards';
+import SpendScoreCard from '../components/SpendScoreCard';
+import { ErrorState, Row, SectionLabel, Skeleton, StatusPill, Surface } from '../components/ui';
+import { stateBadge } from '../lib/moneyDisplay';
 
 const inr = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
 
@@ -156,6 +159,10 @@ function Illustration({ illustration }) {
   );
 }
 
+function Unavailable() {
+  return <Surface><p className="text-sm text-zinc-400">This isn't available right now. Try again in a moment.</p></Surface>;
+}
+
 export default function Wealth() {
   const { session } = useAuth();
   const [wealth, setWealth] = useState(null);
@@ -164,6 +171,8 @@ export default function Wealth() {
   const [loading, setLoading] = useState(true);
   const [shape, setShape] = useState(null);
   const [sti, setSti] = useState(null);
+  const [score, setScore] = useState(null);
+  const [open, setOpen] = useState(null); // 'invest' | 'sip' | 'shape' | 'score'
 
   const load = useCallback(async () => {
     if (!session?.access_token) return;
@@ -171,14 +180,16 @@ export default function Wealth() {
     setError('');
     try {
       // Month Shape and Safe-to-Invest are extras: if they fail, the screen still loads.
-      const [data, shapeData, stiData] = await Promise.all([
+      const [data, shapeData, stiData, scoreData] = await Promise.all([
         apiJson('/wealth', { session, onRetry: () => setWaking(true) }),
         apiJson('/decisions/month-shape', { session }).catch(() => null),
         apiJson('/decisions/safe-to-invest', { session }).catch(() => null),
+        apiJson('/paisa-score', { session }).catch(() => null),
       ]);
       setWealth(data.wealth);
       setShape(shapeData?.monthShape || null);
       setSti(stiData?.safeToInvest || null);
+      setScore(scoreData?.paisaScore || null);
     } catch (err) {
       setError(friendlyError(err, "We couldn't load your wealth figures."));
     } finally {
@@ -191,104 +202,91 @@ export default function Wealth() {
 
   if (loading && !wealth) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center" role="status">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-lime-400" />
-          <p className="text-sm text-zinc-500">{waking ? 'Waking the server up, this can take up to a minute…' : 'Loading your figures…'}</p>
-        </div>
+      <div className="space-y-3 pb-4" aria-busy="true">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-64" />
+        <Skeleton className="mt-2 h-56 w-full rounded-[20px]" />
+        <Skeleton className="h-40 w-full rounded-[20px]" />
+        {waking && <p className="text-center text-xs text-zinc-500">Waking the server up, this can take up to a minute…</p>}
       </div>
     );
   }
 
   if (!wealth) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center p-6">
-        <div className="max-w-sm rounded-2xl border border-red-500/25 bg-red-500/10 p-5 text-center">
-          <p role="alert" className="text-sm text-red-100">{error || "We couldn't load your wealth figures."}</p>
-          <button type="button" onClick={load} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-500/20 px-4 py-2.5 text-xs font-bold text-red-100">
-            <RefreshCw className="h-3.5 w-3.5" /> Try again
-          </button>
-        </div>
-      </div>
-    );
+    return <div className="pt-10"><ErrorState onRetry={load} /></div>;
   }
 
   const m = wealth.month;
   const noBudget = !m.budget;
 
+  const shapeBadge = shape ? stateBadge(shape.state) : null;
+  const toggle = (key) => setOpen((v) => (v === key ? null : key));
+  const hasScore = typeof score?.total === 'number';
+
   return (
-    <motion.div className="space-y-5 pb-4 text-white" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }}>
-      <motion.header variants={cardVariants}>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">Wealth</p>
-        <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Where your money stands</h1>
-        <p className="mt-1 text-sm text-zinc-400">From the expenses and budget you've set in Vittova. Income, bank balances and investments aren't tracked.</p>
-      </motion.header>
+    <div className="space-y-3 pb-4 text-white">
+      <header>
+        <h1 className="text-2xl font-black tracking-tight">Your money plan</h1>
+        <p className="mt-1 text-sm text-zinc-400">From your budget and spending. Income and bank balances aren't tracked.</p>
+      </header>
 
       {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
 
-      <motion.section variants={cardVariants} className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
-        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-lime-400/10 blur-3xl" />
-        <div className="relative">
-          <div className="mb-2 flex items-center gap-2 text-sm text-zinc-400"><Wallet className="h-4 w-4 text-lime-400" /> Left in this month's budget</div>
-          {noBudget ? (
-            <p className="text-sm text-zinc-300">Set a monthly budget in <Link to="/settings" className="text-lime-400 underline">Settings</Link> to see what's left.</p>
-          ) : (
-            <>
-              <p className="text-5xl font-extrabold tracking-tight">{inr(m.leftAfterCommitments)}</p>
-              {m.shortfall > 0 && <p className="mt-1 text-sm font-bold text-rose-400">Short by {inr(m.shortfall)} after bills and your savings target</p>}
-              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-                <div><dt className="text-xs text-zinc-500">Budget</dt><dd className="font-mono">{inr(m.budget)}</dd></div>
-                <div><dt className="text-xs text-zinc-500">Spent</dt><dd className="font-mono">{inr(m.spent)} <span className="text-xs text-zinc-500">({m.budgetUsedPercent}%)</span></dd></div>
-                <div><dt className="text-xs text-zinc-500">Bills still due</dt><dd className="font-mono">{inr(m.upcomingBills)}</dd></div>
-                <div><dt className="text-xs text-zinc-500">Savings target</dt><dd className="font-mono">{inr(m.savingsTarget)}</dd></div>
-              </dl>
-              <p className="mt-2 text-xs text-zinc-500">{m.daysLeft} day{m.daysLeft === 1 ? '' : 's'} left this month</p>
-            </>
-          )}
+      <Surface className="divide-y divide-white/[0.06] py-1">
+        <Row label="Safe to invest this month" value={sti ? inr(sti.amount) : '—'} hint={open === 'invest' ? 'Hide' : 'How calculated'} onClick={() => toggle('invest')} />
+        <Row label="SIP stress test" hint={open === 'sip' ? 'Hide' : 'Test a monthly SIP'} onClick={() => toggle('sip')} />
+        <Row label="Month shape" hint={open === 'shape' ? 'Hide' : 'View month'} onClick={() => toggle('shape')}
+          right={shapeBadge ? <StatusPill tone={shapeBadge.tone === 'good' ? 'good' : shapeBadge.tone === 'warn' ? 'warn' : 'bad'}>{shapeBadge.label}</StatusPill> : null} />
+        <Row label="Spend Score" value={hasScore ? `${score.total}/${score.max || 100}` : '—'} hint={open === 'score' ? 'Hide' : 'Why this score'} onClick={() => toggle('score')} />
+      </Surface>
+
+      {open === 'invest' && (sti ? <SafeToInvestCard sti={sti} variants={cardVariants} /> : <Unavailable />)}
+      {open === 'sip' && <SipStressTestCard variants={cardVariants} />}
+      {open === 'shape' && (shape ? <MonthShapeCard shape={shape} variants={cardVariants} /> : <Unavailable />)}
+      {open === 'score' && (score ? <SpendScoreCard score={score} /> : <Unavailable />)}
+
+      <Surface>
+        <SectionLabel>This month</SectionLabel>
+        {noBudget ? (
+          <p className="mt-2 text-sm text-zinc-300">Set a monthly budget in <Link to="/settings" className="text-lime-400 underline">Profile</Link> to see what's left.</p>
+        ) : (
+          <>
+            <p className="mt-2"><span className="font-mono-finance text-3xl font-black">{inr(m.leftAfterCommitments)}</span> <span className="text-sm font-semibold text-zinc-400">left in budget</span></p>
+            {m.shortfall > 0 && <p className="mt-1 text-sm font-bold text-rose-300">Short by {inr(m.shortfall)} after bills and your savings target</p>}
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div><dt className="text-xs text-zinc-500">Budget</dt><dd className="font-mono">{inr(m.budget)}</dd></div>
+              <div><dt className="text-xs text-zinc-500">Spent</dt><dd className="font-mono">{inr(m.spent)} <span className="text-xs text-zinc-500">({m.budgetUsedPercent}%)</span></dd></div>
+              <div><dt className="text-xs text-zinc-500">Bills still due</dt><dd className="font-mono">{inr(m.upcomingBills)}</dd></div>
+              <div><dt className="text-xs text-zinc-500">Savings target</dt><dd className="font-mono">{m.savingsTarget ? inr(m.savingsTarget) : '—'}</dd></div>
+            </dl>
+            <p className="mt-2 text-xs text-zinc-500">{m.daysLeft} day{m.daysLeft === 1 ? '' : 's'} left · Round-ups ₹{wealth.roundUps.total.toLocaleString('en-IN')} (+₹{wealth.roundUps.thisMonth.toLocaleString('en-IN')} this month)</p>
+          </>
+        )}
+      </Surface>
+
+      <details className="group rounded-[20px] border border-white/[0.06] bg-[#111113] p-4">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between text-sm font-bold">
+          Spending, last 6 months
+          <span className="text-xs font-semibold text-zinc-500 group-open:hidden">{wealth.averageMonthlySpend !== null ? `Avg ${inr(wealth.averageMonthlySpend)}/month · Show` : 'Show'}</span>
+        </summary>
+        <div className="mt-2">
+          <HistoryChart history={wealth.history} budget={m.budget} />
+          <p className="mt-2 text-[11px] text-zinc-500">The current month is still in progress. The line is your current budget.</p>
         </div>
-      </motion.section>
+      </details>
 
-      <MonthShapeCard shape={shape} variants={cardVariants} />
+      <details className="group rounded-[20px] border border-white/[0.06] bg-[#111113] p-4">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between text-sm font-bold">
+          How regular saving grows <span className="text-xs font-semibold text-zinc-500 group-open:hidden">Show</span>
+        </summary>
+        <div className="mt-2"><Illustration illustration={wealth.illustration} /></div>
+      </details>
 
-      <motion.section variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-bold">Spending, last 6 months</h2>
-          {wealth.averageMonthlySpend !== null && <span className="text-xs text-zinc-500">Avg {inr(wealth.averageMonthlySpend)}/month</span>}
-        </div>
-        <HistoryChart history={wealth.history} budget={m.budget} />
-        <p className="mt-2 text-[11px] text-zinc-500">The current month is still in progress. The budget line shows your current budget.</p>
-      </motion.section>
-
-      <div className="grid grid-cols-2 gap-3">
-        <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="mb-3 flex items-center gap-2 text-sm font-bold"><PiggyBank className="h-4 w-4 text-lime-400" /> Round-ups</div>
-          <p className="text-3xl font-extrabold">₹{wealth.roundUps.total.toLocaleString('en-IN')}</p>
-          <p className="mt-1 text-xs text-zinc-500">+₹{wealth.roundUps.thisMonth.toLocaleString('en-IN')} this month. Spare change to set aside yourself; Vittova doesn't move money.</p>
-        </motion.div>
-        <motion.div variants={cardVariants} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="mb-3 flex items-center gap-2 text-sm font-bold"><Target className="h-4 w-4 text-sky-400" /> Monthly target</div>
-          <p className="text-3xl font-extrabold">{m.savingsTarget ? inr(m.savingsTarget) : '—'}</p>
-          <p className="mt-1 text-xs text-zinc-500">{m.savingsTarget ? 'Set aside before Safe-to-Spend is calculated' : <Link to="/settings" className="underline">Set a target in Settings</Link>}</p>
-        </motion.div>
-      </div>
-
-      <SafeToInvestCard sti={sti} variants={cardVariants} />
-
-      <SipStressTestCard variants={cardVariants} />
-
-      <Illustration illustration={wealth.illustration} />
-
-      <motion.div variants={cardVariants}>
-        <Link to="/bot" className="flex items-center justify-between rounded-2xl bg-lime-400 p-4 font-bold text-black">
-          <div>
-            <p className="text-sm font-black">Ask Vittova AI</p>
-            <p className="text-xs font-bold text-black/60">"How long to save ₹50,000?" · "Can I afford ₹3,000?"</p>
-          </div>
-          <ArrowUpRight className="h-5 w-5" />
-        </Link>
-      </motion.div>
+      <Link to="/bot" className="v-press flex min-h-[52px] items-center justify-between rounded-[20px] border border-white/[0.06] bg-[#111113] px-4 text-sm font-bold">
+        Ask Vittova about your plan <ArrowUpRight className="h-4 w-4 text-lime-300" />
+      </Link>
 
       <InvestmentDisclaimer />
-    </motion.div>
+    </div>
   );
 }

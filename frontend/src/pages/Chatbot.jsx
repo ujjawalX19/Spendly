@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Info, RotateCcw, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Send, Sparkles, Info, RotateCcw, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { track } from '../lib/telemetry';
@@ -21,6 +21,14 @@ const FALLBACK_SUGGESTIONS = [
     { label: 'Where am I overspending?' },
     { label: 'Build my emergency fund' },
     { label: 'Review my subscriptions' },
+];
+
+// One-tap starting points: the questions people bring to a money app most.
+const QUICK_ACTIONS = [
+    'Can I afford ₹2,500?',
+    'Why did I spend more this month?',
+    'How can I recover my budget?',
+    'What can I safely spend this week?',
 ];
 
 const GREETING = {
@@ -132,6 +140,9 @@ export default function Chatbot() {
     const [suggestions, setSuggestions] = useState(FALLBACK_SUGGESTIONS);
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
+    const askedFromState = useRef(false);
+    const location = useLocation();
+    const navigate = useNavigate();
     const token = session?.access_token;
 
     const scrollToBottom = useCallback((behavior = 'smooth') => {
@@ -236,6 +247,16 @@ export default function Chatbot() {
         }
     };
 
+    // A question passed from another screen (Home's "See why") is asked once.
+    const pendingAsk = location.state?.ask;
+    useEffect(() => {
+        if (!token || !pendingAsk || askedFromState.current) return;
+        askedFromState.current = true;
+        navigate(location.pathname, { replace: true, state: null });
+        send(pendingAsk);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, pendingAsk]);
+
     const retry = async (msg) => {
         if (msg.repairProfile) await refreshProfile?.();
         setMessages((prev) => prev.filter((m) => m.id !== msg.id));
@@ -269,6 +290,8 @@ export default function Chatbot() {
         el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
     }, [input]);
 
+    const fresh = messages.length === 1 && !isLoading;
+
     const remaining = !isPro && limits?.chatMessagesLimit != null
         ? Math.max(0, limits.chatMessagesLimit - (limits.chatMessagesUsed || 0))
         : null;
@@ -276,10 +299,10 @@ export default function Chatbot() {
     return (
         <div className="chat-shell -mx-4 -mt-3 flex h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col bg-black text-zinc-100 md:m-0 md:h-[calc(100dvh-4rem)] md:rounded-2xl md:border md:border-white/10">
             <header className="flex items-center gap-3 border-b border-white/10 bg-zinc-950/95 px-4 py-3">
-                <VittovaLogo size={36} />
+                <VittovaLogo size={32} />
                 <div className="min-w-0 flex-1">
-                    <h1 className="text-base font-extrabold leading-tight text-white">Vittova AI</h1>
-                    <p className="text-xs text-zinc-400">Your personal money mentor</p>
+                    <h1 className="text-base font-extrabold leading-tight text-white">Ask Vittova</h1>
+                    <p className="text-xs text-zinc-400">Answers from your own numbers</p>
                 </div>
                 {remaining !== null && (
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${remaining === 0 ? 'bg-red-500/15 text-red-300' : 'bg-white/[.06] text-zinc-300'}`}>
@@ -291,9 +314,26 @@ export default function Chatbot() {
             <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
                 <InsightCard insight={insight} loading={insightLoading} />
 
+                {fresh && (
+                    <section aria-labelledby="quick-asks" className="v-enter">
+                        <h2 id="quick-asks" className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[.16em] text-zinc-500">Tap to ask</h2>
+                        <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-[20px] border border-white/[0.06] bg-[#111113]">
+                            {QUICK_ACTIONS.map((q) => (
+                                <li key={q}>
+                                    <button type="button" onClick={() => send(q)} disabled={limitReached}
+                                        className="v-press flex min-h-[52px] w-full items-center justify-between gap-3 px-4 text-left text-[15px] font-semibold text-zinc-100 disabled:opacity-40">
+                                        {q}<ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="mt-3 px-1 text-xs leading-5 text-zinc-500">I read your budget, spending, bills and savings target in Vittova. Income and bank balances aren't tracked, so I'll say when something is missing.</p>
+                    </section>
+                )}
+
                 <div aria-live="polite" className="space-y-4">
                     <AnimatePresence initial={false}>
-                        {messages.map((msg) => (
+                        {messages.filter((msg) => !(fresh && msg.id === 'greeting')).map((msg) => (
                             <motion.div
                                 key={msg.id}
                                 initial={{ opacity: 0, y: 8 }}
@@ -344,7 +384,7 @@ export default function Chatbot() {
             </div>
 
             <div className="border-t border-white/10 bg-zinc-950/95 px-4 pb-3 pt-2.5">
-                <div className="-mx-4 mb-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]">
+                {!fresh && <div className="-mx-4 mb-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]">
                     {suggestions.map((s) => (
                         <button
                             key={s.label}
@@ -356,7 +396,7 @@ export default function Chatbot() {
                             {s.label}
                         </button>
                     ))}
-                </div>
+                </div>}
                 <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex items-end gap-2">
                     <label htmlFor="mentor-question" className="sr-only">Your question</label>
                     <textarea
@@ -367,7 +407,7 @@ export default function Chatbot() {
                         maxLength={MAX_CHARS}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={onKeyDown}
-                        placeholder={limitReached ? 'Daily limit reached. Come back tomorrow.' : 'Ask about your money…'}
+                        placeholder={limitReached ? 'Daily limit reached. Come back tomorrow.' : 'Or type your own question…'}
                         disabled={limitReached}
                         className="max-h-28 min-h-12 flex-1 resize-none rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-[15px] leading-6 text-white outline-none placeholder:text-zinc-500 focus:border-[#A3E635]/60 disabled:opacity-60"
                     />
