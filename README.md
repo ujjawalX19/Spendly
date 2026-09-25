@@ -52,7 +52,7 @@ photo, with card and account numbers stripped.
 **Subscription detection.** Finds recurring payments and shows what they cost
 you a year.
 
-**Paisa Score, streaks, burn rate.** Light gamification around actually logging
+**Spend Score, streaks, burn rate.** Light gamification around actually logging
 things.
 
 **Hostel Pool.** Shared expenses and settling up with friends.
