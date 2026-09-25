@@ -236,7 +236,14 @@ test('brand data firewall: metrics are counts only and sponsor reports hide smal
     assert.equal(report.report.completed, '<5');
     assert.equal(report.report.completionRate, null);
     const text = JSON.stringify([detail.body, report]);
-    for (const leak of [u.id, u.email, 'Canteen lunch', '180', 'CODE-']) assert.ok(!text.includes(leak), `leaked ${leak}`);
+    for (const leak of [u.id, u.email, 'Canteen lunch', 'CODE-']) assert.ok(!text.includes(leak), `leaked ${leak}`);
+    // The ₹180 expense amount must not appear as a number. Random UUIDs and
+    // timestamps (e.g. an id ending in …400180) are removed first so they
+    // cannot trip the check by chance.
+    const scrubbed = text
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<id>')
+        .replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z?/g, '<time>');
+    assert.doesNotMatch(scrubbed, /(^|[^\d.])180(\.0+)?([^\d]|$)/, 'leaked the expense amount');
     // The anonymous view counter stores no user id.
     assert.ok((t.db.tables.campaign_impressions || []).every((r) => !('user_id' in r)));
 });
