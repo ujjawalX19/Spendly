@@ -756,3 +756,35 @@ test('baseline: before the P0 migration the vulnerabilities are reproducible', a
 
     await db.close();
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Release audit: account deletion reaches every table, found from the schema
+// itself rather than a hand-kept list, so a new table cannot be forgotten.
+// ═══════════════════════════════════════════════════════════════════════════
+test('release audit: every column that points at a user is removed or anonymised with the account', async () => {
+    const db = await buildDatabase(CURRENT);
+    const fks = await db.query(`
+        select c.conrelid::regclass::text as tbl, a.attname as col,
+               c.confrelid::regclass::text as ref, c.confdeltype as on_delete
+        from pg_constraint c
+        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+        where c.contype = 'f'
+          and c.connamespace = 'public'::regnamespace
+          and c.confrelid in ('auth.users'::regclass, 'public.profiles'::regclass)
+        order by 1, 2`);
+    // a = no action, r = restrict, c = cascade, n = set null, d = set default
+    const blocking = fks.rows.filter((r) => r.on_delete === 'a' || r.on_delete === 'r');
+    assert.deepEqual(blocking.map((r) => `${r.tbl}.${r.col} -> ${r.ref}`), [],
+        'a user-referencing column would block or orphan account deletion');
+    assert.ok(fks.rows.length >= 15, `only ${fks.rows.length} user references found`);
+
+    // Every public table with a user_id column has such a foreign key.
+    const userIdCols = await db.query(`
+        select table_name from information_schema.columns
+        where table_schema = 'public' and column_name = 'user_id'
+          and table_name in (select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE')`);
+    const covered = new Set(fks.rows.filter((r) => r.col === 'user_id').map((r) => r.tbl.replace(/^public\./, '')));
+    const uncovered = userIdCols.rows.map((r) => r.table_name).filter((t) => !covered.has(t));
+    assert.deepEqual(uncovered, [], 'user_id without a foreign key to the account');
+    await db.close();
+});

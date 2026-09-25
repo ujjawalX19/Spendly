@@ -10,6 +10,7 @@
 import { Capacitor } from '@capacitor/core';
 import { DebitReminders } from '../plugins/DebitReminders';
 import { track } from './telemetry';
+import { apiJson } from './apiConfig';
 
 const PREF_KEY = 'vittova.debitReminders.v1';
 
@@ -30,6 +31,29 @@ export async function scheduleReminders(reminders = []) {
   const { scheduled } = await DebitReminders.schedule({ reminders: list });
   if (scheduled) track('debit_reminder_scheduled');
   return scheduled;
+}
+
+/**
+ * Re-schedule from the server's current list. Called when the app opens, so
+ * reminders come back after a reboot (Android drops alarms) and follow new or
+ * changed recurring payments without visiting the audit screen. If the audit is
+ * no longer available to this account (Pro ended, feature switched off), the
+ * scheduled reminders are cleared; the user's on/off choice is kept.
+ */
+let refreshedFor = null; // once per app start per account, not on every screen change
+
+export async function refreshReminders(session) {
+  if (!remindersSupported() || !remindersWanted() || !session?.access_token) return;
+  const userId = session.user?.id || 'unknown';
+  if (refreshedFor === userId) return;
+  refreshedFor = userId;
+  try {
+    const d = await apiJson('/subscription-audit', { session });
+    await scheduleReminders(d.reminders || []);
+  } catch (err) {
+    if (err?.status === 403 || err?.status === 404) await DebitReminders.cancelAll().catch(() => {});
+    // Network or server trouble: keep what is already scheduled.
+  }
 }
 
 /** @returns {'on'|'denied'|'unsupported'} */

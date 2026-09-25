@@ -8,7 +8,7 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-black text-white p-6 max-w-2xl mx-auto pb-28">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
-      <p className="text-zinc-400 mb-8">Last updated: 24 September 2026</p>
+      <p className="text-zinc-400 mb-8">Last updated: 25 September 2026</p>
 
       <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
         <section>

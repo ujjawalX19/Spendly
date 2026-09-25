@@ -13,7 +13,7 @@ import { ProProvider } from './contexts/ProContext';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
-import { onReminderOpened } from './lib/debitReminders';
+import { onReminderOpened, refreshReminders } from './lib/debitReminders';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
@@ -85,7 +85,7 @@ function ProtectedRoute({ children }) {
 }
 
 function Layout({ children }) {
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -96,6 +96,10 @@ function Layout({ children }) {
 
   // Tapping an "expected debit tomorrow" reminder opens the audit.
   useEffect(() => onReminderOpened((route) => navigate(route)), [navigate]);
+
+  // Once per signed-in app start: bring debit reminders up to date.
+  const reminderUser = session?.user?.id;
+  useEffect(() => { if (reminderUser) refreshReminders(session); }, [reminderUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     // Mobile spacing lives here only: 16px side gutters, the status-bar inset

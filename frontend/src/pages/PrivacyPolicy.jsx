@@ -103,10 +103,11 @@ export default function PrivacyPolicy() {
               <li><strong className="text-zinc-100">Supabase:</strong> authentication and database hosting.</li>
               <li><strong className="text-zinc-100">Render:</strong> hosting for the Vittova API server.</li>
               <li><strong className="text-zinc-100">Vercel:</strong> hosting for the Vittova website.</li>
-              <li><strong className="text-zinc-100">Google:</strong> Google Sign-In (if you choose it) and the Gemini API (section 4).</li>
+              <li><strong className="text-zinc-100">Google:</strong> Google Sign-In (if you choose it), the Gemini API (section 4) and Google Play billing for Vittova Pro.</li>
             </ul>
             <p>These providers process data on our behalf and may store it on servers outside India.</p>
-            <p>Vittova does not currently offer in-app purchases or subscriptions, and does not send push notifications.</p>
+            <p>Purchases: Vittova Pro can only be bought through Google Play, which handles the payment. We receive the purchase token, the plan and the subscription status from Google Play to check the purchase and turn Pro on for your account; we never receive your card, UPI or bank details.</p>
+            <p>Notifications: Vittova does not send push notifications from a server. Expected-debit reminders, if you turn them on, are scheduled by the app and shown on your phone only.</p>
           </Section>
 
           <Section title="7. Security">
