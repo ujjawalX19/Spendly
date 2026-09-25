@@ -37,7 +37,19 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">4. Vittova Pro</h2>
           <p>
-            Vittova Pro is not yet available and cannot be purchased. No subscription or payment is taken through the app. If paid plans are introduced, their price, billing and cancellation terms will be shown before purchase and these terms will be updated.
+            Vittova Pro is an optional paid subscription. It may not be available to buy in your app yet; while it is not, no subscription or payment is taken.
+          </p>
+          <p className="mt-2">
+            When Pro is offered, it is sold only through Google Play in the Vittova Android app and is billed by Google Play to your Google account. Before you buy, Google Play shows the plan, its price, how often you are billed and, for an introductory or limited-time offer, the offer price, how long it lasts and the price it renews at. Offer eligibility is decided by Google Play. A student plan is not currently offered.
+          </p>
+          <p className="mt-2">
+            Subscriptions renew automatically at the end of each billing period until you cancel. You can cancel at any time in Google Play → Payments &amp; subscriptions; Pro then stays on until the end of the period you have already paid for. Refunds are handled under Google Play's refund policies. If a payment is refunded or reversed, Pro ends.
+          </p>
+          <p className="mt-2">
+            Deleting your Vittova account does not cancel a Google Play subscription. Cancel it in Google Play first to stop future charges.
+          </p>
+          <p className="mt-2">
+            Pro features and the free-plan limits are described in the app. We may change what Pro includes or its price for future billing periods; Google Play tells you about a price increase before it applies, and you can cancel before then.
           </p>
         </section>
 

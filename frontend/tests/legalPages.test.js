@@ -84,7 +84,8 @@ test('key commitments are word-for-word the same in both copies', () => {
       'is not a SEBI-registered investment adviser.',
     ],
     terms: [
-      'Vittova Pro is not yet available and cannot be purchased.',
+      'Deleting your Vittova account does not cancel a Google Play subscription.',
+      'Subscriptions renew automatically at the end of each billing period until you cancel.',
       'To the extent permitted by applicable law, we are not liable for any financial losses',
       'These terms are governed by the laws of India.',
     ],

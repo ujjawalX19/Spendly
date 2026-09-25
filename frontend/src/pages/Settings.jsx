@@ -213,7 +213,9 @@ function DeleteAccountModal({ onClose, onDelete }) {
           <li>All expenses, recurring bills and statement-import history</li>
           <li>Your Spend Score history, streaks and AI coach conversations</li>
           <li>Group pools you created, and your membership of other pools</li>
+          <li>Recurring-payment audit, Pro purchase and sponsored-challenge records</li>
         </ul>
+        <p className="text-xs text-amber-200/90 mb-2">Paying for Vittova Pro? Cancel it in Google Play first: deleting your account does not stop Google Play charges.</p>
         <p className="text-xs text-zinc-500 mb-4">This cannot be undone. Export your expenses first if you want a copy.</p>
         <p className="text-sm text-zinc-400 mb-3">Type <span className="font-mono text-red-400 font-bold">DELETE</span> to confirm:</p>
         <input
