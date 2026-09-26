@@ -1,204 +1,30 @@
-import { useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import AffordDemo from './AffordDemo';
+import { PrimaryCta, SecondaryCta } from './shared';
 
-// ── Floating orbs background ──
-function GlowOrb({ className }) {
+export default function HeroSection() {
   return (
-    <div
-      className={`absolute rounded-full blur-3xl opacity-20 pointer-events-none ${className}`}
-    />
-  );
-}
-
-// ── Tilted App Mockup ──
-function AppMockup() {
-  const cardRef = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [8, -8]), { stiffness: 150, damping: 20 });
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-8, 8]), { stiffness: 150, damping: 20 });
-
-  const handleMouseMove = (e) => {
-    const rect = cardRef.current.getBoundingClientRect();
-    x.set((e.clientX - rect.left) / rect.width - 0.5);
-    y.set((e.clientY - rect.top) / rect.height - 0.5);
-  };
-  const handleMouseLeave = () => { x.set(0); y.set(0); };
-
-  return (
-    <motion.div
-      ref={cardRef}
-      style={{ rotateX, rotateY, transformPerspective: 1000 }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      animate={{ y: [0, -14, 0] }}
-      transition={{ y: { repeat: Infinity, duration: 5, ease: 'easeInOut' } }}
-      className="relative w-72 md:w-80 cursor-none select-none"
-    >
-      {/* Phone shell */}
-      <div className="relative rounded-[2.5rem] border border-zinc-800 bg-zinc-900/90 p-1 shadow-2xl shadow-lime-400/10">
-        {/* Inner screen */}
-        <div className="flex min-h-[520px] flex-col gap-3 overflow-hidden rounded-[2.2rem] bg-black p-4">
-          {/* Top bar */}
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-[10px] text-zinc-500">Spent this month · example</p>
-              <p className="text-2xl font-bold text-white tracking-tight">₹18,420</p>
-            </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-400 text-xs font-bold text-black">
-              AK
-            </div>
+    <section id="product" className="relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 lg:pb-28 lg:pt-36">
+      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-lime-400/[0.07] blur-3xl" />
+      <div className="relative mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="l-hero text-center lg:text-left">
+          <p className="inline-flex items-center gap-2 rounded-full border border-lime-400/25 bg-lime-400/[0.06] px-3.5 py-1.5 text-xs font-semibold text-lime-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-lime-400" aria-hidden="true" /> your money&apos;s pulse
+          </p>
+          <h1 className="mt-6 text-[2.6rem] font-extrabold leading-[1.04] tracking-tight text-white sm:text-6xl">
+            Know what your money can do <span className="text-lime-400">next.</span>
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-zinc-400 lg:mx-0">
+            Vittova turns your real spending, bills and budget into simple decisions, so you know when to spend, when to wait and how much you can set aside.
+          </p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+            <PrimaryCta>Start free</PrimaryCta>
+            <SecondaryCta href="#how">See how it works</SecondaryCta>
           </div>
-
-          {/* Spending Card */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
-            <p className="mb-1 text-[10px] font-semibold text-lime-400">Safe to spend</p>
-            <p className="text-lg font-bold text-white">₹11,780 <span className="text-[10px] font-medium text-zinc-500">left this month</span></p>
-            <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-lime-400 shadow-[0_0_10px_rgba(132,204,22,0.5)]"
-                initial={{ width: '0%' }}
-                animate={{ width: '68%' }}
-                transition={{ delay: 0.8, duration: 1.2, ease: 'easeOut' }}
-              />
-            </div>
-          </div>
-
-          {/* Recent Transactions */}
-          <p className="text-[10px] text-zinc-500 mt-1 font-semibold">RECENT TRANSACTIONS</p>
-          {[
-            { name: 'Swiggy', cat: 'Food', amt: '-₹320', color: 'text-rose-400', icon: '🍕' },
-            { name: 'Netflix', cat: 'Entertainment', amt: '-₹199', color: 'text-purple-400', icon: '🎬' },
-            { name: 'Auto', cat: 'Transport', amt: '-₹54', color: 'text-sky-400', icon: '🛺' },
-            { name: 'Groceries', cat: 'Food', amt: '-₹640', color: 'text-rose-400', icon: '🛒' },
-          ].map((t, i) => (
-            <motion.div
-              key={t.name}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 + i * 0.1 }}
-              className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-base">{t.icon}</span>
-                <div>
-                  <p className="text-[11px] font-semibold text-white">{t.name}</p>
-                  <p className="text-[9px] text-zinc-500">{t.cat}</p>
-                </div>
-              </div>
-              <span className={`text-[11px] font-bold ${t.color}`}>{t.amt}</span>
-            </motion.div>
-          ))}
-
-          {/* AI Insight chip */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1 }}
-            className="mt-auto flex items-start gap-2 rounded-xl border border-lime-500/20 bg-lime-950/30 p-2.5"
-          >
-            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lime-400" />
-            <p className="text-[10px] text-zinc-400 leading-tight">
-              <span className="font-semibold text-lime-400">Vittova AI: </span>
-              Food is ₹1,200 higher than this point last month.
-            </p>
-          </motion.div>
+          <p className="mt-5 text-xs text-zinc-500">Free to start · Android and web · Not investment advice</p>
         </div>
-      </div>
-
-      {/* Glow under the phone */}
-      <div className="absolute -bottom-8 inset-x-8 h-8 rounded-full bg-lime-400/20 blur-2xl" />
-    </motion.div>
-  );
-}
-
-// ── Hero ──
-export default function Hero() {
-  const fadeUp = (delay = 0) => ({
-    initial: { opacity: 0, y: 30 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] },
-  });
-
-  return (
-    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black px-5 pb-20 pt-24">
-      {/* Background glow orbs */}
-      <GlowOrb className="-top-20 -left-20 h-96 w-96 bg-lime-500" />
-      <GlowOrb className="bottom-0 right-0 h-80 w-80 bg-emerald-500" />
-      <GlowOrb className="top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 bg-lime-700" />
-
-      {/* Grid overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
-      />
-
-      <div className="relative z-10 max-w-7xl w-full mx-auto flex flex-col lg:flex-row items-center justify-between gap-16">
-        {/* Left: Text Content */}
-        <div className="flex-1 text-center lg:text-left max-w-xl">
-          {/* Badge */}
-          <motion.div {...fadeUp(0)} className="inline-flex items-center gap-2 mb-6">
-            <span className="rounded-full border border-lime-500/30 bg-lime-950/40 px-4 py-1.5 text-xs font-semibold tracking-[.18em] text-lime-400">
-              PERSONAL FINANCIAL COPILOT
-            </span>
-          </motion.div>
-
-          {/* Headline */}
-          <motion.h1
-            {...fadeUp(0.1)}
-            className="text-5xl md:text-6xl xl:text-7xl font-extrabold leading-[1.05] tracking-tight text-white mb-5"
-          >
-            VITTOVA
-            <br />
-            <span className="text-lime-400">Your Money&apos;s Pulse</span>
-          </motion.h1>
-
-          {/* Subheadline */}
-          <motion.p
-            {...fadeUp(0.2)}
-            className="text-base md:text-lg text-zinc-400 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0"
-          >
-            Track expenses, see what you can safely spend this month, split shared bills with friends, and ask{' '}
-            <span className="font-semibold text-lime-400">Vittova AI</span> questions answered from your own numbers.
-          </motion.p>
-
-          {/* Calls to action */}
-          <motion.div {...fadeUp(0.3)} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto lg:mx-0">
-            <Link
-              to="/signup"
-              className="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-lime-400 px-6 py-3 font-bold text-black transition-colors hover:bg-lime-300"
-            >
-              Create a free account
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/login"
-              className="flex items-center justify-center rounded-xl border border-zinc-800 px-6 py-3 font-bold text-zinc-200 transition-colors hover:border-lime-400"
-            >
-              Sign in
-            </Link>
-          </motion.div>
-
-          <motion.p {...fadeUp(0.4)} className="mt-6 text-xs text-zinc-500">
-            Android app in early access. General financial education, not investment advice.
-          </motion.p>
+        <div className="l-hero-late flex justify-center lg:justify-end">
+          <AffordDemo />
         </div>
-
-        {/* Right: App Mockup */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="flex-1 flex items-center justify-center"
-        >
-          <AppMockup />
-        </motion.div>
       </div>
     </section>
   );

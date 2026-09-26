@@ -2,18 +2,22 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://vittova.in/</loc>
-    <lastmod>2026-09-19</lastmod>
+    <lastmod>2026-09-26</lastmod>
   </url>
   <url>
     <loc>https://vittova.in/privacy</loc>
-    <lastmod>2026-09-17</lastmod>
+    <lastmod>2026-09-25</lastmod>
   </url>
   <url>
     <loc>https://vittova.in/terms</loc>
-    <lastmod>2026-09-17</lastmod>
+    <lastmod>2026-09-25</lastmod>
   </url>
   <url>
     <loc>https://vittova.in/delete-account</loc>
-    <lastmod>2026-09-17</lastmod>
+    <lastmod>2026-09-25</lastmod>
+  </url>
+  <url>
+    <loc>https://vittova.in/support</loc>
+    <lastmod>2026-09-26</lastmod>
   </url>
 </urlset>

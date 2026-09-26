@@ -167,3 +167,29 @@ body {
   .v-press, .v-press:active { transition: none; transform: none; }
   .v-enter, .v-page, .v-celebrate, .v-splash-logo, .v-splash-tagline { animation: none; }
 }
+
+/* ── Landing (public homepage) ─────────────────────────────── */
+html { scroll-behavior: smooth; }
+.l-reveal { opacity: 0; transform: translateY(14px); transition: opacity 500ms ease-out, transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.l-reveal.is-shown { opacity: 1; transform: none; }
+@keyframes l-rise-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.l-hero { animation: l-rise-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.l-hero-late { animation: l-rise-in 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 150ms both; }
+@keyframes l-pop-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+.l-pop { animation: l-pop-in 220ms ease-out both; }
+.l-press { transition: transform 120ms ease-out, background-color 150ms, border-color 150ms; }
+.l-press:active { transform: scale(0.97); }
+.l-card { transition: border-color 180ms ease-out, transform 180ms ease-out; }
+.l-card:hover { border-color: rgba(163, 230, 53, 0.25); transform: translateY(-2px); }
+@keyframes l-grow-w { from { width: 0; } to { width: var(--w); } }
+.l-grow { width: var(--w); animation: l-grow-w 900ms ease-out both; }
+@keyframes l-rise-h { from { height: 8%; } to { height: var(--h); } }
+.l-rise { height: var(--h); animation: l-rise-h 700ms ease-out both; }
+@keyframes l-twinkle-k { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.l-twinkle { animation: l-twinkle-k 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .l-reveal { opacity: 1; transform: none; transition: none; }
+  .l-hero, .l-hero-late, .l-pop, .l-grow, .l-rise, .l-twinkle { animation: none; }
+  .l-card:hover, .l-press:active { transform: none; }
+}

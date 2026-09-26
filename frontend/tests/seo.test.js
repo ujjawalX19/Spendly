@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(here, '..', p), 'utf8');
-const PUBLIC_URLS = ['https://vittova.in/', 'https://vittova.in/privacy', 'https://vittova.in/terms', 'https://vittova.in/delete-account'];
+const PUBLIC_URLS = ['https://vittova.in/', 'https://vittova.in/privacy', 'https://vittova.in/terms', 'https://vittova.in/delete-account', 'https://vittova.in/support'];
 
 test('robots.txt allows the site, keeps admin and auth hand-off out, and names the sitemap', () => {
   const robots = read('public/robots.txt');

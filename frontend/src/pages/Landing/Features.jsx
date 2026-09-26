@@ -1,276 +1,103 @@
-import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
-import { Bot, Users, ShieldAlert, TrendingUp, MessageSquare, Coins, ArrowUpRight } from 'lucide-react';
+import { Gauge, Award, ScanLine, ShoppingBag, Sprout, Users, Flame, CalendarRange } from 'lucide-react';
+import { Reveal, SectionHeading } from './shared';
 
-// ── Reveal animation hook ──
-function useReveal(delay = 0) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-80px' });
-  return {
-    ref,
-    initial: { opacity: 0, y: 40 },
-    animate: inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 },
-    transition: { duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] },
-  };
+// Small visual under each card. Illustrative figures only.
+function Bar({ pct, tone = 'bg-lime-400' }) {
+  return <div className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className={`l-grow h-full rounded-full ${tone}`} style={{ '--w': `${pct}%` }} /></div>;
 }
 
-// ── AI Chat Bubble Mockup ──
-function AIChatMockup() {
-  return (
-    <div className="mt-4 flex flex-col gap-2">
-      {[
-        { text: 'How much did I spend on food this week?', from: 'user' },
-        { text: '₹1,240 on food — 18% less than last week! 🎉', from: 'ai' },
-      ].map((m, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, x: m.from === 'user' ? 15 : -15 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 + i * 0.2 }}
-          className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}
-        >
-          <div
-            className={`max-w-[80%] px-3 py-2 rounded-2xl text-xs leading-snug font-medium ${
-              m.from === 'user'
-                ? 'bg-emerald-500 text-zinc-950 rounded-tr-sm'
-                : 'bg-zinc-800 text-zinc-200 rounded-tl-sm border border-white/5'
-            }`}
-          >
-            {m.from === 'ai' && (
-              <span className="text-emerald-400 font-bold block text-[9px] mb-0.5 uppercase tracking-wide">Vittova AI</span>
-            )}
-            {m.text}
-          </div>
-        </motion.div>
-      ))}
-      {/* Typing indicator */}
-      <div className="flex justify-start">
-        <div className="bg-zinc-800 border border-white/5 px-3 py-2 rounded-2xl rounded-tl-sm flex gap-1 items-center">
-          {[0, 0.2, 0.4].map((d, i) => (
-            <motion.div
-              key={i}
-              className="w-1.5 h-1.5 rounded-full bg-emerald-400"
-              animate={{ y: [0, -4, 0] }}
-              transition={{ repeat: Infinity, duration: 0.8, delay: d }}
-            />
-          ))}
-        </div>
+const CARDS = [
+  {
+    icon: Gauge, title: 'Spend smarter',
+    body: "Safe-to-Spend shows what's left per day after bills and savings. Burn Rate warns you early when you're on pace to overspend.",
+    visual: (
+      <div className="space-y-2">
+        <div className="flex justify-between text-xs"><span className="text-zinc-400">Safe to spend</span><span className="font-mono-finance font-bold text-white">₹610/day</span></div>
+        <Bar pct={62} />
+        <p className="text-[11px] text-amber-300">! At this pace you'd finish ₹1,800 over</p>
       </div>
-    </div>
-  );
-}
-
-// ── Split UI Mockup ──
-function SplitMockup() {
-  const people = [
-    { name: 'You', paid: true, amt: '₹840' },
-    { name: 'Raj', paid: false, amt: '₹420' },
-    { name: 'Priya', paid: false, amt: '₹420' },
-  ];
-  return (
-    <div className="mt-4 space-y-2">
-      <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide">Dinner split — ₹1,680</p>
-      {people.map((p, i) => (
-        <motion.div
-          key={p.name}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 + i * 0.1 }}
-          className="flex items-center justify-between rounded-xl bg-zinc-900/60 border border-white/5 px-3 py-2"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-lime-400 text-[10px] font-bold text-black">
-              {p.name[0]}
-            </div>
-            <span className="text-xs text-zinc-300 font-medium">{p.name}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-white">{p.amt}</span>
-            {p.paid ? (
-              <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full font-semibold">Paid</span>
-            ) : (
-              <span className="text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-semibold">Owes</span>
-            )}
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-// ── Budget Guard Mockup ──
-function BudgetMockup() {
-  return (
-    <div className="mt-4 space-y-3">
-      {[
-        { cat: 'Food & Dining', used: 78, color: 'from-amber-400 to-orange-400', warn: true },
-        { cat: 'Entertainment', used: 45, color: 'from-purple-400 to-pink-400', warn: false },
-        { cat: 'Transport', used: 92, color: 'from-rose-500 to-red-500', warn: true },
-      ].map((b, i) => (
-        <motion.div
-          key={b.cat}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 + i * 0.15 }}
-        >
-          <div className="flex justify-between text-[10px] text-zinc-400 mb-1">
-            <span>{b.cat}</span>
-            <span className={b.warn ? 'text-amber-400 font-bold' : 'text-zinc-400'}>{b.used}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-            <motion.div
-              className={`h-full rounded-full bg-gradient-to-r ${b.color}`}
-              initial={{ width: 0 }}
-              animate={{ width: `${b.used}%` }}
-              transition={{ delay: 0.4 + i * 0.1, duration: 0.9, ease: 'easeOut' }}
-            />
-          </div>
-          {b.warn && (
-            <p className="text-[9px] text-amber-400 mt-0.5">⚠️ Almost at limit!</p>
-          )}
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-// ── Round-Up Mockup ──
-function RoundUpMockup() {
-  return (
-    <div className="mt-4 space-y-2">
-      <div className="flex items-center justify-between bg-zinc-900/60 border border-white/5 rounded-xl px-3 py-2">
-        <div>
-          <p className="text-[10px] text-zinc-500">Spare change noted this month</p>
-          <p className="text-base font-bold text-white">₹1,248</p>
-        </div>
-        <Coins className="h-8 w-8 text-lime-400 opacity-80" />
+    ),
+  },
+  {
+    icon: ShoppingBag, title: 'Think before you buy',
+    body: 'Afford-It checks a purchase against your month, and says Comfortable, Wait or Too tight, with a safer date when it\'s tight.',
+    visual: (
+      <div className="flex items-center justify-between rounded-xl bg-black/30 px-3 py-2.5 text-xs">
+        <span className="text-zinc-300">₹2,499 shoes</span><span className="font-bold text-lime-300">✓ Comfortable</span>
       </div>
-      {[
-        { tx: 'Coffee ₹68', roundup: '+₹2' },
-        { tx: 'Auto ₹54', roundup: '+₹6' },
-        { tx: 'Grocery ₹243', roundup: '+₹7' },
-      ].map((r, i) => (
-        <motion.div
-          key={r.tx}
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 + i * 0.1 }}
-          className="flex items-center justify-between text-[10px] text-zinc-500 px-1"
-        >
-          <span>{r.tx}</span>
-          <span className="font-bold text-lime-400">{r.roundup} saved</span>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-// ── Feature Card ──
-function FeatureCard({ icon: Icon, iconColor, title, description, children, className = '', delay = 0 }) {
-  const reveal = useReveal(delay);
-  return (
-    <motion.div
-      ref={reveal.ref}
-      initial={reveal.initial}
-      animate={reveal.animate}
-      transition={reveal.transition}
-      className={`group relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-6
-        hover:-translate-y-1 hover:border-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 ${className}`}
-    >
-      {/* Card glow on hover */}
-      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-lime-400/5 via-transparent to-emerald-400/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-      <div className={`inline-flex p-2.5 rounded-xl mb-4 ${iconColor}`}>
-        <Icon className="w-5 h-5" />
+    ),
+  },
+  {
+    icon: CalendarRange, title: 'See the month ahead',
+    body: 'Month Shape projects where your month is heading from your pace and the bills still to come, before it\'s too late to adjust.',
+    visual: (
+      <div className="flex h-10 items-end gap-1" aria-hidden="true">
+        {[30, 45, 38, 52, 60, 48, 70, 64, 76, 82].map((h, i) => <span key={i} className="l-rise flex-1 rounded-sm bg-lime-400/70" style={{ '--h': `${h}%`, animationDelay: `${i * 40}ms` }} />)}
       </div>
-      <h3 className="text-base font-bold text-white mb-1.5">{title}</h3>
-      <p className="text-sm text-zinc-400 leading-relaxed">{description}</p>
-      {children}
-    </motion.div>
-  );
-}
+    ),
+  },
+  {
+    icon: Sprout, title: 'Plan to invest, without guessing',
+    body: 'Safe-to-Invest shows what your month doesn\'t need. The SIP stress test checks whether a monthly amount fits. Education only, no fund or stock picks.',
+    visual: (
+      <div className="flex justify-between text-xs"><span className="text-zinc-400">₹1,500 SIP</span><span className="font-bold text-lime-300">Fits your month</span></div>
+    ),
+  },
+  {
+    icon: Award, title: 'Know your money',
+    body: 'Your Spend Score shows how steady your spending is week to week, and what moved it.',
+    visual: (
+      <div className="flex items-center gap-3">
+        <span className="font-mono-finance text-2xl font-black text-white">74</span>
+        <div className="flex-1"><Bar pct={74} /></div>
+      </div>
+    ),
+  },
+  {
+    icon: ScanLine, title: 'Scan and track',
+    body: 'Snap a receipt, import a bank statement PDF, or confirm payments Vittova spots from supported UPI and bank apps on Android.',
+    visual: (
+      <div className="flex gap-2 text-[11px] font-semibold text-zinc-300">
+        {['Receipt', 'PDF', 'UPI'].map((x) => <span key={x} className="rounded-full border border-white/10 px-2.5 py-1">{x}</span>)}
+      </div>
+    ),
+  },
+  {
+    icon: Users, title: 'Money with friends',
+    body: 'Group Pool splits shared bills with an invite code, shows who owes whom and records settle-ups.',
+    visual: (
+      <div className="flex items-center justify-between text-xs"><span className="text-zinc-400">Trip · 4 people</span><span className="font-bold text-white">You get back ₹840</span></div>
+    ),
+  },
+  {
+    icon: Flame, title: 'Keep the habit',
+    body: 'Money Streak turns logging and staying under your daily limit into a streak. It never rewards spending more.',
+    visual: (
+      <div className="flex gap-1.5" aria-hidden="true">
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black ${i < 5 ? 'bg-orange-500 text-black' : 'bg-white/10 text-zinc-500'}`}>{i < 5 ? '✓' : d}</span>)}
+      </div>
+    ),
+  },
+];
 
-// ── Features Section ──
 export default function Features() {
-  const headingReveal = useReveal(0);
-
   return (
-    <section id="features" className="relative overflow-hidden bg-black px-5 py-28">
-      {/* Background decoration */}
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-      <div className="pointer-events-none absolute -top-40 right-0 h-96 w-96 rounded-full bg-lime-700/10 blur-3xl" />
-
-      <div className="max-w-6xl mx-auto">
-        {/* Heading */}
-        <motion.div
-          ref={headingReveal.ref}
-          initial={headingReveal.initial}
-          animate={headingReveal.animate}
-          transition={headingReveal.transition}
-          className="text-center mb-16"
-        >
-          <span className="inline-block px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 mb-4">
-            Everything you need
-          </span>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4">
-            Built for the way you actually{' '}
-            <span className="text-lime-400">
-              live & spend
-            </span>
-          </h2>
-          <p className="text-zinc-400 text-base max-w-xl mx-auto">
-            Four features that work from the expenses you log. No spreadsheets.
-          </p>
-        </motion.div>
-
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Card 1 — AI (large, spans 2 cols on lg) */}
-          <FeatureCard
-            icon={Bot}
-            iconColor="bg-emerald-500/15 text-emerald-400"
-            title="Vittova AI"
-            description="Ask about your spending, budget and goals. Answers are built from your own numbers, and receipt scanning fills in expenses for you."
-            className="lg:col-span-2"
-            delay={0.05}
-          >
-            <AIChatMockup />
-          </FeatureCard>
-
-          {/* Card 2 — Round-Ups */}
-          <FeatureCard
-            icon={TrendingUp}
-            iconColor="bg-lime-400/15 text-lime-400"
-            title="Round-Ups"
-            description="See the spare change from every expense, rounded up to the next ₹5: a simple nudge to set money aside."
-            delay={0.1}
-          >
-            <RoundUpMockup />
-          </FeatureCard>
-
-          {/* Card 3 — Budget Guard */}
-          <FeatureCard
-            icon={ShieldAlert}
-            iconColor="bg-amber-500/15 text-amber-400"
-            title="Aukatt Alert"
-            description="A spending forecast that shows when you're on pace to overspend, while there's still time to adjust."
-            delay={0.15}
-          >
-            <BudgetMockup />
-          </FeatureCard>
-
-          {/* Card 4 — Group Splits */}
-          <FeatureCard
-            icon={Users}
-            iconColor="bg-purple-500/15 text-purple-400"
-            title="Group Splits"
-            description="Split shared bills with an invite code, see who owes whom, and record settle-ups."
-            className="lg:col-span-2"
-            delay={0.2}
-          >
-            <SplitMockup />
-          </FeatureCard>
-        </div>
+    <section id="features" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-28">
+      <div className="mx-auto max-w-6xl">
+        <SectionHeading eyebrow="Features" title="Built around the questions you actually ask.">
+          Every screen answers something: can I spend, can I buy this, where is my month heading, how much can I save.
+        </SectionHeading>
+        <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {CARDS.map((c, i) => (
+            <Reveal as="li" key={c.title} delay={(i % 4) * 80} className="l-card flex flex-col rounded-3xl border border-white/[0.06] bg-[#0f1012] p-5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400/10"><c.icon className="h-5 w-5 text-lime-300" aria-hidden="true" /></span>
+              <h3 className="mt-4 text-base font-bold text-white">{c.title}</h3>
+              <p className="mt-1.5 flex-1 text-sm leading-relaxed text-zinc-400">{c.body}</p>
+              <div className="mt-5 rounded-2xl border border-white/[0.06] bg-black/30 p-3">{c.visual}</div>
+            </Reveal>
+          ))}
+        </ul>
+        <p className="mt-4 text-center text-[11px] text-zinc-500">Figures in these cards are illustrations.</p>
       </div>
     </section>
   );

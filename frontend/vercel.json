@@ -39,6 +39,10 @@
       "destination": "/legal/delete-account.html"
     },
     {
+      "source": "/support",
+      "destination": "/legal/support.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
