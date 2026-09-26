@@ -15,7 +15,12 @@ const PUBLIC_URLS = ['https://vittova.in/', 'https://vittova.in/privacy', 'https
 test('robots.txt allows the site, keeps admin and auth hand-off out, and names the sitemap', () => {
   const robots = read('public/robots.txt');
   assert.match(robots, /^User-agent: \*$/m);
-  assert.match(robots, /^Disallow: \/admin\/$/m);
+  // The owner console moved to /vittova-ops (267d6f2) and is deliberately NOT
+  // listed here, since a Disallow line would advertise it; it is kept out of
+  // search by an X-Robots-Tag header instead (checked below).
+  assert.doesNotMatch(robots, /vittova-ops/);
+  const headers = JSON.parse(read('vercel.json')).headers;
+  assert.ok(headers.some((h) => h.source.startsWith('/vittova-ops') && h.headers.some((x) => x.key === 'X-Robots-Tag' && /noindex/.test(x.value))), 'console must be noindex');
   assert.match(robots, /^Disallow: \/auth\/$/m);
   assert.match(robots, /^Sitemap: https:\/\/vittova\.in\/sitemap\.xml$/m);
   for (const publicPath of ['/privacy', '/terms', '/delete-account']) {
