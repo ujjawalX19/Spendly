@@ -1,10 +1,18 @@
 /**
  * Vittova Pro on the homepage. Purchases are not switched on yet, so this
- * shows what Pro includes and says plainly that it can't be bought; it never
- * shows a price. Keep the list in line with pages/ProUpgrade.jsx.
+ * shows what Pro includes and the PLANNED prices (backend/lib/billingPlans.js),
+ * labelled as not on sale; the launch offer shows its renewal price.
+ * Keep the list in line with pages/ProUpgrade.jsx, and the prices in line with
+ * Play Console before billing goes live.
  */
 import { Check, Sparkles } from 'lucide-react';
 import { PrimaryCta, Reveal } from './shared';
+
+const PLANS = [
+  { name: 'Monthly', price: '₹49', per: '/month', note: 'Cancel any time' },
+  { name: 'Yearly', price: '₹449', per: '/year', note: 'About ₹37 a month', best: true },
+  { name: 'Launch offer', price: '₹199', per: 'first year', note: 'Then ₹449/year. For eligible new subscribers.' },
+];
 
 const INCLUDES = [
   ['Unlimited Afford-It checks', 'Free plan: 5 a day'],
@@ -26,8 +34,19 @@ export default function ProSection() {
             </p>
             <h2 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">More than tracking. Better decisions.</h2>
             <p className="mt-4 text-zinc-400">Everything in the free plan, with no daily limits on decisions, plus the tools that catch money leaking out every month.</p>
-            <p className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-zinc-300">
-              <b className="text-white">Coming soon.</b> Pro is not available to buy yet. When it is, it will be sold through Google Play, with the price and renewal terms shown before you pay.
+            <p className="mt-6 text-xs font-bold uppercase tracking-wider text-amber-200/80">Planned pricing</p>
+            <ul className="mt-2 grid gap-2 sm:grid-cols-3">
+              {PLANS.map((pl, i) => (
+                <li key={pl.name} className={`l-plan relative rounded-2xl border p-3.5 ${pl.best ? 'border-amber-300/50 bg-amber-300/[0.07]' : 'border-white/10 bg-black/30'}`} style={{ animationDelay: `${i * 90}ms` }}>
+                  {pl.best && <span className="absolute -top-2.5 left-3 rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-black">Best value</span>}
+                  <p className="text-xs font-semibold text-zinc-400">{pl.name}</p>
+                  <p className="mt-1 whitespace-nowrap"><span className="font-mono-finance text-2xl font-black text-white">{pl.price}</span> <span className="text-xs text-zinc-400">{pl.per}</span></p>
+                  <p className="mt-1 text-[11px] leading-snug text-zinc-500">{pl.note}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3.5 text-xs leading-relaxed text-zinc-300">
+              <b className="text-white">Coming soon: not available to buy yet.</b> Pro will be sold through Google Play in the Android app. Google Play shows the final price and renewal terms before you pay, and you can cancel any time in Google Play.
             </p>
             <PrimaryCta className="mt-6">Start free today</PrimaryCta>
           </div>

@@ -32,10 +32,17 @@ test('homepage copy makes no promises the product does not keep', () => {
   for (const bad of [/guaranteed? (returns?|profit)/i, /bank[- ]level/i, /military[- ]grade/i, /100% secure/i, /best (stock|fund)/i, /make you rich/i, /predicts? the market/i, /testimonial/i, /\d+(,\d+)*\+? (users|downloads|reviews)/i, /only \d+ (spots|left)/i]) {
     assert.doesNotMatch(text, bad, String(bad));
   }
-  // Pro is not on sale yet: no rupee price is shown for it.
+  // Pro is not on sale yet: prices are labelled as planned, the offer shows
+  // what it renews at, and they match the planned plans (billingPlans.js).
   const pro = readFileSync(join(dir, 'ProSection.jsx'), 'utf8');
-  assert.doesNotMatch(pro, /₹\s?\d/);
   assert.match(pro, /not available to buy yet/i);
+  assert.match(pro, /Planned pricing/);
+  assert.match(pro, /'₹49'/);
+  assert.match(pro, /'₹449'/);
+  assert.match(pro, /'₹199'[\s\S]*Then ₹449\/year/);
+  assert.doesNotMatch(pro, /student|₹29|₹249|countdown|ends (today|tonight)/i);
+  const plans = readFileSync(join(here, '..', '..', 'backend/lib/billingPlans.js'), 'utf8');
+  for (const price of ['₹49 / month', '₹449 / year', '₹199 first year, then ₹449 / year']) assert.ok(plans.includes(price), price);
   // The demo is labelled as an example everywhere it appears.
   assert.match(readFileSync(join(dir, 'AffordDemo.jsx'), 'utf8'), /Example month/);
 });

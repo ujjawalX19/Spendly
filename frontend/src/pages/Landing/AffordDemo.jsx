@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { demoCheck, EXAMPLE_MONTH } from '../../lib/landingDemo';
 import { inr, parseAmount } from '../../lib/moneyDisplay';
+import { useEasedNumber } from '../../components/ui';
 
 const PRESETS = [499, 2499, 6000, 9999];
 
@@ -22,6 +23,8 @@ export default function AffordDemo() {
   const [error, setError] = useState('');
   const r = demoCheck(price);
   const look = LOOK[r.verdict];
+  // The figure counts to its new value (instant with reduced motion).
+  const figure = Math.round(useEasedNumber(r.verdict === 'not_comfortable' ? r.shortBy : r.perDay, 500));
   const m = EXAMPLE_MONTH;
 
   const pick = (p) => { setPrice(p); setTyped(p.toLocaleString('en-IN')); setError(''); };
@@ -34,7 +37,7 @@ export default function AffordDemo() {
   };
 
   return (
-    <div className="relative w-full max-w-[400px]">
+    <div className="l-float relative w-full max-w-[400px]">
       <div aria-hidden="true" className="absolute -inset-6 -z-10 rounded-[40px] bg-lime-400/10 blur-3xl" />
       <div className="rounded-[28px] border border-white/10 bg-[#0c0d0f]/95 p-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
         <div className="flex items-center justify-between">
@@ -67,9 +70,9 @@ export default function AffordDemo() {
           </p>
           <dl className="mt-3 space-y-2 text-sm">
             {r.verdict === 'not_comfortable' ? (
-              <Row label="Short by" value={inr(r.shortBy)} />
+              <Row label="Short by" value={inr(figure)} />
             ) : (
-              <Row label="After this" value={`${inr(r.perDay)}/day`} hint={`for ${m.daysLeft} days`} />
+              <Row label="After this" value={`${inr(figure)}/day`} hint={`for ${m.daysLeft} days`} />
             )}
             <Row label="Next bill" value={inr(m.bill.amount)} hint={`${m.bill.name} · in ${m.bill.inDays} days`} />
             {r.verdict !== 'can_afford' && <Row label="Safer date" value="When your new month starts" plain />}
