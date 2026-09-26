@@ -18,6 +18,7 @@
  * returns (FINANCIAL_CONTENT_REVIEW.md).
  */
 
+const { safeToInvest: safeToInvestFigure } = require('./moneyDecisions');
 const { extractHorizonYears, detectGoal, futureValue, INVESTING_NOTE } = require('./investingGuide');
 
 const r = (n) => Math.round(Number(n) || 0);
@@ -86,10 +87,12 @@ function buildInvestmentContext(f, question, amount) {
     const years = extractHorizonYears(question);
     const goal = detectGoal(question);
 
-    // What the rest of this month still needs at the current pace (bills and
-    // the savings target are already inside Safe-to-Spend).
-    const neededThisMonth = f.expectedRestOfMonth;
-    const spareThisMonth = Math.max(0, f.safeToSpendRemaining - neededThisMonth);
+    // The Safe-to-Invest figure the app shows (lib/moneyDecisions): what the
+    // month leaves after spending, bills, the savings target and the spending
+    // the rest of the month is likely to need.
+    const sti = safeToInvestFigure(f);
+    const neededThisMonth = sti.expectedRestOfMonth || 0;
+    const spareThisMonth = sti.amount;
     const safeToInvest = amount === null ? spareThisMonth : Math.min(amount, spareThisMonth);
 
     const emergencyTarget = f.typicalMonthlySpend ? r(f.typicalMonthlySpend * 6) : null;

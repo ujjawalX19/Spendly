@@ -6,7 +6,6 @@ const { protect } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
 const { aiLimiter } = require('../middleware/rateLimits');
 const gemini = require('../lib/gemini');
-const appTime = require('../lib/appTime');
 const {
     classifyIntent, buildFacts, mentorContext, composeAnswer, toText, buildDailyInsight, suggestPrompts,
     numbersAreGrounded, EDUCATION_NOTE,
@@ -16,6 +15,7 @@ const { validationError } = require('../lib/validation');
 const { toRupees } = require('../lib/groupBalances');
 const telemetry = require('../lib/opsTelemetry');
 const { withTimeout } = require('../lib/timeout');
+const { loadFinanceData, ProfileMissingError } = require('../lib/financeData');
 
 /**
  * Vittova AI — a personal finance mentor grounded in the user's own data.
@@ -51,7 +51,6 @@ const adviceSchema = z.object({
     goal: z.string().max(40).optional(),
 }).strict();
 
-class ProfileMissingError extends Error {}
 
 /** A model reply worth showing: real prose, not empty, a stub or a data dump. */
 function isUsableReply(raw) {
@@ -101,22 +100,12 @@ async function loadGroupPool(userId) {
 }
 
 async function loadUserData(userId, now) {
-    const [{ data: profile, error: pErr }, { data: expenses, error: eErr }, { data: bills }] = await Promise.all([
-        supabase.from('profiles').select('monthly_budget, investment_target, streak_current, total_chillar').eq('id', userId).maybeSingle(),
-        supabase.from('expenses')
-            .select('amount, category, description, occurred_at')
-            .eq('user_id', userId)
-            .gte('occurred_at', appTime.startOfMonthsAgo(4, now).toISOString())
-            .order('occurred_at', { ascending: true }),
-        supabase.from('recurring_bills').select('name, amount, due_day, is_active').eq('user_id', userId),
-    ]);
-    if (pErr || eErr) throw pErr || eErr;
-    if (!profile) throw new ProfileMissingError('Profile unavailable');
+    const data = await loadFinanceData(userId, now);
     const groupPool = await loadGroupPool(userId).catch((e) => {
         console.error('AI context: group pool unavailable:', e.message);
         return null;
     });
-    return { profile, expenses: expenses || [], bills: bills || [], groupPool };
+    return { ...data, groupPool };
 }
 
 function sendLoadError(res, error) {

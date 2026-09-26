@@ -111,7 +111,7 @@
       ]
     },
     {
-      "source": "/(login|signup|forgot-password|reset-password|welcome|dash|transactions|bot|wealth|settings|graveyard|import|pro)",
+      "source": "/(login|signup|forgot-password|reset-password|welcome|dash|transactions|bot|wealth|settings|graveyard|import|pro|subscription-audit|challenges)",
       "headers": [
         {
           "key": "X-Robots-Tag",

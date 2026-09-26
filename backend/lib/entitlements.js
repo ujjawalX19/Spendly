@@ -6,8 +6,7 @@
  * `profiles.is_pro` and `profiles.pro_expires_at` are a *cache of a verified
  * entitlement*. They may only be written by:
  *   - the backend's service-role client, after a purchase has been verified
- *     server-side with Google Play (not implemented yet — see
- *     BILLING_ARCHITECTURE.md), or
+ *     server-side with Google Play (lib/playBilling.js), or
  *   - an operator making a deliberate manual grant.
  *
  * The client can never write them: supabase/v1_2_security_p0.sql revokes all
@@ -35,13 +34,12 @@ function hasActivePro(profile, now = new Date()) {
 }
 
 /**
- * Whether in-app purchase is available. Hard-coded false: there is no Google
- * Play Billing integration or server-side purchase verification yet, and an
- * environment flag must not be able to switch on a purchase flow that does not
- * exist. Change this only together with the verification endpoint.
+ * Whether in-app purchase is available: only when server-side Google Play
+ * verification is configured (a service account) AND explicitly switched on
+ * (PLAY_BILLING_ENABLED=true). See lib/playBilling.js.
  */
 function purchasesEnabled() {
-    return false;
+    return require('./playBilling').purchasesEnabled();
 }
 
 module.exports = { hasActivePro, purchasesEnabled, PRO_PROFILE_COLUMNS };

@@ -32,6 +32,11 @@ test account (manual).
 | GET | /api/paisa-score/history | — | routes/paisaScore.js | Yes | ✅ |
 | POST | /api/streaks/check-in | pages/Dashboard.jsx | routes/streaks.js | Yes | ✅ |
 | GET | /api/streaks, POST /api/streaks/freeze | — | routes/streaks.js | Yes | ✅ |
+| POST | /api/decisions/afford | components/AffordItCard.jsx | routes/decisions.js (money_check quota) | Yes | v1.1 · tested, not yet deployed |
+| POST | /api/decisions/sip-stress-test | components/MoneyDecisionCards.jsx | routes/decisions.js (money_check quota) | Yes | v1.1 · tested, not yet deployed |
+| GET | /api/decisions/month-shape, /api/decisions/safe-to-invest | pages/Wealth.jsx | routes/decisions.js | Yes | v1.1 · tested, not yet deployed |
+| GET | /api/money-streak | pages/Dashboard.jsx | routes/moneyStreak.js | Yes | v1.1 · tested, not yet deployed |
+| POST | /api/money-streak/no-spend | components/MoneyStreakCard.jsx | routes/moneyStreak.js | Yes | v1.1 · tested, not yet deployed |
 | GET | /api/groups | pages/HostelPool.jsx | routes/groups.js | Yes | ✅ tested |
 | POST | /api/groups | pages/HostelPool.jsx | routes/groups.js | Yes | ✅ tested · **needs v1_3 column** |
 | POST | /api/groups/join | pages/HostelPool.jsx | routes/groups.js | Yes + limit | ✅ tested · **needs v1_3** |

@@ -1,155 +1,37 @@
 /**
- * Dashboard.jsx — Vittova
- * ─────────────────────────────────────────────────────────────
- * Pixel-perfect Figma-to-code conversion.
- * Stack: React 19 + Tailwind CSS 4 + Framer Motion + Lucide React
- * Data:  useExpenses (Supabase) + usePaymentNotifications (Capacitor UPI)
+ * Dashboard.jsx — Vittova Home.
+ *
+ * Answers four questions in about three seconds, in this order:
+ *   1. How much can I spend?          MoneyStatus
+ *   2. Can I afford this?             AffordItCard (the main action)
+ *   3. What needs my attention?       MoneyHealth + one InsightCard
+ *   4. Am I keeping my habit?         MoneyStreakCard (compact)
+ * Everything else moved one tap deeper (Activity, Wealth, Profile) — nothing
+ * was removed. Adding an expense (with receipt scan) stays on the + button;
+ * payment-notification prompts stay here.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import {
-  TrendingUp, Camera, ChevronRight,
-  Flame, Zap, ShoppingCart, Tv, ShoppingBag, AlertCircle,
-  Plus, X, Check, Wallet, Lightbulb, CircleDollarSign, CheckCircle
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, Zap, AlertCircle, Plus, X, Check, CheckCircle } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import PermissionBanner from '../components/PermissionBanner';
 import NotificationAccessSheet from '../components/NotificationAccessSheet';
+import AffordItCard from '../components/AffordItCard';
+import MoneyStreakCard from '../components/MoneyStreakCard';
+import { MoneyStatus, MoneyHealth, InsightCard } from '../components/HomeCards';
 import { API_URL, apiFetch } from '../lib/apiConfig';
-import { localDateKey } from '../lib/dates';
-
-// ─── ANIMATION VARIANTS ───────────────────────────────────────
-const pageVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
-};
-const cardVariants = {
-  hidden: { opacity: 0, y: 28, scale: 0.96 },
-  visible: {
-    opacity: 1, y: 0, scale: 1,
-    transition: { type: 'spring', stiffness: 280, damping: 22, mass: 0.9 },
-  },
-};
-const fadeUp = {
-  hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
-};
-
-// ─── COUNT-UP HOOK ────────────────────────────────────────────
-function useCountUp(target, duration = 1100) {
-  const [display, setDisplay] = useState(0);
-  const prev = useRef(0);
-  useEffect(() => {
-    const from = prev.current;
-    const to = target;
-    prev.current = to;
-    if (from === to) { setDisplay(to); return; }
-    const t0 = performance.now();
-    function tick(now) {
-      const p = Math.min((now - t0) / duration, 1);
-      const e = 1 - Math.pow(1 - p, 3);
-      setDisplay(from + (to - from) * e);
-      if (p < 1) requestAnimationFrame(tick);
-      else setDisplay(to);
-    }
-    requestAnimationFrame(tick);
-  }, [target, duration]);
-  return display;
-}
-
-// ─── UTILITY COMPONENTS ──────────────────────────────────────
-function AnimatedRupee({ value, className = '' }) {
-  const n = useCountUp(value);
-  return (
-    <span className={`font-mono-finance tabular-nums ${className}`}>
-      {'\u20b9'}{Math.round(n).toLocaleString('en-IN')}
-    </span>
-  );
-}
-
-function AnimatedNum({ value, className = '' }) {
-  const n = useCountUp(value);
-  return (
-    <span className={`font-mono-finance tabular-nums ${className}`}>
-      {Math.round(n)}
-    </span>
-  );
-}
-
-function UserAvatar({ name }) {
-  const initials = (name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  return (
-    <motion.div
-      className="relative cursor-pointer shadow-[0_0_20px_rgba(163,230,53,0.6)] rounded-full"
-      whileHover={{ scale: 1.07 }}
-      whileTap={{ scale: 0.94 }}
-      transition={{ type: 'spring', stiffness: 360, damping: 18 }}
-    >
-      <div className="relative w-11 h-11 rounded-full bg-gradient-to-br from-[#a3e635] to-[#84cc16]
-                      flex items-center justify-center text-sm font-black text-black">
-        {initials}
-      </div>
-      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#a3e635] rounded-full
-                      border-2 border-black" />
-    </motion.div>
-  );
-}
-
-const CATEGORY_META = {
-  Food:          { icon: ShoppingCart, bg: 'bg-orange-500/15', color: 'text-orange-400' },
-  Entertainment: { icon: Tv,           bg: 'bg-purple-500/15', color: 'text-purple-400' },
-  Grocery:       { icon: ShoppingBag,  bg: 'bg-green-500/15',  color: 'text-green-400'  },
-  Transport:     { icon: Zap,          bg: 'bg-sky-500/15',    color: 'text-sky-400'    },
-  Recharge:      { icon: Zap,          bg: 'bg-yellow-500/15', color: 'text-yellow-400' },
-  Rent:          { icon: Wallet,       bg: 'bg-blue-500/15',   color: 'text-blue-400'   },
-  Shopping:      { icon: ShoppingBag,  bg: 'bg-pink-500/15',   color: 'text-pink-400'   },
-  Other:         { icon: Wallet,       bg: 'bg-zinc-700/60',   color: 'text-zinc-400'   },
-};
-function getCategoryMeta(cat) { return CATEGORY_META[cat] || CATEGORY_META.Other; }
-
-function formatRelativeDate(dateStr) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const oneDay = 86400000;
-  const isToday = d.toDateString() === now.toDateString();
-  const isYesterday = new Date(now - oneDay).toDateString() === d.toDateString();
-  const time = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
-  if (isToday) return `Today, ${time}`;
-  if (isYesterday) return 'Yesterday';
-  return d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-function StreakDots({ current, total = 7 }) {
-  return (
-    <div className="flex items-center gap-1.5 mt-3">
-      {Array.from({ length: total }).map((_, i) => (
-        <motion.div
-          key={i}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.4 + i * 0.06, type: 'spring', stiffness: 500, damping: 20 }}
-          className={`h-1.5 rounded-full ${
-            i < current
-              ? 'w-5 bg-orange-400 shadow-[0_0_6px_rgba(251,146,60,0.7)]'
-              : 'w-3.5 bg-zinc-700'
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
 
 // ─── ADD EXPENSE MODAL ────────────────────────────────────────
 // Must match the backend's expense categories (routes/expenses.js). 'Grocery'
 // was offered here but rejected by the API, so those expenses silently failed.
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
-function AddExpenseModal({ onClose, onAdd, loading }) {
+function AddExpenseModal({ onClose, onAdd, loading, onScan, scanLoading }) {
   const [form, setForm] = useState({ desc: '', amount: '', category: 'Food' });
   const [error, setError] = useState('');
 
@@ -182,13 +64,21 @@ function AddExpenseModal({ onClose, onAdd, loading }) {
         transition={{ type: 'spring', stiffness: 340, damping: 30 }}
       >
         <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-5 sm:hidden" />
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-zinc-100">Log Expense</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-zinc-100">Add expense</h2>
           <motion.button onClick={onClose} whileTap={{ scale: 0.9 }}
             className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">
             <X className="w-4 h-4" />
           </motion.button>
         </div>
+        <button type="button" onClick={onScan} disabled={scanLoading}
+          className="v-press mb-4 flex min-h-[48px] w-full items-center gap-3 rounded-2xl border border-white/10 bg-zinc-800/70 px-4 text-left disabled:opacity-60">
+          {scanLoading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-lime-400 border-t-transparent" /> : <Camera className="h-5 w-5 text-lime-300" aria-hidden="true" />}
+          <span className="flex-1">
+            <span className="block text-sm font-bold text-zinc-100">{scanLoading ? 'Reading your receipt…' : 'Scan a receipt'}</span>
+            <span className="block text-xs text-zinc-500">We fill in the amount for you</span>
+          </span>
+        </button>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold mb-1.5 block">
@@ -226,7 +116,8 @@ function AddExpenseModal({ onClose, onAdd, loading }) {
               {CATEGORIES.map(cat => (
                 <motion.button key={cat} type="button" whileTap={{ scale: 0.92 }}
                   onClick={() => setForm({ ...form, category: cat })}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  aria-pressed={form.category === cat}
+                  className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
                     form.category === cat
                       ? 'bg-lime-400 text-black border-lime-400 shadow-[0_0_10px_rgba(57,255,20,0.3)]'
                       : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600'
@@ -251,409 +142,6 @@ function AddExpenseModal({ onClose, onAdd, loading }) {
     </motion.div>
   );
 }
-
-// ─── BUDGET CARD ──────────────────────────────────────────────
-function BudgetCard({ totalSpent, monthlyBudget }) {
-  const percent = Math.min(100, (totalSpent / monthlyBudget) * 100);
-  const remaining = Math.max(0, monthlyBudget - totalSpent);
-  const isCritical = percent >= 60;
-  const isOver = totalSpent > monthlyBudget;
-
-  return (
-    <motion.div
-      variants={cardVariants}
-      className={`rounded-2xl p-4 relative overflow-hidden bg-[#141414] border-0`}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-black/40">
-            <Wallet className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-sm font-bold text-white">Monthly Budget</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-[#f43f5e]/10 text-[#f43f5e] border border-[#f43f5e]/20">
-          📉 {Math.round(percent)}% USED
-        </div>
-      </div>
-
-      {/* Amounts */}
-      <div className="flex items-baseline gap-2 mb-4">
-        <AnimatedRupee value={totalSpent} className="text-3xl font-black text-white" />
-        <span className="text-[#a1a1aa] text-base font-medium">/</span>
-        <span className="text-[#a1a1aa] text-base font-mono-finance tabular-nums">
-          {'\u20b9'}{monthlyBudget.toLocaleString('en-IN')}
-        </span>
-      </div>
-
-      {/* Progress bar */}
-      <div className="w-full bg-black h-3 rounded-full overflow-hidden mb-3">
-        <motion.div
-          className={`h-full rounded-full ${
-            isOver
-              ? 'bg-gradient-to-r from-[#e11d48] to-[#f43f5e]'
-              : isCritical
-                ? 'bg-gradient-to-r from-[#e11d48] via-[#f43f5e] to-[#fb7185]'
-                : 'bg-gradient-to-r from-[#65a30d] to-[#a3e635]'
-          }`}
-          style={{ width: 0 }}
-          animate={{ width: `${percent}%` }}
-          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-        />
-      </div>
-
-      {/* Alert */}
-      {isCritical ? (
-        <div className="flex items-center gap-1.5 mt-2">
-          <AlertCircle className="w-4 h-4 text-[#f43f5e] shrink-0" />
-          <span className="text-xs text-[#a1a1aa]">
-            <span className="font-bold text-white">Aukatt Alert:</span> Only{' '}
-            <span className="text-[#f43f5e] font-bold">{'\u20b9'}{remaining.toLocaleString('en-IN')}</span> left! 📉
-          </span>
-        </div>
-      ) : (
-        <p className="text-xs text-[#a1a1aa] mt-2">
-          <span className="text-[#a3e635] font-bold">{'\u20b9'}{remaining.toLocaleString('en-IN')}</span> remaining this month
-        </p>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── STREAK CARD ──────────────────────────────────────────────
-function StreakCard({ streakDays }) {
-  return (
-    <motion.div
-      variants={cardVariants}
-      className="rounded-2xl p-4 bg-[#141414] relative overflow-hidden"
-    >
-      <div className="w-10 h-10 rounded-xl bg-[#ea580c]/20 flex items-center justify-center mb-3">
-        <Flame className="w-5 h-5 text-[#f97316]" />
-      </div>
-      <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-2xl font-black text-[#f97316]">{streakDays} Days</span>
-          <span className="text-[#f97316] font-black uppercase text-sm">SAFE</span>
-        </div>
-        <p className="text-xs text-[#a1a1aa] font-bold mt-1">Finance Streak</p>
-      </div>
-      <StreakDots current={Math.min(streakDays, 6)} total={6} />
-    </motion.div>
-  );
-}
-
-// ─── MICRO-SAVINGS CARD ──────────────────────────────────────
-function ChillarCard({ totalChillar, todayRoundup }) {
-  return (
-    <motion.div
-      variants={cardVariants}
-      className="rounded-2xl p-4 bg-[#141414] relative overflow-hidden flex flex-col justify-between"
-    >
-      <div>
-        <div className="w-10 h-10 rounded-xl bg-[#84cc16]/20 flex items-center justify-center mb-3">
-          <CircleDollarSign className="w-5 h-5 text-[#a3e635]" />
-        </div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-2xl font-black text-[#a3e635]">{'\u20b9'}{totalChillar}</span>
-          <span className="text-[#a3e635] font-black uppercase text-sm">ROUND-UPS</span>
-        </div>
-        <p className="text-xs text-[#a1a1aa] font-bold mt-1">Spare change to the next ₹5, for you to set aside</p>
-      </div>
-      {todayRoundup > 0 && (
-        <div className="mt-3 inline-flex items-center w-max bg-[#84cc16]/20 text-[#a3e635] text-xs font-bold px-2.5 py-1 rounded-full">
-          +{'\u20b9'}{todayRoundup} today
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── SCAN BILL CTA ────────────────────────────────────────────
-function ScanBillCTA({ onScan, loading, fileInputRef }) {
-  return (
-    <motion.div variants={cardVariants}>
-      <input type="file" accept="image/*" capture="environment"
-        className="hidden" ref={fileInputRef} onChange={onScan} />
-      <motion.button
-        onClick={() => fileInputRef.current?.click()}
-        disabled={loading}
-        whileTap={{ scale: 0.97 }}
-        whileHover={{ scale: 1.01 }}
-        className="w-full rounded-2xl bg-[#a3e635] text-black py-4 px-5 flex items-center justify-between
-                   disabled:opacity-60 disabled:cursor-wait cursor-pointer"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0">
-            {loading
-              ? <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-              : <Camera className="w-6 h-6 text-black" />}
-          </div>
-          <div className="text-left">
-            <p className="text-[16px] font-black tracking-tight leading-tight">
-              {loading ? 'Scanning Bill...' : 'Scan Bill with AI'}
-            </p>
-            <p className="text-[13px] font-bold text-black/60 mt-0.5">
-              Split instantly with your squad
-            </p>
-          </div>
-        </div>
-        <ChevronRight className="w-6 h-6 text-black/60 shrink-0" />
-      </motion.button>
-    </motion.div>
-  );
-}
-
-// ─── RECENT KALESH ──────────────────────────────────────────
-function RecentExpenses({ expenses, loading }) {
-  const navigate = useNavigate();
-  const recent = expenses.slice(0, 4);
-  const recentCount = expenses.filter(e => Date.now() - new Date(e.occurred_at || e.created_at) < 3 * 86400000).length;
-
-  return (
-    <motion.div variants={cardVariants} className="rounded-2xl bg-[#141414] p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <span className="text-lg font-black text-white">Recent Expenses</span>
-          {recentCount > 0 && (
-            <span className="w-5 h-5 rounded-full bg-[#f43f5e] text-white text-[11px] font-black
-                             flex items-center justify-center">
-              {Math.min(recentCount, 9)}
-            </span>
-          )}
-        </div>
-        <button type="button" onClick={() => navigate('/transactions')} className="text-[13px] font-bold text-[#a1a1aa] hover:text-white flex items-center gap-0.5 transition-colors">
-          View All <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="flex items-center gap-4 animate-pulse">
-              <div className="w-12 h-12 rounded-xl bg-[#27272a]" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 bg-[#27272a] rounded w-3/5" />
-                <div className="h-2 bg-[#27272a] rounded w-2/5" />
-              </div>
-              <div className="h-3 bg-[#27272a] rounded w-12" />
-            </div>
-          ))}
-        </div>
-      ) : recent.length === 0 ? (
-        <div className="py-8 text-center">
-          <div className="text-3xl mb-2">🎉</div>
-          <p className="text-[#a1a1aa] text-sm font-bold">No expenses yet.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {recent.map((exp, idx) => {
-            const meta = getCategoryMeta(exp.category);
-            const Icon = meta.icon;
-            return (
-              <motion.div key={exp.id}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.07, type: 'spring', stiffness: 300, damping: 24 }}
-                className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl bg-black flex items-center justify-center shrink-0`}>
-                  <Icon className={`w-5 h-5 ${meta.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[15px] font-bold text-white truncate leading-tight">
-                    {exp.description}
-                  </p>
-                  <p className="text-xs text-[#a1a1aa] font-medium mt-1">{formatRelativeDate(exp.occurred_at || exp.created_at)}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-mono-finance tabular-nums font-black text-[#f43f5e] text-[15px] leading-tight">
-                    {'\u20b9'}{parseFloat(exp.amount).toLocaleString('en-IN')}
-                  </p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa] mt-1">
-                    {exp.category}
-                  </p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── AI DOST TIP ──────────────────────────────────────────
-function AiTipCard({ expenses }) {
-  // A simple rule on this month's own data. No figure is shown unless it
-  // comes from the user's expenses.
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const foodSpend = expenses
-    .filter(e => e.category === 'Food' && new Date(e.occurred_at || e.created_at) >= monthStart)
-    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-  if (foodSpend < 500) return null;
-  const tenPercent = Math.round(foodSpend * 0.1);
-
-  return (
-    <motion.div
-      variants={cardVariants}
-      className="rounded-2xl bg-[#141414] p-4 flex items-center gap-4"
-    >
-      <div className="w-12 h-12 rounded-xl bg-black flex items-center justify-center shrink-0">
-        <Lightbulb className="w-6 h-6 text-[#a3e635]" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[15px] font-bold text-white leading-tight">Budget tip</p>
-        <p className="text-[13px] font-semibold text-[#a1a1aa] mt-1">
-          You've spent {'\u20b9'}{Math.round(foodSpend).toLocaleString('en-IN')} on food this month. Trimming it by 10% frees up <span className="text-[#a3e635]">{'\u20b9'}{tenPercent.toLocaleString('en-IN')}</span>.
-        </p>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── SAFE-TO-SPEND HERO ───────────────────────────────────
-function SafeToSpendCard({ safeData }) {
-  if (!safeData) return null;
-  const isNeg = safeData.isNegative;
-
-  return (
-    <motion.div
-      variants={cardVariants}
-      className={`rounded-2xl p-5 relative overflow-hidden ${
-        isNeg ? 'bg-gradient-to-br from-red-950 to-[#141414]' : 'bg-gradient-to-br from-[#1a2e05] to-[#141414]'
-      }`}
-    >
-      <p className="text-xs font-bold uppercase tracking-wider text-[#a1a1aa] mb-1">
-        You can safely spend today
-      </p>
-      <div className="flex items-baseline gap-2">
-        <span className={`text-4xl font-black font-mono-finance tabular-nums ${
-          isNeg ? 'text-[#f43f5e]' : 'text-[#a3e635]'
-        }`}>
-          {'\u20b9'}{safeData.daily.toLocaleString('en-IN')}
-        </span>
-      </div>
-      <p className="text-xs text-[#a1a1aa] mt-2">
-        {isNeg
-          ? `Over budget by \u20b9${safeData.overBy.toLocaleString('en-IN')} this month`
-          : `\u20b9${safeData.remaining.toLocaleString('en-IN')} remaining · ${safeData.daysRemaining} days left`}
-      </p>
-      {safeData.upcomingBills > 0 && (
-        <p className="text-[10px] text-[#71717a] mt-1">
-          Upcoming bills: {'\u20b9'}{safeData.upcomingBills.toLocaleString('en-IN')}
-        </p>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── BURN RATE CARD ───────────────────────────────────────
-function BurnRateCard({ burnData }) {
-  if (!burnData || !burnData.willGoBroke) return null;
-
-  return (
-    <motion.div
-      variants={cardVariants}
-      className="rounded-2xl p-4 bg-[#141414] border border-red-500/15"
-    >
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
-          <AlertCircle className="w-5 h-5 text-[#f43f5e]" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[14px] font-bold text-[#f43f5e] leading-tight">
-            {burnData.budgetRemaining < 0
-              ? `Over budget by \u20b9${Math.abs(burnData.budgetRemaining).toLocaleString('en-IN')}`
-              : `At this pace your budget runs out around ${burnData.brokeDate}`}
-          </p>
-          {burnData.cutSuggestion && (
-            <p className="text-xs text-[#a1a1aa] mt-1">
-              {burnData.cutSuggestion.message}
-            </p>
-          )}
-          <p className="text-[10px] text-[#71717a] mt-1">Spending forecast based on your pace so far this month.</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── SPEND SCORE WIDGET ───────────────────────────────────
-const SCORE_LABELS = {
-  budgetDiscipline: 'Budget discipline',
-  dailyConsistency: 'Daily consistency',
-  spendingStability: 'Spending stability',
-  savingsConsistency: 'Savings consistency',
-  loggingHabit: 'Logging habit',
-};
-
-function SpendScoreCard({ score }) {
-  const [open, setOpen] = useState(false);
-  if (!score) return null;
-  const hasScore = typeof score.total === 'number';
-  const pct = hasScore ? Math.round((score.total / (score.max || 100)) * 100) : 0;
-  const circumference = 2 * Math.PI * 32;
-  const strokeDash = (pct / 100) * circumference;
-
-  return (
-    <motion.div variants={cardVariants} className="rounded-2xl p-4 bg-[#141414] relative overflow-hidden">
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-4 text-left">
-        <div className="relative w-20 h-20 shrink-0">
-          <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90" aria-hidden="true">
-            <circle cx="36" cy="36" r="32" fill="none" stroke="#27272a" strokeWidth="5" />
-            {hasScore && (
-              <circle cx="36" cy="36" r="32" fill="none" stroke="#a3e635" strokeWidth="5"
-                strokeLinecap="round" strokeDasharray={circumference}
-                strokeDashoffset={circumference - strokeDash}
-                className="transition-all duration-1000 ease-out" />
-            )}
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-lg font-black text-white">{hasScore ? score.total : '—'}</span>
-          </div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-white">Spend Score <span className="text-[#71717a] font-semibold">/ {score.max || 100}</span></p>
-          <p className="text-xs text-[#a1a1aa] mt-0.5">
-            {hasScore ? 'Tap to see why you got this score' : 'Not enough data for a score yet'}
-          </p>
-          {typeof score.change === 'number' && score.change !== 0 && (
-            <p className={`text-xs font-bold mt-1 ${score.change > 0 ? 'text-[#a3e635]' : 'text-[#f43f5e]'}`}>
-              {score.change > 0 ? '+' : ''}{score.change} since last week
-            </p>
-          )}
-        </div>
-        <ChevronRight className={`h-4 w-4 text-[#71717a] transition-transform ${open ? 'rotate-90' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="mt-4 space-y-3 border-t border-white/5 pt-3">
-          {!hasScore && score.insufficientReasons?.length > 0 && (
-            <ul className="list-disc space-y-1 pl-4 text-xs text-[#a1a1aa]">
-              {score.insufficientReasons.map((r) => <li key={r}>{r}</li>)}
-            </ul>
-          )}
-          {Object.entries(score.components || {}).map(([key, c]) => (
-            <div key={key}>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-white">{SCORE_LABELS[key] || key}</span>
-                <span className="font-mono text-[#a1a1aa]">{c.available ? `${c.score}/100` : 'n/a'}</span>
-              </div>
-              {c.available && (
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#27272a]">
-                  <div className="h-full rounded-full bg-[#a3e635]" style={{ width: `${c.score}%` }} />
-                </div>
-              )}
-              <p className="mt-1 text-[11px] text-[#71717a]">{c.explanation}</p>
-            </div>
-          ))}
-          {score.disclaimer && <p className="text-[10px] text-[#52525b]">{score.disclaimer}</p>}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-
 
 // ─── UPI TOAST ────────────────────────────────────────────────
 // Copy that matches what actually happened. The native parser classifies
@@ -741,9 +229,8 @@ function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
-  if (h < 17) return 'Sup';
-  if (h < 21) return 'Hey';
-  return 'Yo';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -757,8 +244,10 @@ export default function Dashboard() {
   const [addLoading, setAddLoading]         = useState(false);
   const [scanLoading, setScanLoading]       = useState(false);
   const [safeToSpend, setSafeToSpend]       = useState(null);
+  const [safeError, setSafeError]           = useState(false);
+  const [reloadKey, setReloadKey]           = useState(0);
   const [burnRate, setBurnRate]             = useState(null);
-  const [paisaScore, setPaisaScore]         = useState(null);
+  const [moneyStreak, setMoneyStreak]       = useState(null);
   const [scanToast, setScanToast]           = useState(null); // { type: 'success'|'error', message: string }
   const fileInputRef = useRef(null);
 
@@ -785,19 +274,28 @@ export default function Dashboard() {
     if (!token || expensesVersion === null) return undefined;
     let cancelled = false;
     const headers = { Authorization: `Bearer ${token}` };
-    const load = (path, apply) => apiFetch(`${API_URL}${path}`, { headers })
+    const load = (path, apply, onFail) => apiFetch(`${API_URL}${path}`, { headers })
       .then((response) => {
         if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
         return response.json();
       })
       .then((d) => { if (!cancelled && d.success) apply(d); })
-      .catch(() => {});
+      .catch(() => { if (!cancelled && onFail) onFail(); });
 
-    load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend));
+    setSafeError(false);
+    load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend), () => setSafeError(true));
     load('/burn-rate', (d) => setBurnRate(d.burnRate));
-    load('/paisa-score', (d) => setPaisaScore(d.paisaScore));
+    load('/money-streak', (d) => setMoneyStreak(d.moneyStreak));
     return () => { cancelled = true; };
-  }, [token, expensesVersion]);
+  }, [token, expensesVersion, reloadKey]);
+
+  // After marking a no-spend day, refresh the streak on its own.
+  const reloadMoneyStreak = useCallback(async () => {
+    if (!token) return;
+    const response = await apiFetch(`${API_URL}/money-streak`, { headers: { Authorization: `Bearer ${token}` } });
+    const d = await response.json().catch(() => ({}));
+    if (response.ok && d.success) setMoneyStreak(d.moneyStreak);
+  }, [token]);
 
   // Record the streak check-in for viewing Safe-to-Spend, once per session.
   useEffect(() => {
@@ -810,14 +308,24 @@ export default function Dashboard() {
   }, [token]);
 
   // ── Derived Values ─────────────────────────────────────────
+  const navigate = useNavigate();
   const monthlyBudget = user?.monthly_budget || 5000;
-  const streakDays    = user?.streak_current  || 0;
-  const totalChillar  = parseFloat(user?.total_chillar || 0);
 
-  const today = localDateKey(new Date());
-  const todayRoundup = expenses
-    .filter(e => localDateKey(new Date(e.occurred_at || e.created_at)) === today)
-    .reduce((s, e) => s + (parseFloat(e.roundup_chillar) || 0), 0);
+  // This month's spending by category, from the user's own rows (display only).
+  const { categories, foodThisMonth, lastExpense } = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const rows = expenses.filter((e) => new Date(e.occurred_at || e.created_at) >= monthStart);
+    const byCat = {};
+    for (const e of rows) byCat[e.category || 'Other'] = (byCat[e.category || 'Other'] || 0) + (Number(e.amount) || 0);
+    const total = Object.values(byCat).reduce((a, b) => a + b, 0);
+    return {
+      categories: Object.entries(byCat).map(([category, amount]) => ({ category, amount, share: total ? Math.round((amount / total) * 100) : 0 }))
+        .sort((a, b) => b.amount - a.amount),
+      foodThisMonth: byCat.Food || 0,
+      lastExpense: expenses[0] ? { description: expenses[0].description, amount: Number(expenses[0].amount) } : null,
+    };
+  }, [expenses]);
 
   // ── Handlers ───────────────────────────────────────────────
   const handleAddExpense = async (amount, category, description) => {
@@ -843,7 +351,8 @@ export default function Dashboard() {
       try {
         const result = await addScannedExpense({ scannedTotal: 0, merchantName: 'Receipt Scan', imageBase64: reader.result });
         if (result?.success) {
-          setScanToast({ type: 'success', message: 'Bill scanned and added!' });
+          setShowAddModal(false);
+          setScanToast({ type: 'success', message: 'Receipt scanned and added.' });
         } else {
           setScanToast({ type: 'error', message: result?.message || 'Failed to scan bill.' });
         }
@@ -884,6 +393,7 @@ export default function Dashboard() {
   };
 
   const firstName = String(user?.full_name || user?.name || '').trim().split(/\s+/)[0] || 'there';
+  const initials = String(user?.full_name || user?.name || 'V').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
   // ── RENDER ─────────────────────────────────────────────────
   return (
@@ -958,29 +468,27 @@ export default function Dashboard() {
             onClose={() => setShowAddModal(false)}
             onAdd={handleAddExpense}
             loading={addLoading}
+            onScan={() => fileInputRef.current?.click()}
+            scanLoading={scanLoading}
           />
         )}
       </AnimatePresence>
 
       {/* ─── MAIN CONTENT ─── */}
-      <motion.div
-        className="max-w-lg mx-auto space-y-3"
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-      >
+      <div className="mx-auto max-w-lg space-y-3">
         {/* HEADER */}
-        <motion.header variants={fadeUp} className="flex items-center justify-between pb-1">
-          <div>
-            <h1 className="text-3xl font-black text-white leading-tight tracking-tight">
-              {getGreeting()}, {firstName}
-            </h1>
-            <p className="text-[13px] text-[#a1a1aa] mt-1 font-bold uppercase tracking-wider">Financial Rizz Status</p>
+        <header className="flex items-center justify-between pb-1">
+          <div className="min-w-0">
+            <p className="text-sm text-zinc-500">{getGreeting()}</p>
+            <h1 className="truncate text-2xl font-black tracking-tight text-white">{firstName}</h1>
           </div>
-          <UserAvatar name={user?.full_name || user?.name} />
-        </motion.header>
+          <button type="button" onClick={() => navigate('/settings')} aria-label="Profile"
+            className="v-press flex h-11 w-11 items-center justify-center rounded-full bg-lime-400 text-sm font-black text-black">
+            {initials}
+          </button>
+        </header>
 
-        {/* NOTIFICATION PERMISSION BANNER */}
+        {/* Payment-notification access (Android) */}
         <PermissionBanner
           isSupported={isSupported}
           permissionGranted={permissionGranted}
@@ -988,52 +496,36 @@ export default function Dashboard() {
           onEnable={() => setShowAccessSheet(true)}
         />
 
-        {/* SAFE-TO-SPEND HERO */}
-        <SafeToSpendCard safeData={safeToSpend} />
+        {/* 1. How much can I spend? */}
+        <MoneyStatus safe={safeToSpend} error={safeError} onRetry={() => setReloadKey((k) => k + 1)} />
 
-        {/* BUDGET CARD */}
-        <BudgetCard totalSpent={totalSpent} monthlyBudget={monthlyBudget} />
+        {/* 2. Can I afford this? — the main action */}
+        <AffordItCard />
 
-        {/* BURN RATE ALERT */}
-        <BurnRateCard burnData={burnRate} />
+        {/* 3. What needs attention? */}
+        <MoneyHealth loading={loading} totalSpent={totalSpent} monthlyBudget={monthlyBudget}
+          safe={safeToSpend} burn={burnRate} categories={categories} lastExpense={lastExpense} />
 
-        {/* BENTO GRID */}
-        <div className="grid grid-cols-2 gap-3">
-          <StreakCard streakDays={streakDays} />
-          <ChillarCard totalChillar={totalChillar} todayRoundup={todayRoundup} />
-        </div>
+        {/* 4. Habit */}
+        <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} compact />
 
-        {/* SPEND SCORE */}
-        <SpendScoreCard score={paisaScore} />
+        {/* One insight at most, plus Ask Vittova */}
+        <InsightCard burn={burnRate} foodThisMonth={foodThisMonth} />
 
-        {/* SCAN CTA */}
-        <ScanBillCTA onScan={handleScanFile} loading={scanLoading} fileInputRef={fileInputRef} />
+        <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanFile} />
+        {/* Room for the + button so it never covers the last card */}
+        <div className="h-24" />
+      </div>
 
-        {/* RECENT EXPENSES */}
-        <RecentExpenses expenses={expenses} loading={loading} />
-
-        {/* AI TIP */}
-        <AiTipCard expenses={expenses} />
-
-        <div className="h-4" />
-      </motion.div>
-
-      {/* FLOATING + FAB */}
-      <motion.button
+      {/* Add expense */}
+      <button
+        type="button"
         onClick={() => setShowAddModal(true)}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.6, type: 'spring', stiffness: 380, damping: 20 }}
-        whileTap={{ scale: 0.88 }}
-        whileHover={{ scale: 1.08, boxShadow: '0 0 30px rgba(57,255,20,0.5)' }}
-        className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] w-14 h-14 rounded-full bg-lime-400 text-black
-                   flex items-center justify-center shadow-[0_4px_24px_rgba(57,255,20,0.4)]
-                   transition-shadow cursor-pointer"
+        className="v-press fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-lime-400 text-black shadow-[0_6px_20px_rgba(0,0,0,0.45)]"
         aria-label="Add expense"
       >
-        <Plus className="w-7 h-7" strokeWidth={3} />
-      </motion.button>
-
+        <Plus className="h-7 w-7" strokeWidth={3} />
+      </button>
 
     </div>
   );

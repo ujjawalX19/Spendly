@@ -18,13 +18,24 @@ const UNIQUE_KEYS = {
     streak_activities: ['user_id', 'activity', 'activity_date'],
     paisa_scores: ['user_id', 'week_start'],
     group_members: ['group_id', 'user_id'],
+    money_streak_days: ['user_id', 'day'],
+    money_xp_ledger: ['user_id', 'reason', 'ref_key'],
+    play_purchases: ['token_hash'],
+    recurring_decisions: ['user_id', 'merchant_key'],
+    recurring_expectations: ['user_id', 'merchant_key', 'expected_date'],
+    challenge_enrollments: ['user_id', 'campaign_id'],
+    challenge_completions: ['enrollment_id'],
+    reward_issuances: ['enrollment_id'],
 };
 
 // Rows that belong to a user and cascade when the auth user is deleted.
 const CASCADE = [
     ['expenses', 'user_id'], ['recurring_bills', 'user_id'], ['streak_activities', 'user_id'],
     ['paisa_scores', 'user_id'], ['pdf_imports', 'user_id'], ['ai_chat_history', 'user_id'],
-    ['group_members', 'user_id'], ['groups', 'created_by'], ['profiles', 'id'],
+    ['group_members', 'user_id'], ['groups', 'created_by'],
+    ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['play_purchases', 'user_id'],
+    ['recurring_decisions', 'user_id'], ['recurring_expectations', 'user_id'],
+    ['challenge_enrollments', 'user_id'], ['profiles', 'id'],
 ];
 
 function ilikeTest(c, pattern) {
@@ -127,6 +138,11 @@ class Query {
     lte(c, v) { this.filters.push((r) => r[c] != null && compare(r[c], v) <= 0); return this; }
     in(c, vs) { this.filters.push((r) => vs.some((v) => same(r[c], v))); return this; }
     is(c, v) { this.filters.push((r) => (v === null ? r[c] === null || r[c] === undefined : r[c] === v)); return this; }
+    not(c, op, v) {
+        if (op !== 'is') throw new Error(`fake not(): unsupported operator ${op}`);
+        this.filters.push((r) => (v === null ? r[c] !== null && r[c] !== undefined : r[c] !== v));
+        return this;
+    }
     ilike(c, pattern) {
         this.filters.push(ilikeTest(c, pattern));
         return this;
@@ -335,10 +351,11 @@ function createFakeSupabase() {
             id, email, full_name: overrides.full_name || 'Test User', role: 'user', is_banned: false, created_at: new Date().toISOString(),
             monthly_budget: 10000, investment_target: 0, karma_score: 100,
             streak_current: 0, streak_longest: 0, streak_last_log: null, total_chillar: 0,
-            is_pro: false, pro_expires_at: null, streak_freezes_remaining: 0, paisa_score: 0,
+            is_pro: false, pro_expires_at: null, pro_source: null, streak_freezes_remaining: 0, paisa_score: 0,
             receipt_scans_this_month: 0, receipt_scans_reset_month: null,
             chat_messages_today: 0, chat_messages_reset_at: null,
             expenses_today: 0, expenses_reset_at: null,
+            money_checks_today: 0, money_checks_reset_at: null, money_streak_started_on: null,
             ...overrides,
         });
         return { id, email, token };

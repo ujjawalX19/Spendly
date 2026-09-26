@@ -10,7 +10,11 @@ with
 app_tables(t) as (
     values ('profiles'), ('expenses'), ('groups'), ('group_members'), ('group_expenses'),
            ('group_expense_splits'), ('settlements'), ('recurring_bills'), ('paisa_scores'),
-           ('pdf_imports'), ('streak_activities'), ('ai_chat_history')
+           ('pdf_imports'), ('streak_activities'), ('ai_chat_history'),
+           -- v1_7_money_decisions.sql (app v1.1)
+           ('money_streak_days'), ('money_xp_ledger'),
+           -- v1_9_subscription_audit.sql
+           ('recurring_decisions'), ('recurring_expectations')
 ),
 checks as (
     -- 1. RLS enabled on every app table
@@ -39,18 +43,24 @@ checks as (
 
     union all
     -- 3. anon cannot read app tables
+    -- (a missing table is reported, not an error, so the script always runs)
     select 'No SELECT for anon on ' || a.t,
-           not has_table_privilege('anon', 'public.' || a.t, 'SELECT'),
-           ''
+           case when to_regclass('public.' || a.t) is null then false
+                else not has_table_privilege('anon', 'public.' || a.t, 'SELECT') end,
+           case when to_regclass('public.' || a.t) is null then 'table missing' else '' end
     from app_tables a
 
     union all
     -- 4. Explicit escalation checks on the most sensitive columns
     select 'authenticated cannot UPDATE profiles.' || col,
-           not has_column_privilege('authenticated', 'public.profiles', col, 'UPDATE'),
-           ''
+           case when not exists (select 1 from information_schema.columns
+                                 where table_schema = 'public' and table_name = 'profiles' and column_name = col) then false
+                else not has_column_privilege('authenticated', 'public.profiles', col, 'UPDATE') end,
+           case when not exists (select 1 from information_schema.columns
+                                 where table_schema = 'public' and table_name = 'profiles' and column_name = col) then 'column missing' else '' end
     from unnest(array['is_pro', 'pro_expires_at', 'role', 'is_banned', 'total_chillar',
-                      'streak_current', 'streak_longest', 'chat_messages_today']) as col
+                      'streak_current', 'streak_longest', 'chat_messages_today',
+                      'money_checks_today', 'money_checks_reset_at', 'money_streak_started_on', 'pro_source']) as col
 
     union all
     -- 5. The self-join group policy is gone
@@ -141,6 +151,46 @@ checks as (
     select 'admin_audit_log is append-only (trigger)',
            exists (select 1 from pg_trigger where tgname = 'trg_admin_audit_log_append_only' and tgrelid = to_regclass('public.admin_audit_log')),
            'run v1_6_owner_console.sql'
+
+    union all
+    -- v1.7 (app v1.1): no-spend days are an allowed streak activity
+    select 'streak_activities accepts no_spend_day',
+           exists (select 1 from pg_constraint
+                   where conname = 'streak_activities_activity_check'
+                     and pg_get_constraintdef(oid) like '%no_spend_day%'),
+           'run v1_7_money_decisions.sql'
+
+    union all
+    select 'Money XP awards are unique per (user, reason, ref_key)',
+           exists (select 1 from pg_constraint where conname = 'money_xp_ledger_once' and contype = 'u'),
+           'run v1_7_money_decisions.sql'
+
+    union all
+    -- v1.8 (app v1.1): Google Play purchases are backend-only
+    select r || ' cannot SELECT/INSERT play_purchases',
+           case when to_regclass('public.play_purchases') is null then false
+                else not (has_table_privilege(r, 'public.play_purchases', 'SELECT') or has_table_privilege(r, 'public.play_purchases', 'INSERT')) end,
+           case when to_regclass('public.play_purchases') is null then 'missing — run v1_8_play_billing.sql' else '' end
+    from unnest(array['anon', 'authenticated']) as r
+
+    union all
+    select 'RLS enabled: play_purchases',
+           coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.play_purchases')), false),
+           case when to_regclass('public.play_purchases') is null then 'missing — run v1_8_play_billing.sql' else '' end
+
+    union all
+    -- v1.10 (app v1.1): sponsored challenge tables are backend-only
+    select r || ' cannot SELECT/INSERT ' || o,
+           case when to_regclass('public.' || o) is null then false
+                else not (has_table_privilege(r, 'public.' || o, 'SELECT') or has_table_privilege(r, 'public.' || o, 'INSERT')) end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_10_sponsored_challenges.sql' else '' end
+    from unnest(array['sponsors', 'campaigns', 'campaign_vouchers', 'challenge_enrollments', 'challenge_completions', 'reward_issuances', 'campaign_impressions']) as o,
+         unnest(array['anon', 'authenticated']) as r
+
+    union all
+    select 'Challenge completions are immutable (trigger)',
+           exists (select 1 from pg_trigger where tgname = 'trg_challenge_completions_immutable'),
+           'run v1_10_sponsored_challenges.sql'
 
     union all
     select 'Exactly one admin account (owner)',

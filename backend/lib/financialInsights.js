@@ -23,6 +23,7 @@ const { composeInvestingAnswer, composeConceptAnswer, futureValue } = require('.
 const { computeSafeToSpend, effectiveMonthlyBudget } = require('./safeToSpend');
 const { buildInvestmentContext, composeInvestmentAnswer } = require('./investmentDecision');
 const { computeBurnRate } = require('./burnRate');
+const { affordCheck } = require('./moneyDecisions');
 
 const DISCRETIONARY = ['Food', 'Entertainment', 'Shopping', 'Other'];
 const r = (n) => Math.round(Number(n) || 0);
@@ -120,13 +121,15 @@ function extractPercent(question) {
  */
 function buildFacts({ profile = {}, expenses = [], bills = [], groupPool = null, now = new Date() }) {
     const monthStart = appTime.startOfMonth(now);
+    const nextMonthStart = appTime.startOfNextMonth(now);
     const prevStart = appTime.startOfMonthsAgo(1, now);
     const day = appTime.dayOfMonth(now);
     const daysInMonth = appTime.daysInMonth(now);
     const daysLeft = appTime.daysRemainingInMonth(now);
     const t = (x) => new Date(x.occurred_at).getTime();
 
-    const thisMonth = expenses.filter((x) => t(x) >= monthStart.getTime());
+    // An expense dated next month (a planned payment) is not this month's spending.
+    const thisMonth = expenses.filter((x) => t(x) >= monthStart.getTime() && t(x) < nextMonthStart.getTime());
     const lastMonth = expenses.filter((x) => t(x) >= prevStart.getTime() && t(x) < monthStart.getTime());
 
     // The three complete months before this one, and how many of them have any
@@ -232,6 +235,9 @@ function buildFacts({ profile = {}, expenses = [], bills = [], groupPool = null,
         projectedOverBudgetBy: budget > 0 && projected > budget ? r(projected - budget) : 0,
         budgetRunsOut: burn.willGoBroke && budgetLeft >= 0 && burn.brokeDate ? { date: burn.brokeDate, inDays: dailyPace > 0 ? Math.floor(budgetLeft / dailyPace) : null } : null,
         upcomingBills: sts.upcomingBills,
+        recurringBillsMonthly: r((bills || []).filter((b) => b && b.is_active !== false).reduce((s, b) => s + (Number(b.amount) || 0), 0)),
+        nextMonthStart: appTime.localDateKey(nextMonthStart),
+        budgetIsDefault: !(Number(profile.monthly_budget) > 0),
         upcomingBillList: sts.upcomingBillList.slice(0, 6),
         safeToSpendRemaining: sts.remaining,
         safeToSpendPerDay: sts.daily,
@@ -466,23 +472,26 @@ function composeAnswer(intent, f, question) {
             });
         case 'affordability': {
             if (!amount) return answer({ direct: 'Tell me the price, e.g. "Can I afford ₹3,000 headphones?", and I will check it against your budget, bills and spending pace.' });
-            const room = f.safeToSpendRemaining;
-            const leftAfter = room - amount;
-            const needForPace = f.expectedRestOfMonth;
-            const fits = amount <= room;
-            const comfortable = fits && leftAfter >= needForPace;
-            const verdict = !fits ? 'Not this month' : comfortable ? 'Yes' : "Possible, but I'd wait";
-            const perDayToSave = f.daysLeft ? Math.ceil((amount - room) / f.daysLeft) : 0;
-            const capacity = f.monthlySavingCapacity;
-            const monthsToSave = !fits && capacity ? Math.ceil((amount - room) / capacity) : null;
+            // The Afford-It Check itself (lib/moneyDecisions), so the answer
+            // matches the dashboard's check exactly.
+            const check = affordCheck(f, { amount });
             return answer({
-                direct: fits
-                    ? `${verdict}: ${inr(amount)} fits within the ${inr(room)} safe to spend for the rest of the month${comfortable ? '.' : `, but it would leave ${inr(leftAfter)} while your usual pace needs about ${inr(needForPace)}.`}`
-                    : `${verdict}: ${inr(amount)} is more than the ${inr(room)} safe to spend for the rest of the month.`,
-                numbers: [`Safe to spend remaining: ${inr(room)}`, fits ? `Left afterwards: ${inr(leftAfter)}, about ${inr(leftAfter / f.daysLeft)} a day for ${plural(f.daysLeft, 'day')}` : `Shortfall: ${inr(amount - room)}`, f.dailyPace ? `Your spending pace: ${inr(f.dailyPace)} a day` : null, f.upcomingBills ? `Bills still due: ${inr(f.upcomingBills)}` : null],
-                reasoning: comfortable ? 'Safe to spend already accounts for bills still due and your savings target, and your normal spending still fits afterwards.' : fits ? 'The purchase would use most of your remaining buffer, so ordinary spending later this month could push you over.' : 'Buying now would mean going over budget or dipping into money set aside for bills or savings.',
-                action: comfortable ? 'Go ahead if it is planned, and keep to your daily Safe-to-Spend afterwards.' : fits ? `If it can wait, buy it next month. If not, keep other spending under ${inr(Math.max(0, leftAfter) / f.daysLeft)} a day after buying.` : monthsToSave ? `Set aside ${inr(capacity)} a month and you could cover the gap in about ${plural(monthsToSave, 'month')}.` : `Waiting until next month, or saving ${inr(perDayToSave)} a day, would cover it.`,
-                next: comfortable ? '' : `Treat ${inr(amount)} as a savings goal rather than a purchase this month.`,
+                direct: `${check.headline} ${check.detail}`,
+                numbers: [
+                    `Safe to spend remaining: ${inr(check.safeToSpendRemaining)}`,
+                    check.shortfall ? `Shortfall: ${inr(check.shortfall)}` : `Left afterwards: ${inr(check.leftAfter)}, about ${inr(check.leftAfterPerDay)} a day for ${plural(f.daysLeft, 'day')}`,
+                    check.expectedRestOfMonth !== null ? `Your usual spending for the rest of the month: about ${inr(check.expectedRestOfMonth)}` : null,
+                    f.upcomingBills ? `Bills still due: ${inr(f.upcomingBills)}` : null,
+                ],
+                reasoning: check.verdict === 'can_afford' ? 'Safe to spend already accounts for bills still due and your savings target, and your normal spending still fits afterwards.'
+                    : check.verdict === 'wait' ? 'The purchase would use most of your remaining buffer, so ordinary spending later this month could push you over.'
+                        : 'Buying now would mean going over budget or dipping into money set aside for bills or savings.',
+                action: check.verdict === 'can_afford' ? 'Go ahead if it is planned, and keep to your daily Safe-to-Spend afterwards.'
+                    : check.saferDate ? `If it can wait, buy it from ${check.saferDate.label}.`
+                        : check.monthsToSave ? `Set aside ${inr(f.monthlySavingCapacity)} a month and you could cover the gap in about ${plural(check.monthsToSave, 'month')}.`
+                            : check.verdict === 'wait' ? `If you buy it now, keep other spending under ${inr(check.leftAfterPerDay)} a day.`
+                                : 'Treat it as a savings goal rather than a purchase this month.',
+                next: check.verdict === 'can_afford' ? '' : `Treat ${inr(amount)} as a savings goal rather than a purchase this month.`,
                 note: INCOME_NOTE,
             });
         }

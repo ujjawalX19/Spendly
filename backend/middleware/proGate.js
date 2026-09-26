@@ -23,12 +23,13 @@ const { hasActivePro } = require('../lib/entitlements');
  * CLOSED (503): the failure mode must not be unlimited free AI usage.
  */
 
-const PRO_ONLY_FEATURES = new Set(['pdf_import']);
+const PRO_ONLY_FEATURES = new Set(['pdf_import', 'subscription_audit', 'sponsored_challenges']);
 
 const FREE_LIMITS = {
     receipt_scan: 3,   // per calendar month
     chat_message: 10,  // per calendar day
     add_expense: 20,   // per calendar day
+    money_check: 5,    // Afford-It checks and SIP stress tests, per calendar day
 };
 
 /** Features whose handler costs real money; these never fail open. */
@@ -38,12 +39,14 @@ const COUNTERS = {
     receipt_scan: { counter: 'receipt_scans_this_month', reset: 'receipt_scans_reset_month', period: 'month' },
     chat_message: { counter: 'chat_messages_today', reset: 'chat_messages_reset_at', period: 'day' },
     add_expense: { counter: 'expenses_today', reset: 'expenses_reset_at', period: 'day' },
+    money_check: { counter: 'money_checks_today', reset: 'money_checks_reset_at', period: 'day' },
 };
 
 const LIMIT_MESSAGES = {
     receipt_scan: `You've used all ${FREE_LIMITS.receipt_scan} free receipt scans this month. Your scans reset on the 1st.`,
     chat_message: `You've used all ${FREE_LIMITS.chat_message} free AI messages for today. They reset at midnight (IST).`,
     add_expense: `You've reached the free limit of ${FREE_LIMITS.add_expense} expenses today. The limit resets at midnight (IST).`,
+    money_check: `You've used your ${FREE_LIMITS.money_check} free money checks for today. They reset at midnight (IST).`,
 };
 
 const MAX_CAS_ATTEMPTS = 4;
@@ -149,7 +152,9 @@ function proGate(feature) {
                     success: false,
                     code: 'PRO_REQUIRED',
                     feature,
-                    message: 'This feature is part of Vittova Pro, which is not available yet.',
+                    message: require('../lib/entitlements').purchasesEnabled()
+                        ? 'This feature is part of Vittova Pro.'
+                        : 'This feature is part of Vittova Pro, which is not available yet.',
                 });
             }
 

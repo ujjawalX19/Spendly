@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { Sheet, BalanceText } from './HostelPool';
+import { ErrorState, Skeleton } from '../components/ui';
 
 const inr = (n) => `₹${Math.abs(Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const when = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -178,9 +179,13 @@ export default function GroupDetail() {
         return (
             <div className="space-y-4">
                 <Link to="/pool" className="inline-flex items-center gap-2 text-sm text-zinc-500"><ArrowLeft className="h-4 w-4" /> Groups</Link>
-                {error ? <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">{error}</p> : (
-                    <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500" role="status">
-                        <Loader2 className="h-5 w-5 animate-spin text-lime-400" /> {waking ? 'Waking the server up…' : 'Loading group…'}
+                {error ? <ErrorState onRetry={load} /> : (
+                    <div className="space-y-3" aria-busy="true" aria-label="Loading group">
+                        <Skeleton className="h-8 w-40" />
+                        <Skeleton className="h-28 w-full rounded-[20px]" />
+                        <Skeleton className="h-16 w-full rounded-2xl" />
+                        <Skeleton className="h-16 w-full rounded-2xl" />
+                        {waking && <p className="text-center text-xs text-zinc-500">Waking the server up…</p>}
                     </div>
                 )}
             </div>

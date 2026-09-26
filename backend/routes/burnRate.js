@@ -68,7 +68,8 @@ router.get('/', protect, async (req, res) => {
             .from('expenses')
             .select('amount, category, occurred_at')
             .eq('user_id', req.user.id)
-            .gte('occurred_at', appTime.startOfMonth(now).toISOString());
+            .gte('occurred_at', appTime.startOfMonth(now).toISOString())
+            .lt('occurred_at', appTime.startOfNextMonth(now).toISOString());
 
         if (expError) {
             return res.status(500).json({ success: false, message: 'Could not load expenses' });

@@ -41,6 +41,9 @@ const PAGE_SIZE_MAX = 100;
 
 router.use(protect, requireOwner, adminWriteLimiter);
 
+// Sponsored campaign dashboard (owner-only, behind CAMPAIGN_DASHBOARD_ENABLED).
+router.use('/campaigns', require('./adminCampaigns'));
+
 // Columns the admin user list and detail may expose. Deliberately excludes
 // quota counters' raw internals, chillar totals and score internals.
 const USER_COLUMNS = 'id, email, full_name, role, is_banned, is_pro, pro_expires_at, created_at, last_active_at';
@@ -502,7 +505,7 @@ router.post('/users/:id/pro', async (req, res) => {
 
     const { data: updated, error } = await supabase
         .from('profiles')
-        .update({ is_pro: true, pro_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null })
+        .update({ is_pro: true, pro_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null, pro_source: 'manual' })
         .eq('id', target.id)
         .select(USER_COLUMNS_LEGACY)
         .single();
@@ -528,7 +531,7 @@ router.delete('/users/:id/pro', async (req, res) => {
 
     const { data: updated, error } = await supabase
         .from('profiles')
-        .update({ is_pro: false, pro_expires_at: null })
+        .update({ is_pro: false, pro_expires_at: null, pro_source: null })
         .eq('id', target.id)
         .select(USER_COLUMNS_LEGACY)
         .single();

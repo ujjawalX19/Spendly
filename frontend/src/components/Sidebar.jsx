@@ -3,14 +3,14 @@ import VittovaLogo from './VittovaLogo';
 import { NavLink } from 'react-router-dom';
 
 const navigation = [
-  { to: '/dash', label: 'Overview', icon: LayoutDashboard },
-  { to: '/transactions', label: 'Transactions', icon: Receipt },
-  { to: '/pool', label: 'Group Pool', icon: Users },
-  { to: '/bot', label: 'Vittova AI', icon: Bot },
+  { to: '/dash', label: 'Home', icon: LayoutDashboard },
+  { to: '/transactions', label: 'Activity', icon: Receipt },
+  { to: '/pool', label: 'Groups', icon: Users },
+  { to: '/bot', label: 'Ask Vittova', icon: Bot },
   { to: '/wealth', label: 'Wealth', icon: TrendingUp },
   { to: '/graveyard', label: 'Recurring charges', icon: Repeat },
   { to: '/import', label: 'Statement Import', icon: FileText },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/settings', label: 'Profile', icon: Settings },
 ];
 
 export default function Sidebar({ onLogout }) {

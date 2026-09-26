@@ -115,8 +115,8 @@ test('affordability, safe-to-spend and goal answers are computed, never guessed'
     assert.equal(extractAmount('a phone for 1.5 lakh'), 150000);
     assert.equal(extractAmount('a 20k phone'), 20000);
 
-    assert.match(composeAnswer('affordability', facts, 'Can I afford ₹3,000 headphones?').direct, /^Yes: ₹3,000 fits/);
-    assert.match(composeAnswer('affordability', facts, 'Can I afford a 20k phone?').direct, /^Not this month/);
+    assert.match(composeAnswer('affordability', facts, 'Can I afford ₹3,000 headphones?').direct, /^You can afford this purchase\. ₹3,000 fits within the ₹11,780/);
+    assert.match(composeAnswer('affordability', facts, 'Can I afford a 20k phone?').direct, /^This purchase would put your current month under pressure/);
     assert.match(composeAnswer('goal_planning', facts, 'How long to save ₹50,000?').direct, /about 25 months/);
     assert.match(composeAnswer('safe_to_spend', facts, 'per day').direct, /₹11,780 in total/);
 });

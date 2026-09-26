@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -13,6 +13,8 @@ import { ProProvider } from './contexts/ProContext';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
+import { onReminderOpened, refreshReminders } from './lib/debitReminders';
+import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
 // out user sees, and a lazy chunk there would add a spinner to cold start.
@@ -29,6 +31,8 @@ const Wealth = lazy(() => import('./pages/Wealth'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ProUpgrade = lazy(() => import('./pages/ProUpgrade'));
 const SubscriptionGraveyard = lazy(() => import('./pages/SubscriptionGraveyard'));
+const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'));
+const Challenges = lazy(() => import('./pages/Challenges'));
 const PdfImport = lazy(() => import('./pages/PdfImport'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
@@ -81,13 +85,21 @@ function ProtectedRoute({ children }) {
 }
 
 function Layout({ children }) {
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
+
+  // Tapping an "expected debit tomorrow" reminder opens the audit.
+  useEffect(() => onReminderOpened((route) => navigate(route)), [navigate]);
+
+  // Once per signed-in app start: bring debit reminders up to date.
+  const reminderUser = session?.user?.id;
+  useEffect(() => { if (reminderUser) refreshReminders(session); }, [reminderUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     // Mobile spacing lives here only: 16px side gutters, the status-bar inset
@@ -96,7 +108,8 @@ function Layout({ children }) {
     <div className="app-layout min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] md:pb-0 md:pl-64 md:pt-0">
       <Sidebar onLogout={handleLogout} />
       <main className="px-4 pt-3 md:p-8 max-w-7xl mx-auto">
-        {children}
+        {/* A short fade/rise on each screen change (v-page, 240 ms). */}
+        <div key={pathname} className="v-page">{children}</div>
       </main>
       <BottomNav />
     </div>
@@ -230,9 +243,13 @@ function DeepLinkHandler({ onMessage }) {
 
 function App() {
   const [authMessage, setAuthMessage] = useState('');
+  // The brand moment runs over the app on a cold start while auth and data
+  // load underneath; it never replays on navigation.
+  const [splash, setSplash] = useState(() => shouldShowSplash(window.location.pathname, Capacitor.isNativePlatform()));
 
   return (
     <ThemeProvider>
+      {splash && <StartupSplash onDone={() => setSplash(false)} />}
       <AuthProvider>
         <ProProvider>
           <Router>
@@ -272,6 +289,8 @@ function App() {
                 <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
                 <Route path="/graveyard" element={<ProtectedRoute><Layout><SubscriptionGraveyard /></Layout></ProtectedRoute>} />
                 <Route path="/import" element={<ProtectedRoute><Layout><PdfImport /></Layout></ProtectedRoute>} />
+                <Route path="/subscription-audit" element={<ProtectedRoute><Layout><SubscriptionAudit /></Layout></ProtectedRoute>} />
+                <Route path="/challenges" element={<ProtectedRoute><Layout><Challenges /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />

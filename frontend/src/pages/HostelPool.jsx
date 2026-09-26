@@ -5,6 +5,7 @@ import { Users, Plus, KeyRound, Loader2, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
+import { ErrorState, Skeleton } from '../components/ui';
 
 const inr = (n) => `₹${Math.abs(Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
@@ -101,12 +102,14 @@ export default function HostelPool() {
                 </button>
             </div>
 
-            {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
+            {error && groups !== null && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
 
-            {groups === null ? (
-                <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500" role="status">
-                    <Loader2 className="h-5 w-5 animate-spin text-lime-400" />
-                    {waking ? 'Waking the server up, this can take a moment…' : 'Loading your groups…'}
+            {groups === null && error ? (
+                <ErrorState onRetry={load} />
+            ) : groups === null ? (
+                <div className="space-y-2" aria-busy="true" aria-label="Loading your groups">
+                    {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
+                    {waking && <p className="pt-2 text-center text-xs text-zinc-500">Waking the server up, this can take a moment…</p>}
                 </div>
             ) : groups.length === 0 ? (
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center">

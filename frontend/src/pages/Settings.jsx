@@ -1,8 +1,9 @@
 /**
- * Settings.jsx — Vittova
+ * Settings.jsx — Vittova "Profile" tab
  * ─────────────────────────────────────────────────────────────
- * Settings page with budget editing, investment target,
- * account deletion, Pro management, and legal links.
+ * Budget and target, notifications, the features that moved off Home
+ * (groups, recurring charges, statement import, audit, challenges),
+ * data export, legal links and account deletion.
  */
 
 import { useState } from 'react';
@@ -11,13 +12,14 @@ import { motion } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
   ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
-  Users, Repeat
+  Users, Repeat, Radar, Gift, Bell
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { useExpenses } from '../hooks/useExpenses';
 import { friendlyError } from '../lib/errors';
-import { API_URL as API_BASE_URL } from '../lib/apiConfig';
+import { API_URL as API_BASE_URL, apiJson } from '../lib/apiConfig';
+import { remindersSupported, remindersWanted, turnRemindersOff, turnRemindersOn } from '../lib/debitReminders';
 
 const API_URL = API_BASE_URL;
 
@@ -46,7 +48,8 @@ function SettingRow({ icon: Icon, label, value, color = 'text-lime-400', onClick
       variants={cardVariants}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-4 py-4 rounded-2xl transition-colors ${
+      type="button"
+      className={`v-press w-full min-h-[56px] flex items-center justify-between px-4 py-3 rounded-2xl transition-colors ${
         danger
           ? 'bg-red-500/5 border border-red-500/15 hover:bg-red-500/10'
           : 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700'
@@ -63,7 +66,7 @@ function SettingRow({ icon: Icon, label, value, color = 'text-lime-400', onClick
           {value && <p className="text-xs text-zinc-500 mt-0.5">{value}</p>}
         </div>
       </div>
-      <ChevronRight className={`w-4 h-4 ${danger ? 'text-red-500' : 'text-zinc-600'}`} />
+      {onClick && <ChevronRight className={`w-4 h-4 ${danger ? 'text-red-500' : 'text-zinc-600'}`} aria-hidden="true" />}
     </motion.button>
   );
 }
@@ -210,7 +213,9 @@ function DeleteAccountModal({ onClose, onDelete }) {
           <li>All expenses, recurring bills and statement-import history</li>
           <li>Your Spend Score history, streaks and AI coach conversations</li>
           <li>Group pools you created, and your membership of other pools</li>
+          <li>Recurring-payment audit, Pro purchase and sponsored-challenge records</li>
         </ul>
+        <p className="text-xs text-amber-200/90 mb-2">Paying for Vittova Pro? Cancel it in Google Play first: deleting your account does not stop Google Play charges.</p>
         <p className="text-xs text-zinc-500 mb-4">This cannot be undone. Export your expenses first if you want a copy.</p>
         <p className="text-sm text-zinc-400 mb-3">Type <span className="font-mono text-red-400 font-bold">DELETE</span> to confirm:</p>
         <input
@@ -237,10 +242,32 @@ function DeleteAccountModal({ onClose, onDelete }) {
   );
 }
 
+/** A switch row: the state is in the text too, never only in the colour. */
+function ToggleRow({ icon: Icon, label, detail, on, busy, onToggle, disabled }) {
+  return (
+    <motion.div variants={cardVariants} className="flex min-h-[56px] items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800"><Icon className="h-5 w-5 text-lime-400" aria-hidden="true" /></div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white">{label}</p>
+          {detail && <p className="mt-0.5 text-xs text-zinc-500">{detail}</p>}
+        </div>
+      </div>
+      <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle} disabled={disabled || busy}
+        className="v-press flex min-h-[44px] shrink-0 items-center gap-2 disabled:opacity-40">
+        <span className="text-xs font-bold text-zinc-400">{on ? 'On' : 'Off'}</span>
+        <span className={`relative h-7 w-12 rounded-full transition-colors ${on ? 'bg-lime-400' : 'bg-zinc-700'}`}>
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform duration-150 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
+        </span>
+      </button>
+    </motion.div>
+  );
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const { user, session, logout, applyServerProfile } = useAuth();
-  const { isPro } = usePro();
+  const { isPro, features } = usePro();
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -248,6 +275,31 @@ export default function Settings() {
   const [exportState, setExportState] = useState('idle'); // idle | working | done | error
   const [exportError, setExportError] = useState('');
   const { exportCsv } = useExpenses();
+  const [reminders, setReminders] = useState(remindersWanted());
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderNote, setReminderNote] = useState('');
+
+  // Debit reminders: the same switch as on the Subscription audit screen.
+  const toggleReminders = async () => {
+    setReminderNote('');
+    setReminderBusy(true);
+    try {
+      if (reminders) {
+        await turnRemindersOff();
+        setReminders(false);
+        return;
+      }
+      const audit = await apiJson('/subscription-audit', { session }).catch(() => null);
+      const outcome = await turnRemindersOn(audit?.reminders || []);
+      if (outcome === 'on') setReminders(true);
+      else if (outcome === 'denied') setReminderNote('Notifications are off for Vittova. Turn them on in Android settings to get reminders.');
+      else setReminderNote('Reminders work in the Vittova Android app.');
+    } catch {
+      setReminderNote("Something went wrong. Your settings weren't changed. Try again.");
+    } finally {
+      setReminderBusy(false);
+    }
+  };
 
   // Taking your data with you is a trust feature, so it is on the free tier.
   const handleExport = async () => {
@@ -341,7 +393,7 @@ export default function Settings() {
     >
       {/* Header */}
       <motion.header variants={cardVariants} className="mb-2">
-        <h1 className="text-2xl font-black text-white">Settings</h1>
+        <h1 className="text-2xl font-black text-white">{user?.full_name || user?.name || 'Profile'}</h1>
         <p className="text-sm text-zinc-500 mt-1">{user?.email}</p>
       </motion.header>
 
@@ -357,7 +409,7 @@ export default function Settings() {
           <span className="flex-1">{banner.message}</span>
           <button
             type="button" onClick={() => setBanner(null)} aria-label="Dismiss"
-            className="-my-1 shrink-0 px-2 text-lg leading-none opacity-70 hover:opacity-100"
+            className="-my-3 flex h-11 w-11 shrink-0 items-center justify-center text-lg leading-none opacity-70 hover:opacity-100"
           >
             &times;
           </button>
@@ -365,8 +417,8 @@ export default function Settings() {
       )}
 
       {/* Pro Status */}
-      <motion.div variants={cardVariants}
-        className={`rounded-2xl p-4 border ${isPro
+      <motion.button type="button" variants={cardVariants} onClick={() => navigate('/pro')}
+        className={`v-press block w-full text-left rounded-2xl p-4 border ${isPro
           ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/20'
           : 'bg-zinc-900 border-zinc-800'
         }`}
@@ -375,10 +427,11 @@ export default function Settings() {
           <Crown className={`w-6 h-6 ${isPro ? 'text-amber-400' : 'text-zinc-600'}`} />
           <div>
             <p className="text-sm font-bold text-white">{isPro ? 'Vittova Pro Active' : 'Free Plan'}</p>
-            <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'Vittova Pro is not available to buy yet'}</p>
+            <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'See what Vittova Pro includes'}</p>
           </div>
+          <ChevronRight className="ml-auto h-4 w-4 text-zinc-600" aria-hidden="true" />
         </div>
-      </motion.div>
+      </motion.button>
 
       {/* Settings */}
       <div className="space-y-2">
@@ -397,6 +450,19 @@ export default function Settings() {
       </div>
 
       <div className="space-y-2">
+        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Notifications</p>
+        {!remindersSupported() ? (
+          <SettingRow icon={Bell} label="Debit reminders" value="Available in the Vittova Android app" />
+        ) : isPro && features.subscriptionAuditEnabled !== false ? (
+          <ToggleRow icon={Bell} label="Debit reminders" detail="A reminder the day before an expected recurring debit"
+            on={reminders} busy={reminderBusy} onToggle={toggleReminders} />
+        ) : (
+          <SettingRow icon={Bell} label="Debit reminders" value="Part of Vittova Pro" onClick={() => navigate('/pro')} />
+        )}
+        {reminderNote && <p role="status" className="px-1 text-xs text-amber-200">{reminderNote}</p>}
+      </div>
+
+      <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">More</p>
         <SettingRow
           icon={Users} label="Group Pool" value="Split bills and settle up"
@@ -411,6 +477,24 @@ export default function Settings() {
           color="text-amber-400" onClick={() => navigate('/import')}
         />
       </div>
+
+      {(features.subscriptionAuditEnabled || features.sponsoredChallengesEnabled) && (
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Pro</p>
+          {features.subscriptionAuditEnabled && (
+            <SettingRow
+              icon={Radar} label="Subscription audit" value={isPro ? 'Recurring payments, price rises, debit reminders' : 'Part of Vittova Pro'}
+              color="text-lime-400" onClick={() => navigate('/subscription-audit')}
+            />
+          )}
+          {features.sponsoredChallengesEnabled && (
+            <SettingRow
+              icon={Gift} label="Money challenges" value="Sponsored · fixed voucher rewards"
+              color="text-amber-400" onClick={() => navigate('/challenges')}
+            />
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Your Data</p>

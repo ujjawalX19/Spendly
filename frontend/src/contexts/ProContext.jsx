@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { API_URL } from '../lib/apiConfig';
+import { isAndroidApp, restorePurchases } from '../lib/billing';
 
 const ProContext = createContext();
 
@@ -13,6 +14,8 @@ const FREE_DEFAULTS = {
     chatMessagesLimit: 10,
     expensesToday: 0,
     expensesLimit: 20,
+    moneyChecksUsed: 0,
+    moneyChecksLimit: 5,
   },
 };
 
@@ -29,6 +32,8 @@ export function ProProvider({ children }) {
   const [proStatus, setProStatus] = useState(FREE_DEFAULTS.pro);
   const [limits, setLimits] = useState(FREE_DEFAULTS.limits);
   const [purchasesAvailable, setPurchasesAvailable] = useState(false);
+  // Server feature flags (GET /api/features). Display only: routes enforce them.
+  const [features, setFeatures] = useState({});
   const [loading, setLoading] = useState(true);
 
   const fetchProStatus = useCallback(async () => {
@@ -37,9 +42,15 @@ export function ProProvider({ children }) {
       setProStatus(FREE_DEFAULTS.pro);
       setLimits(FREE_DEFAULTS.limits);
       setPurchasesAvailable(false);
+      setFeatures({});
       setLoading(false);
       return;
     }
+
+    fetch(`${API_URL}/features`, { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.success) setFeatures(d.features || {}); })
+      .catch(() => {});
 
     try {
       const res = await fetch(`${API_URL}/pro/status`, {
@@ -62,6 +73,16 @@ export function ProProvider({ children }) {
   useEffect(() => {
     fetchProStatus();
   }, [fetchProStatus]);
+
+  // Once per signed-in session on Android: hand any Play purchases to the
+  // server, so none is left unverified (Google refunds unacknowledged ones).
+  const [synced, setSynced] = useState(null);
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!purchasesAvailable || !userId || synced === userId || !isAndroidApp()) return;
+    setSynced(userId);
+    restorePurchases(session).then((outcome) => { if (outcome !== 'none') fetchProStatus(); }).catch(() => {});
+  }, [purchasesAvailable, session, synced, fetchProStatus]);
 
   const remaining = (used, limit) => (limit === null || limit === undefined ? Infinity : Math.max(0, limit - used));
 
@@ -105,6 +126,7 @@ export function ProProvider({ children }) {
       limits,
       loading,
       purchasesAvailable,
+      features,
       canUse,
       getRemaining,
       applyQuota,

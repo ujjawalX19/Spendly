@@ -11,6 +11,9 @@ const telemetry = require('../lib/opsTelemetry');
  * which itself cascades from auth.users. Checked after deletion so the
  * endpoint never reports success while financial data is left behind.
  */
+/** PostgreSQL / PostgREST codes for "table does not exist". */
+const MISSING_TABLE = new Set(['42P01', 'PGRST205']);
+
 const USER_TABLES = [
     ['expenses', 'user_id'],
     ['recurring_bills', 'user_id'],
@@ -19,6 +22,12 @@ const USER_TABLES = [
     ['pdf_imports', 'user_id'],
     ['ai_chat_history', 'user_id'],
     ['group_members', 'user_id'],
+    ['money_streak_days', 'user_id'],
+    ['money_xp_ledger', 'user_id'],
+    ['play_purchases', 'user_id'],
+    ['recurring_decisions', 'user_id'],
+    ['recurring_expectations', 'user_id'],
+    ['challenge_enrollments', 'user_id'],
     ['profiles', 'id'],
 ];
 
@@ -61,6 +70,8 @@ router.delete('/', protect, async (req, res) => {
     const leftovers = [];
     for (const [table, column] of USER_TABLES) {
         const { error: delError } = await supabase.from(table).delete().eq(column, userId);
+        // A table from a migration not yet applied holds nothing to delete.
+        if (delError && MISSING_TABLE.has(delError.code)) continue;
         if (delError) {
             leftovers.push(table);
             continue;

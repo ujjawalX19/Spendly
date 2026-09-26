@@ -46,6 +46,14 @@ const CLIENT_EVENTS = [
     'password_updated',
     'ai_mentor_opened',
     'app_crash',
+    // v1.1 monetization (no amounts, merchants or descriptions)
+    'subscription_audit_opened',
+    'debit_reminder_scheduled',
+    'debit_reminder_opened',
+    'pro_paywall_viewed',
+    'plan_selected',
+    'purchase_started',
+    'challenge_viewed',
 ];
 
 /** Events the backend records itself. */
@@ -59,6 +67,11 @@ const SERVER_EVENTS = [
     'profile_updated', 'recurring_bill_added', 'subscription_marked_cancelled',
     'account_deleted', 'account_delete_failed',
     'pro_purchase_attempted',
+    // v1.1 monetization
+    'recurring_payment_confirmed', 'recurring_payment_dismissed', 'price_change_detected', 'recurring_payment_detected',
+    'purchase_completed', 'purchase_restored', 'purchase_failed',
+    'challenge_joined', 'challenge_completed', 'reward_issued', 'reward_redeemed',
+    'student_verification_started', 'student_verification_passed',
 ];
 
 const code = z.string().regex(/^[a-z0-9_]{1,40}$/);
@@ -71,6 +84,10 @@ const PROP_VALIDATORS = {
     outcome: z.enum(['ai', 'fallback', 'calculated']),
     intent: z.string().regex(/^[a-z_]{1,30}$/),
     field: z.enum(['budget', 'savings_target']),
+    plan: z.enum(['monthly', 'yearly', 'student_monthly', 'student_yearly', 'limited_yearly']),
+    decision: z.enum(['confirmed', 'dismissed', 'intentional', 'unwanted', 'cleared']),
+    confidence: z.enum(['high', 'medium', 'possible']),
+    challenge: z.string().regex(/^[a-z_]{1,40}$/),
 };
 
 /** Keep only allow-listed keys whose values pass their validator. */
@@ -158,6 +175,9 @@ const ROUTE_EVENTS = {
     'PUT /api/account/investment-target': { ok: 'profile_updated', props: () => ({ field: 'savings_target' }) },
     'POST /api/safe-to-spend/bills': { ok: 'recurring_bill_added' },
     'POST /api/subscriptions/cancelled': { ok: 'subscription_marked_cancelled' },
+    'POST /api/subscription-audit/decision': { ok: 'recurring_payment_confirmed', props: (req) => ({ decision: ['confirmed', 'dismissed', 'intentional', 'unwanted'].includes(req.body?.decision) ? req.body.decision : 'cleared' }) },
+    'POST /api/pro/verify-purchase': { ok: 'purchase_completed', fail: 'purchase_failed' },
+    'POST /api/challenges/:id/join': { ok: 'challenge_joined' },
     // Account deletion is counted without the (now deleted) user's id.
     'DELETE /api/account': { ok: 'account_deleted', fail: 'account_delete_failed', anonymous: true },
     // Purchases are not implemented (501); an attempt is still a demand signal.

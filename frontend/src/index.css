@@ -135,3 +135,35 @@ body {
   html[data-typing] .app-layout { padding-bottom: 0; }
   html[data-typing] .chat-shell { height: calc(100dvh - env(safe-area-inset-top)); }
 }
+
+/* ═══ Vittova motion system (v1.1) ═══════════════════════════════════════
+   Presses 120 ms, content 220 ms, screens 240 ms, startup 1.4 s.
+   Everything here is disabled for prefers-reduced-motion. */
+.v-press { transition: transform 120ms ease-out, opacity 120ms ease-out, background-color 150ms ease-out; }
+.v-press:active { transform: scale(0.97); }
+
+@keyframes v-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Fill "backwards", never "both": an animation left in effect on transform makes
+   the element the containing block for position:fixed children, which pins the
+   bottom sheets and the + button to the page instead of the screen. */
+.v-enter { animation: v-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+/* Screens only fade: the page wrapper holds fixed elements, so no transform at all. */
+@keyframes v-fade { from { opacity: 0; } to { opacity: 1; } }
+.v-page { animation: v-fade 200ms ease-out backwards; }
+
+@keyframes v-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.v-celebrate { animation: v-pop 420ms cubic-bezier(0.3, 1.4, 0.5, 1) 1; }
+
+/* Startup splash */
+@keyframes v-splash-logo { from { opacity: 0; transform: translateY(6px) scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes v-splash-tagline { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.v-splash-logo { animation: v-splash-logo 550ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.v-splash-tagline { animation: v-splash-tagline 540ms cubic-bezier(0.16, 1, 0.3, 1) 280ms both; }
+.v-splash { transition: opacity 250ms ease-out; }
+.v-splash-out { opacity: 0; }
+.v-splash-static .v-splash-logo, .v-splash-static .v-splash-tagline { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .v-press, .v-press:active { transition: none; transform: none; }
+  .v-enter, .v-page, .v-celebrate, .v-splash-logo, .v-splash-tagline { animation: none; }
+}

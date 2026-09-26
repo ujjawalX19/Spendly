@@ -60,6 +60,12 @@
 
         </activity>
 
+        <!-- Shows a scheduled expected-debit reminder. Not exported: only this
+             app's own alarms can trigger it. -->
+        <receiver
+            android:name=".DebitReminderReceiver"
+            android:exported="false" />
+
         <!-- UPI Payment Notification Listener Service -->
         <service
             android:name=".PaymentNotificationListener"
@@ -88,8 +94,15 @@
         Notification access is NOT a manifest permission: the listener service
         above is protected by BIND_NOTIFICATION_LISTENER_SERVICE (which only the
         system holds), and the user grants access in Android settings.
-        POST_NOTIFICATIONS was removed: Vittova does not post notifications.
+        POST_NOTIFICATIONS is only for the optional expected-debit reminders below.
         SMS permissions are not requested.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Expected-debit reminders (Vittova Pro). Asked at runtime on Android 13+
+         only when the user turns reminders on. No exact-alarm permission. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Merged in by androidx.credentials for passkey prompts. Vittova only uses
+         Sign in with Google, which needs neither. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
 </manifest>

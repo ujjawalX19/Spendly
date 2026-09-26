@@ -36,7 +36,7 @@ router.get('/', protect, async (req, res) => {
         // UTC clock — see lib/appTime.js for why that matters.
         const now = new Date();
         const [{ data: expenses, error: expError }, { data: bills, error: billsError }] = await Promise.all([
-            supabase.from('expenses').select('amount').eq('user_id', req.user.id).gte('occurred_at', appTime.startOfMonth(now).toISOString()),
+            supabase.from('expenses').select('amount').eq('user_id', req.user.id).gte('occurred_at', appTime.startOfMonth(now).toISOString()).lt('occurred_at', appTime.startOfNextMonth(now).toISOString()),
             supabase.from('recurring_bills').select('name, amount, due_day, is_active').eq('user_id', req.user.id).eq('is_active', true),
         ]);
 

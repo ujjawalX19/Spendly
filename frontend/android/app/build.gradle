@@ -20,8 +20,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Bump versionCode for every upload to Play. versionName is what
         // users see.
-        versionCode 3
-        versionName "1.0.0"
+        versionCode 7
+        versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -74,6 +74,13 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    // Google Play Billing for Vittova Pro. The app only starts the purchase and
+    // passes the token to the backend, which verifies it with Google.
+    implementation "com.android.billingclient:billing:$playBillingVersion"
+    // Native "Sign in with Google" (Credential Manager) — no browser hand-off.
+    implementation "androidx.credentials:credentials:$credentialsVersion"
+    implementation "androidx.credentials:credentials-play-services-auth:$credentialsVersion"
+    implementation "com.google.android.libraries.identity.googleid:googleid:$googleIdVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

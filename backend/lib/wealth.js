@@ -8,6 +8,7 @@
  */
 
 const appTime = require('./appTime');
+const { computeSafeToSpend } = require('./safeToSpend');
 
 const r = (n) => Math.round(Number(n) || 0);
 const MONTH_LABEL = new Intl.DateTimeFormat('en-IN', { timeZone: appTime.APP_TIMEZONE, month: 'short', year: '2-digit' });
@@ -19,7 +20,6 @@ const MONTH_LABEL = new Intl.DateTimeFormat('en-IN', { timeZone: appTime.APP_TIM
 function computeWealth({ profile = {}, expenses = [], bills = [], now = new Date(), months = 6 }) {
     const budget = Number(profile.monthly_budget) || 0;
     const target = Number(profile.investment_target) || 0;
-    const day = appTime.dayOfMonth(now);
     const daysLeft = appTime.daysRemainingInMonth(now);
     const t = (e) => new Date(e.occurred_at).getTime();
 
@@ -44,9 +44,11 @@ function computeWealth({ profile = {}, expenses = [], bills = [], now = new Date
     const complete = history.slice(0, -1).filter((h) => h.transactions > 0);
     const averageMonthlySpend = complete.length ? r(complete.reduce((s, h) => s + h.spent, 0) / complete.length) : null;
 
-    const upcomingBills = bills
-        .filter((b) => b.is_active !== false && Number(b.due_day) > day)
-        .reduce((s, b) => s + (Number(b.amount) || 0), 0);
+    // The same bills-still-due rule as Safe-to-Spend (lib/safeToSpend): a bill
+    // due today is still to pay. This used `> day`, so on a bill's due day the
+    // Wealth screen showed more left than the dashboard.
+    const sts = computeSafeToSpend({ monthlyBudget: budget, totalSpent: current.spent, bills, investmentTarget: target, now });
+    const upcomingBills = sts.upcomingBills;
     const left = budget - current.spent - upcomingBills - target;
 
     const roundUpsThisMonth = expenses

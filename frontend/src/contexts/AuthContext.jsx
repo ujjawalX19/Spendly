@@ -5,6 +5,9 @@ import { isNative, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/aut
 import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
 import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '../plugins/GoogleAuth';
+import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction } from '../lib/googleSignIn';
 
 const AuthContext = createContext();
 
@@ -134,39 +137,79 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Google sign-in.
-   *
-   * Web: an ordinary redirect. Android: the provider URL is opened in a Chrome
-   * Custom Tab (never the WebView — Google blocks OAuth in embedded WebViews,
-   * and navigating the WebView turns the app into a website). Google returns to
-   * spendly://login-callback, handled by DeepLinkHandler in App.jsx.
+   * Google sign-in in a browser: an ordinary redirect on the web; on Android a
+   * Chrome Custom Tab that returns through vittova.in/auth/app-callback to
+   * spendly://login-callback (DeepLinkHandler in App.jsx). Used on the web, and
+   * on Android only when native sign-in is unavailable.
    */
+  const browserGoogleSignIn = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: loginRedirectUrl(),
+        skipBrowserRedirect: isNative(),
+      },
+    });
+    if (error) {
+      trackAuthFailure('login_failed', 'google', error);
+      return { success: false, message: error.message };
+    }
+
+    if (isNative()) {
+      if (!data?.url) {
+        track('login_failed', { method: 'google', code: 'no_provider_url' });
+        return { success: false, message: 'Could not start Google sign-in. Please try again.' };
+      }
+      // Lets the callback word its messages for Google rather than for an
+      // email link (the same spendly://login-callback finishes both).
+      try { window.localStorage.setItem(GOOGLE_PENDING_KEY, String(Date.now())); } catch { /* storage unavailable */ }
+      await Browser.open({ url: data.url, presentationStyle: 'popover' });
+    }
+    return { success: true };
+  };
+
+  /**
+   * Native Android sign-in: Google's account picker opens over Vittova
+   * (Credential Manager), and the ID token it returns is exchanged with
+   * Supabase, which checks Google's signature, the audience and the nonce.
+   * The user never leaves the app. Returns null when native sign-in is not
+   * available here, so the caller can fall back to the browser flow.
+   */
+  const nativeGoogleSignIn = async () => {
+    const nonce = await makeNonce();
+    let idToken;
+    try {
+      ({ idToken } = await GoogleAuth.signIn({ serverClientId: GOOGLE_WEB_CLIENT_ID, nonce: nonce.hashed }));
+    } catch (err) {
+      const action = nativeFailureAction(err?.code);
+      if (action === 'cancelled') {
+        track('login_failed', { method: 'google', code: 'cancelled' });
+        return { success: false, cancelled: true };
+      }
+      if (action === 'retry') return { success: false, message: 'Google sign-in was interrupted. Please try again.' };
+      track('login_failed', { method: 'google', code: 'native_unavailable' });
+      return null;
+    }
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: nonce.raw });
+    if (error) {
+      trackAuthFailure('login_failed', 'google', error);
+      return { success: false, message: 'Google sign-in could not be verified. Please try again.' };
+    }
+    // onAuthStateChange now holds the session and routes to the app.
+    return { success: true, native: true };
+  };
+
   const loginWithGoogle = async () => {
     track('google_sign_in_started', { method: 'google' });
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return { success: false, message: "You appear to be offline. Connect to the internet and try again." };
+    }
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: loginRedirectUrl(),
-          skipBrowserRedirect: isNative(),
-        },
-      });
-      if (error) {
-        trackAuthFailure('login_failed', 'google', error);
-        return { success: false, message: error.message };
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+        const native = await nativeGoogleSignIn();
+        if (native) return native;
       }
-
-      if (isNative()) {
-        if (!data?.url) {
-          track('login_failed', { method: 'google', code: 'no_provider_url' });
-          return { success: false, message: 'Could not start Google sign-in. Please try again.' };
-        }
-        // Lets the callback word its messages for Google rather than for an
-        // email link (the same spendly://login-callback finishes both).
-        try { window.localStorage.setItem(GOOGLE_PENDING_KEY, String(Date.now())); } catch { /* storage unavailable */ }
-        await Browser.open({ url: data.url, presentationStyle: 'popover' });
-      }
-      return { success: true };
+      return await browserGoogleSignIn();
     } catch {
       return { success: false, message: 'Google sign-in could not be started. Please try again.' };
     }
@@ -214,6 +257,11 @@ export function AuthProvider({ children }) {
       await supabase.auth.signOut({ scope });
     } catch {
       // The session may already be invalid (e.g. the account was deleted).
+    }
+    // Forget the Google credential choice too, so the next sign-in is an
+    // explicit choice rather than a silent one.
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+      await GoogleAuth.signOut().catch(() => {});
     }
     clearLocalAppState();
     markPasswordRecovery(false);

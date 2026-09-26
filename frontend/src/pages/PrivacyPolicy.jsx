@@ -40,14 +40,17 @@ export default function PrivacyPolicy() {
               <li><strong className="text-zinc-100">Account:</strong> your email address and name. If you sign in with Google, we receive your name and email address from Google. Passwords are handled by our authentication provider and are never visible to us.</li>
               <li><strong className="text-zinc-100">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, payment notification, or statement import).</li>
               <li><strong className="text-zinc-100">Budget settings:</strong> monthly budget, savings target, and recurring bills you add.</li>
+              <li><strong className="text-zinc-100">Afford-It checks and SIP stress tests:</strong> the amount and optional description you enter are used to work out the answer and are not stored. We only count how many checks you used today, for the free-plan limit.</li>
               <li><strong className="text-zinc-100">Coach conversations:</strong> the questions you ask the money coach and its answers.</li>
             </ul>
           </Section>
 
           <Section title="2. Information created while you use Vittova">
             <ul className="list-disc space-y-1 pl-5">
-              <li>Round-up totals, logging streaks, weekly Spend Score history and statement-import history (bank name, number of transactions, statement period).</li>
-              <li>Usage counters for free-plan limits (for example, coach questions asked today).</li>
+              <li>Round-up totals, logging streaks, Money Streak history (for each day: that day's mission, whether it was completed, the amount spent that day and the day's spending limit), Money XP awards, the days you mark as no-spend days, weekly Spend Score history and statement-import history (bank name, number of transactions, statement period).</li>
+              <li>Usage counters for free-plan limits (for example, coach questions asked or money checks used today).</li>
+              <li>Recurring-payment audit (Vittova Pro): which of your payments look recurring, what you told us about them (confirmed, intentional, unwanted or not recurring), and each next expected debit with whether a matching payment was later seen. Expected-debit reminders are scheduled on your phone; nothing is sent to a notification service.</li>
+              <li>Sponsored challenges (Vittova Pro, when available): which challenges you join, whether you completed them, and the voucher issued to you. The sponsor receives only campaign totals and the voucher codes it supplied, never your transactions, balances, spending categories, scores or other personal data. We count challenge views without linking them to you.</li>
               <li>Basic server logs needed to run and secure the service, such as request time and error type. Logs do not contain expense amounts, descriptions or notification text.</li>
               <li><strong className="text-zinc-100">App usage and diagnostics:</strong> to understand how Vittova is used and to find problems, we record simple events such as the app being installed or opened, sign-in succeeding or failing (with a short reason category), an expense being added, edited or deleted, an import or receipt scan succeeding or failing, a coach answer being given, and the app showing its error screen (error type only). Each event has a time, the platform (Android or web) and the app version. The app creates a random installation ID on first launch; it is not an advertising ID or device identifier, and a reinstall creates a new one. Events contain no expense amounts, descriptions, payees, coach questions or answers, or notification text. After you sign in, events are linked to your account; if you delete your account, that link is removed.</li>
             </ul>
@@ -100,10 +103,11 @@ export default function PrivacyPolicy() {
               <li><strong className="text-zinc-100">Supabase:</strong> authentication and database hosting.</li>
               <li><strong className="text-zinc-100">Render:</strong> hosting for the Vittova API server.</li>
               <li><strong className="text-zinc-100">Vercel:</strong> hosting for the Vittova website.</li>
-              <li><strong className="text-zinc-100">Google:</strong> Google Sign-In (if you choose it) and the Gemini API (section 4).</li>
+              <li><strong className="text-zinc-100">Google:</strong> Google Sign-In (if you choose it), the Gemini API (section 4) and Google Play billing for Vittova Pro.</li>
             </ul>
             <p>These providers process data on our behalf and may store it on servers outside India.</p>
-            <p>Vittova does not currently offer in-app purchases or subscriptions, and does not send push notifications.</p>
+            <p>Purchases: Vittova Pro can only be bought through Google Play, which handles the payment. We receive the purchase token, the plan and the subscription status from Google Play to check the purchase and turn Pro on for your account; we never receive your card, UPI or bank details.</p>
+            <p>Notifications: Vittova does not send push notifications from a server. Expected-debit reminders, if you turn them on, are scheduled by the app and shown on your phone only.</p>
           </Section>
 
           <Section title="7. Security">
@@ -134,7 +138,7 @@ export default function PrivacyPolicy() {
             <ul className="list-disc space-y-1 pl-5">
               <li><strong className="text-zinc-100">Access and portability:</strong> export your expenses as a CSV file from Settings.</li>
               <li><strong className="text-zinc-100">Correction:</strong> edit or delete any expense in the app.</li>
-              <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">Vittova account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score and streak history, import history and coach conversations, and the group pools you created.</li>
+              <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">Vittova account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score, streak and Money XP history, import history and coach conversations, and the group pools you created.</li>
               <li><strong className="text-zinc-100">Withdraw consent:</strong> turn off Notification Access in Android settings, or stop using AI features.</li>
             </ul>
             <p>To exercise any right or raise a grievance, email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>

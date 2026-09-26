@@ -137,13 +137,13 @@ test('affordability weighs the purchase against bills, target and the spending p
     assert.equal(facts.safeToSpendRemaining, 12900);
     assert.equal(facts.expectedRestOfMonth, 5700);
 
-    assert.match(composeAnswer('affordability', facts, 'Can I afford ₹4,000 headphones?').direct, /^Yes: ₹4,000 fits/);
+    assert.match(composeAnswer('affordability', facts, 'Can I afford ₹4,000 headphones?').direct, /^You can afford this purchase\. ₹4,000 fits within the ₹12,900/);
     const tight = composeAnswer('affordability', facts, 'Can I afford a ₹9,000 phone?');
-    assert.match(tight.direct, /^Possible, but I'd wait: ₹9,000 fits.*leave ₹3,900.*needs about ₹5,700/);
+    assert.match(tight.direct, /^You can afford it, but waiting would give you more breathing room\. After buying, ₹3,900 would be left.*needs about ₹5,700/);
     assert.match(tight.next, /savings goal/);
 
     const no = composeAnswer('affordability', facts, 'Can I afford a 20k laptop?');
-    assert.match(no.direct, /^Not this month: ₹20,000 is more than the ₹12,900/);
+    assert.match(no.direct, /^This purchase would put your current month under pressure\. ₹20,000 is ₹7,100 more than the ₹12,900/);
     // Gap ₹7,100 at ₹2,000 a month.
     assert.match(no.action, /about 4 months/);
 });

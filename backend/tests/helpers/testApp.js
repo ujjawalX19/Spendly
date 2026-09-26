@@ -37,6 +37,34 @@ async function startTestApp({ env = {} } = {}) {
     };
     inject(path.join(__dirname, '../../lib/gemini.js'), gemini);
 
+    // A stand-in for the Google Play Developer API: tests put subscriptions in
+    // `play.subs` (purchase token -> subscriptionsv2 resource).
+    const play = {
+        configured: true,
+        down: false,
+        subs: new Map(),
+        acks: [],
+        isConfigured() { return this.configured; },
+        packageName: () => 'com.vittova.app',
+        async getSubscription(token) {
+            if (this.down) throw Object.assign(new Error('unavailable'), { code: 'PLAY_UNAVAILABLE', status: 503 });
+            const sub = this.subs.get(token);
+            if (!sub) throw Object.assign(new Error('not found'), { code: 'PURCHASE_NOT_FOUND', status: 404 });
+            return JSON.parse(JSON.stringify(sub));
+        },
+        async acknowledgeSubscription(productId, token) {
+            this.acks.push(token);
+            const sub = this.subs.get(token);
+            if (sub) sub.acknowledgementState = 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED';
+            return {};
+        },
+        async verifyPushToken(header) {
+            if (header !== 'Bearer valid-google-push-token') throw Object.assign(new Error('bad push token'), { status: 401 });
+            return { email: 'push@example.iam.gserviceaccount.com' };
+        },
+    };
+    inject(path.join(__dirname, '../../lib/playDeveloperApi.js'), play);
+
     const { createApp } = require('../../app');
     const { resetRateLimits } = require('../../middleware/rateLimits');
     const app = createApp();
@@ -66,6 +94,7 @@ async function startTestApp({ env = {} } = {}) {
         base,
         db,
         gemini,
+        play,
         request,
         resetRateLimits,
         close: () => new Promise((resolve) => server.close(resolve)),

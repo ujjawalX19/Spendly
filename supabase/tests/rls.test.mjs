@@ -125,6 +125,10 @@ const CURRENT = [
     'v1_3_product_core.sql',
     'v1_4_admin_ops.sql',
     'v1_6_owner_console.sql',
+    'v1_7_money_decisions.sql',
+    'v1_8_play_billing.sql',
+    'v1_9_subscription_audit.sql',
+    'v1_10_sponsored_challenges.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -349,11 +353,301 @@ test('v1_6 Owner Console telemetry', async (t) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+
+    await t.test('the migration is idempotent and keeps existing activities valid', async () => {
+        await db.exec(sql('v1_7_money_decisions.sql'));
+        await db.exec(`insert into public.streak_activities (user_id, activity, activity_date) values ('${USERS.alice}', 'log_expense', '2026-09-01')`);
+        const bad = await svc(`insert into public.streak_activities (user_id, activity, activity_date) values ('${USERS.alice}', 'free_xp', '2026-09-01')`);
+        assert.ok(!bad.ok && /check constraint/i.test(bad.error), JSON.stringify(bad));
+    });
+
+    await t.test('the backend records streak days, XP and no-spend days', async () => {
+        for (const statement of [
+            `insert into public.money_streak_days (user_id, day, mission, kept, spent, day_limit) values ('${USERS.alice}', '2026-09-01', 'under_limit', true, 120, 450)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', '2026-09-01', 20)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.bob}', 'expense_logged', '2026-09-01:1', 5)`,
+            `insert into public.streak_activities (user_id, activity, activity_date) values ('${USERS.alice}', 'no_spend_day', '2026-09-02')`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(r.ok, `${statement}: ${r.error}`);
+        }
+    });
+
+    await t.test('an XP award can never be paid twice, even by the backend', async () => {
+        const dup = await svc(`insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', '2026-09-01', 20)`);
+        assert.ok(!dup.ok && /money_xp_ledger_once|duplicate key/i.test(dup.error), JSON.stringify(dup));
+        const dayTwice = await svc(`insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.alice}', '2026-09-01', 'log_today', false)`);
+        assert.ok(!dayTwice.ok, 'a locked day cannot be re-inserted');
+    });
+
+    await t.test('XP values, reasons and missions are constrained', async () => {
+        for (const statement of [
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', 'x1', 100000)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'daily_mission', 'x2', -50)`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.alice}', 'admin_gift', 'x3', 10)`,
+            `insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.alice}', '2026-09-05', 'spend_more', true)`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+    });
+
+    await t.test('a user reads only their own streak days and XP', async () => {
+        const mine = await asUser(db, USERS.alice, 'select user_id from public.money_xp_ledger');
+        assert.ok(mine.ok, mine.error);
+        assert.ok(mine.rows.length >= 1 && mine.rows.every((r) => r.user_id === USERS.alice));
+        const other = await asUser(db, USERS.carol, 'select * from public.money_xp_ledger');
+        assert.deepEqual(other.rows, []);
+        const days = await asUser(db, USERS.bob, 'select * from public.money_streak_days');
+        assert.deepEqual(days.rows, []);
+    });
+
+    await t.test('clients cannot write XP, streak days or the server-owned profile columns', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.carol}', 'daily_mission', 'forged', 100)`)), `${role} insert xp`);
+            assert.ok(denied(await as(db, role, USERS.alice, `update public.money_xp_ledger set xp = 100 where user_id = '${USERS.alice}'`)), `${role} update xp`);
+            assert.ok(denied(await as(db, role, USERS.alice, `delete from public.money_streak_days where user_id = '${USERS.alice}'`)), `${role} delete days`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.carol}', '2026-09-03', 'log_today', true)`)), `${role} insert day`);
+            for (const col of ['money_checks_today = 0', 'money_checks_reset_at = null', "money_streak_started_on = '2020-01-01'"]) {
+                assert.ok(denied(await as(db, role, USERS.carol, `update public.profiles set ${col} where id = '${USERS.carol}'`)), `${role} update ${col}`);
+            }
+        }
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.money_xp_ledger')));
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.money_streak_days')));
+    });
+
+    await t.test('deleting the account removes streak days and XP', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['money_streak_days', 'money_xp_ledger']) {
+            const r = await db.query(`select count(*)::int as n from public.${table} where user_id = '${USERS.alice}'`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_7 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
+    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql'].includes(f)));
+    await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
+    const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+    const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
+    assert.ok(failing.includes('RLS enabled: money_xp_ledger'), failing.join('\n'));
+    assert.ok(failing.includes('streak_activities accepts no_spend_day'), failing.join('\n'));
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_8 Google Play purchases (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    const HASH = 'a'.repeat(64);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_8_play_billing.sql'));
+    });
+
+    await t.test('the backend records a verified purchase; a token binds to one account', async () => {
+        const ok = await svc(`insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state, expires_at, entitled) values ('${HASH}', '${USERS.alice}', 'purchase-token-123', 'vittova_pro', 'SUBSCRIPTION_STATE_ACTIVE', now() + interval '30 days', true)`);
+        assert.ok(ok.ok, ok.error);
+        const reuse = await svc(`insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state) values ('${HASH}', '${USERS.carol}', 'purchase-token-123', 'vittova_pro', 'SUBSCRIPTION_STATE_ACTIVE')`);
+        assert.ok(!reuse.ok && /duplicate key|play_purchases_pkey/i.test(reuse.error), JSON.stringify(reuse));
+        const badHash = await svc(`insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state) values ('not-a-hash', '${USERS.carol}', 'purchase-token-456', 'vittova_pro', 'x')`);
+        assert.ok(!badHash.ok && /check constraint/i.test(badHash.error));
+    });
+
+    await t.test('clients can neither read nor write purchases, nor set pro_source', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.alice, 'select * from public.play_purchases')), `${role} select`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.play_purchases (token_hash, user_id, purchase_token, product_id, state, entitled) values ('${'b'.repeat(64)}', '${USERS.carol}', 'forged-token-000', 'vittova_pro', 'SUBSCRIPTION_STATE_ACTIVE', true)`)), `${role} insert`);
+            assert.ok(denied(await as(db, role, USERS.alice, `update public.play_purchases set entitled = true`)), `${role} update`);
+            assert.ok(denied(await as(db, role, USERS.carol, `update public.profiles set pro_source = 'manual' where id = '${USERS.carol}'`)), `${role} pro_source`);
+        }
+        const badSource = await svc(`update public.profiles set pro_source = 'gift' where id = '${USERS.carol}'`);
+        assert.ok(!badSource.ok && /profiles_pro_source_valid/.test(badSource.error));
+    });
+
+    await t.test('deleting the account removes its purchase records', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        const r = await db.query(`select count(*)::int as n from public.play_purchases where user_id = '${USERS.alice}'`);
+        assert.equal(r.rows[0].n, 0);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_8 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_9 Subscription audit (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_9_subscription_audit.sql'));
+    });
+
+    await t.test('the backend stores decisions and expectations; values are constrained', async () => {
+        for (const statement of [
+            `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.alice}', 'netflix', 'unwanted')`,
+            `insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount) values ('${USERS.alice}', 'netflix', '2026-10-05', 649)`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(r.ok, `${statement}: ${r.error}`);
+        }
+        for (const statement of [
+            `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.alice}', 'spotify', 'cancel_now')`,
+            `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.alice}', 'Bad<Key>', 'confirmed')`,
+            `insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount, status) values ('${USERS.alice}', 'x', '2026-10-05', 10, 'charged')`,
+            `insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount) values ('${USERS.alice}', 'y', '2026-10-05', -5)`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+        const dup = await svc(`insert into public.recurring_expectations (user_id, merchant_key, expected_date, expected_amount) values ('${USERS.alice}', 'netflix', '2026-10-05', 649)`);
+        assert.ok(!dup.ok, 'one expectation per payment and date');
+    });
+
+    await t.test('users read only their own rows and cannot write any', async () => {
+        const own = await asUser(db, USERS.alice, 'select merchant_key from public.recurring_decisions');
+        assert.deepEqual(own.rows.map((r) => r.merchant_key), ['netflix']);
+        assert.deepEqual((await asUser(db, USERS.carol, 'select * from public.recurring_decisions')).rows, []);
+        assert.deepEqual((await asUser(db, USERS.carol, 'select * from public.recurring_expectations')).rows, []);
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.recurring_decisions (user_id, merchant_key, decision) values ('${USERS.carol}', 'netflix', 'confirmed')`)), role);
+            assert.ok(denied(await as(db, role, USERS.alice, `update public.recurring_expectations set status = 'matched'`)), role);
+        }
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.recurring_decisions')));
+    });
+
+    await t.test('deleting the account removes decisions and expectations', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['recurring_decisions', 'recurring_expectations']) {
+            const r = await db.query(`select count(*)::int as n from public.${table} where user_id = '${USERS.alice}'`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_9 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_10 Sponsored challenges (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    const S = '66666666-6666-4666-8666-666666666666';
+    const C = '77777777-7777-4777-8777-777777777777';
+    const E = '88888888-8888-4888-8888-888888888888';
+    const V = '99999999-9999-4999-8999-999999999999';
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_10_sponsored_challenges.sql'));
+    });
+
+    await t.test('the backend runs a campaign end to end', async () => {
+        for (const statement of [
+            `insert into public.sponsors (id, name, website) values ('${S}', 'Example Brand', 'https://brand.example')`,
+            `insert into public.campaigns (id, sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms, status)
+             values ('${C}', '${S}', '7-Day Zero Food-Delivery', 'no_food_delivery', 7, '₹200 voucher', 200, now() - interval '1 day', now() + interval '30 days', 'Pro members', 'One reward per person, while stocks last.', 'scheduled')`,
+            `insert into public.campaign_vouchers (id, campaign_id, code) values ('${V}', '${C}', 'BRAND-200-A')`,
+            `insert into public.challenge_enrollments (id, campaign_id, user_id, starts_on, ends_on) values ('${E}', '${C}', '${USERS.alice}', '2026-09-08', '2026-09-14')`,
+            `update public.challenge_enrollments set status = 'completed' where id = '${E}'`,
+            `insert into public.challenge_completions (enrollment_id, campaign_id) values ('${E}', '${C}')`,
+            `update public.campaign_vouchers set issued_at = now(), issued_to = '${E}' where id = '${V}'`,
+            `insert into public.reward_issuances (enrollment_id, campaign_id, voucher_id) values ('${E}', '${C}', '${V}')`,
+            `update public.reward_issuances set revealed_at = now() where enrollment_id = '${E}'`,
+            `insert into public.campaign_impressions (campaign_id, kind) values ('${C}', 'view')`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(r.ok, `${statement}: ${r.error}`);
+        }
+    });
+
+    await t.test('completions, issuances and issued vouchers cannot be rewritten, even by the backend', async () => {
+        const cases = [
+            [`update public.challenge_completions set completed_at = now() - interval '9 days'`, /immutable/],
+            [`update public.reward_issuances set revealed_at = null`, /revealed once/],
+            [`update public.reward_issuances set voucher_id = '${V}', redemption_id = gen_random_uuid()`, /revealed once/],
+            [`update public.campaign_vouchers set issued_at = null, issued_to = null where id = '${V}'`, /cannot be reissued/],
+            [`update public.campaign_vouchers set code = 'OTHER' where id = '${V}'`, /fixed/],
+        ];
+        for (const [statement, re] of cases) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && re.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+        const twice = await svc(`insert into public.challenge_enrollments (campaign_id, user_id, starts_on, ends_on) values ('${C}', '${USERS.alice}', '2026-09-20', '2026-09-26')`);
+        assert.ok(!twice.ok, 'one enrolment per user and campaign');
+        const secondReward = await svc(`insert into public.reward_issuances (enrollment_id, campaign_id, voucher_id) values ('${E}', '${C}', '${V}')`);
+        assert.ok(!secondReward.ok, 'one reward per completion');
+    });
+
+    await t.test('campaign values are constrained (no paid entry, fixed positive rewards, responsible types)', async () => {
+        for (const statement of [
+            `insert into public.campaigns (sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms) values ('${S}', 'Spin to win', 'lucky_draw', 7, 'Prize', 200, now(), now() + interval '1 day', 'All', 'Terms that are long enough here.')`,
+            `insert into public.campaigns (sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms) values ('${S}', 'Negative', 'no_impulse', 7, 'Prize', -1, now(), now() + interval '1 day', 'All', 'Terms that are long enough here.')`,
+            `insert into public.campaigns (sponsor_id, name, challenge_type, duration_days, reward_label, reward_value_inr, starts_at, ends_at, eligibility, terms) values ('${S}', 'Backwards', 'no_impulse', 7, 'Prize', 10, now(), now() - interval '1 day', 'All', 'Terms that are long enough here.')`,
+        ]) {
+            const r = await svc(statement);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${statement}: ${JSON.stringify(r)}`);
+        }
+    });
+
+    await t.test('no campaign table is readable or writable by clients', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            for (const table of ['sponsors', 'campaigns', 'campaign_vouchers', 'challenge_enrollments', 'challenge_completions', 'reward_issuances', 'campaign_impressions']) {
+                assert.ok(denied(await as(db, role, USERS.alice, `select * from public.${table}`)), `${role} select ${table}`);
+            }
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.challenge_completions (enrollment_id, campaign_id) values ('${E}', '${C}')`)), `${role} forge completion`);
+            assert.ok(denied(await as(db, role, USERS.carol, `update public.campaigns set reward_value_inr = 100000`)), `${role} change reward`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.campaign_vouchers (campaign_id, code) values ('${C}', 'FREE')`)), `${role} add inventory`);
+        }
+    });
+
+    await t.test('deleting the account removes enrolments and rewards but keeps the voucher used', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['challenge_enrollments', 'challenge_completions', 'reward_issuances']) {
+            const r = await db.query(`select count(*)::int as n from public.${table}`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+        const v = await db.query(`select issued_at, issued_to from public.campaign_vouchers where id = '${V}'`);
+        assert.ok(v.rows[0].issued_at);
+        assert.equal(v.rows[0].issued_to, null);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_10 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 test('production-like database: partial v1 extension, v1_1 applied, no v1_2', async (t) => {
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 
@@ -460,5 +754,37 @@ test('baseline: before the P0 migration the vulnerabilities are reproducible', a
         assert.deepEqual(read.rows.map((x) => x.description), ['Groceries'], 'outsider can now read the private group expenses');
     });
 
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Release audit: account deletion reaches every table, found from the schema
+// itself rather than a hand-kept list, so a new table cannot be forgotten.
+// ═══════════════════════════════════════════════════════════════════════════
+test('release audit: every column that points at a user is removed or anonymised with the account', async () => {
+    const db = await buildDatabase(CURRENT);
+    const fks = await db.query(`
+        select c.conrelid::regclass::text as tbl, a.attname as col,
+               c.confrelid::regclass::text as ref, c.confdeltype as on_delete
+        from pg_constraint c
+        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+        where c.contype = 'f'
+          and c.connamespace = 'public'::regnamespace
+          and c.confrelid in ('auth.users'::regclass, 'public.profiles'::regclass)
+        order by 1, 2`);
+    // a = no action, r = restrict, c = cascade, n = set null, d = set default
+    const blocking = fks.rows.filter((r) => r.on_delete === 'a' || r.on_delete === 'r');
+    assert.deepEqual(blocking.map((r) => `${r.tbl}.${r.col} -> ${r.ref}`), [],
+        'a user-referencing column would block or orphan account deletion');
+    assert.ok(fks.rows.length >= 15, `only ${fks.rows.length} user references found`);
+
+    // Every public table with a user_id column has such a foreign key.
+    const userIdCols = await db.query(`
+        select table_name from information_schema.columns
+        where table_schema = 'public' and column_name = 'user_id'
+          and table_name in (select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE')`);
+    const covered = new Set(fks.rows.filter((r) => r.col === 'user_id').map((r) => r.tbl.replace(/^public\./, '')));
+    const uncovered = userIdCols.rows.map((r) => r.table_name).filter((t) => !covered.has(t));
+    assert.deepEqual(uncovered, [], 'user_id without a foreign key to the account');
     await db.close();
 });

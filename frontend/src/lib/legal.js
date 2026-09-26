@@ -7,4 +7,4 @@
  */
 export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@vittova.in';
 
-export const POLICY_LAST_UPDATED = '17 September 2026';
+export const POLICY_LAST_UPDATED = '25 September 2026';
