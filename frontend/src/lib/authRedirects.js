@@ -78,6 +78,39 @@ export function isPasswordRecoveryUrl(href) {
     || hash.get('type') === 'recovery';
 }
 
+/** Marker written when this browser asks for a reset email (see isRecoveryReturn). */
+export const RESET_REQUEST_KEY = 'vittova.resetRequested.v1';
+const RESET_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * Whether this page load is the return from a password-reset link, including
+ * the case where Supabase ignored our redirect and used the Site URL instead
+ * (which happens when /reset-password is missing from Redirect URLs, and drops
+ * the user on the home page with the code).
+ *
+ * A bare `?code=` is ambiguous — Google sign-in returns one too — so it counts
+ * only when THIS browser asked for a reset email in the last hour. That marker
+ * is local, unforgeable by a link, and still requires the one-time code to
+ * produce a session before any password can be changed.
+ *
+ * @param {string} href
+ * @param {number|null} requestedAt  ms timestamp of the last reset request here
+ * @param {number} [now]
+ */
+export function isRecoveryReturn(href, requestedAt, now = Date.now()) {
+  if (isPasswordRecoveryUrl(href)) return true;
+  const age = now - Number(requestedAt || 0);
+  if (!requestedAt || age < 0 || age > RESET_WINDOW_MS) return false;
+  try {
+    const url = new URL(href);
+    // The app's own sign-in return page handles its code itself.
+    if (url.pathname.startsWith('/auth/')) return false;
+    return url.searchParams.has('code');
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Turn Supabase's error parameters into a message a person can act on.
  * Supabase reports them in the query string (PKCE) or the fragment.
