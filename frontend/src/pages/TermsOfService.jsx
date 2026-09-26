@@ -8,7 +8,7 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-black text-white p-6 max-w-2xl mx-auto pb-28">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
-      <p className="text-zinc-400 mb-8">Last updated: 25 September 2026</p>
+      <p className="text-zinc-400 mb-8">Last updated: 27 September 2026</p>
 
       <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
         <section>
@@ -54,8 +54,11 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">5. Sponsored challenges</h2>
+          <h2 className="text-lg font-bold text-white mb-2">5. Save-to-Earn and sponsored challenges</h2>
           <p>
+            Save-to-Earn challenges are optional and free to start, and you can stop one at any time without penalty. The Victory Pot is an estimate of spending you may have avoided, based on your own records; it is not money, cannot be withdrawn and has no cash value. XP, levels and badges have no cash value either. Challenges never ask you to skip essential spending such as bills, medicine, food you need or necessary travel.
+          </p>
+          <p className="mt-2">
             Sponsored challenges are optional promotions run with third-party sponsors and are always labelled as sponsored. Joining is free and no purchase is needed. Each challenge shows its rule, its fixed reward, how many rewards are left, its dates and its terms before you join. Rewards are vouchers supplied by the sponsor, given in the order challenges are completed while stocks last, and subject to the sponsor's own terms. Vittova decides whether a challenge was completed from the spending you record in Vittova and may withhold a reward where records appear to have been manipulated. A sponsored challenge is not a recommendation of the sponsor's products.
           </p>
         </section>

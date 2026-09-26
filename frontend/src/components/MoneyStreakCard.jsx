@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Flame, X, Loader2, Target, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
@@ -32,7 +33,7 @@ function WeekDots({ week, size = 'sm' }) {
   );
 }
 
-function StreakSheet({ streak, onClose, onChanged }) {
+export function StreakSheet({ streak, onClose, onChanged }) {
   const { session } = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -155,6 +156,7 @@ function useStreakIncreased(current) {
  */
 export default function MoneyStreakCard({ streak, onChanged }) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const celebrate = useStreakIncreased(streak?.current);
   return (
     <>
@@ -176,13 +178,18 @@ export default function MoneyStreakCard({ streak, onChanged }) {
               </>
             )}
           </div>
-          <button type="button" disabled={!streak} onClick={() => setOpen(true)}
+          <button type="button" disabled={!streak} onClick={() => navigate('/save-to-earn')}
             className="v-press min-h-[44px] shrink-0 rounded-xl border border-white/10 px-3 text-xs font-bold text-zinc-100 disabled:opacity-40"
-            aria-label={streak ? `View today's challenge. Money Streak: ${streak.current} days` : 'Money Streak loading'}>
-            View challenge
+            aria-label={streak ? `Open Save-to-Earn. Money Streak: ${streak.current} days` : 'Money Streak loading'}>
+            Continue
           </button>
         </div>
-        {streak && <div className="mt-3"><WeekDots week={streak.week} size="md" /></div>}
+        {streak && (
+          <button type="button" onClick={() => setOpen(true)} className="mt-3 block w-full text-left" aria-label="Today's mission and this week">
+            <WeekDots week={streak.week} size="md" />
+            <span className="mt-2 flex items-center gap-1.5 text-xs text-zinc-400">🎯 {streak.today.mission.title}</span>
+          </button>
+        )}
       </section>
       <AnimatePresence>{open && streak && <StreakSheet streak={streak} onClose={() => setOpen(false)} onChanged={onChanged} />}</AnimatePresence>
     </>

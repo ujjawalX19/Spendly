@@ -33,6 +33,7 @@ const ProUpgrade = lazy(() => import('./pages/ProUpgrade'));
 const SubscriptionGraveyard = lazy(() => import('./pages/SubscriptionGraveyard'));
 const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'));
 const Challenges = lazy(() => import('./pages/Challenges'));
+const SaveToEarn = lazy(() => import('./pages/SaveToEarn'));
 const PdfImport = lazy(() => import('./pages/PdfImport'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
@@ -316,6 +317,7 @@ function App() {
                 <Route path="/import" element={<ProtectedRoute><Layout><PdfImport /></Layout></ProtectedRoute>} />
                 <Route path="/subscription-audit" element={<ProtectedRoute><Layout><SubscriptionAudit /></Layout></ProtectedRoute>} />
                 <Route path="/challenges" element={<ProtectedRoute><Layout><Challenges /></Layout></ProtectedRoute>} />
+                <Route path="/save-to-earn" element={<ProtectedRoute><Layout><SaveToEarn /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />

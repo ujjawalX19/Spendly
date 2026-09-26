@@ -85,6 +85,7 @@ test('key commitments are word-for-word the same in both copies', () => {
     ],
     terms: [
       'Deleting your Vittova account does not cancel a Google Play subscription.',
+      'it is not money, cannot be withdrawn and has no cash value.',
       'Subscriptions renew automatically at the end of each billing period until you cancel.',
       'To the extent permitted by applicable law, we are not liable for any financial losses',
       'These terms are governed by the laws of India.',

@@ -21,6 +21,7 @@ const INCLUDES = [
   ['Debit reminders and price-rise alerts', 'A reminder the day before an expected debit'],
   ['More Ask Vittova questions', 'Free plan: 10 a day'],
   ['More receipt scans and bank statement import', null],
+  ['Advanced Save-to-Earn challenges', 'Bigger savings sprints and your full challenge history'],
 ];
 
 export default function ProSection() {

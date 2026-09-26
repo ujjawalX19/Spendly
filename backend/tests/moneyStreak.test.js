@@ -152,8 +152,9 @@ test('weekly goal: within the week\'s share of the budget on at least 4 logged d
 // ─── XP and levels ──────────────────────────────────────────────────────────
 
 test('levels are simple thresholds', () => {
-    assert.deepEqual([0, 249, 250, 749, 750, 1999, 2000, 99999].map((x) => ms.levelFor(x).levelName), [
-        'Money Starter', 'Money Starter', 'Budget Builder', 'Budget Builder', 'Money Smart', 'Money Smart', 'Money Master', 'Money Master',
+    // Level 5 (Money Pro, 4,000 XP) added with Save-to-Earn.
+    assert.deepEqual([0, 249, 250, 749, 750, 1999, 2000, 3999, 4000, 99999].map((x) => ms.levelFor(x).levelName), [
+        'Money Starter', 'Money Starter', 'Budget Builder', 'Budget Builder', 'Money Smart', 'Money Smart', 'Money Master', 'Money Master', 'Money Pro', 'Money Pro',
     ]);
     const l = ms.levelFor(500);
     assert.deepEqual(l.nextLevel, { level: 3, name: 'Money Smart', at: 750, xpToGo: 250 });

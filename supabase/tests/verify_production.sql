@@ -193,6 +193,37 @@ checks as (
            'run v1_10_sponsored_challenges.sql'
 
     union all
+    -- v1.11 (app v1.1): Save-to-Earn — owners read their own rows, nobody writes
+    select 'RLS enabled on ' || o,
+           coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.' || o)), false),
+           case when to_regclass('public.' || o) is null then 'missing — run v1_11_save_to_earn.sql' else '' end
+    from unnest(array['money_challenges', 'user_badges', 'campaign_members']) as o
+    union all
+    select r || ' cannot INSERT/UPDATE ' || o,
+           case when to_regclass('public.' || o) is null then false
+                else not (has_table_privilege(r, 'public.' || o, 'INSERT') or has_table_privilege(r, 'public.' || o, 'UPDATE')) end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_11_save_to_earn.sql' else '' end
+    from unnest(array['money_challenges', 'user_badges', 'campaign_members']) as o,
+         unnest(array['anon', 'authenticated']) as r
+    union all
+    select 'anon cannot SELECT ' || o,
+           case when to_regclass('public.' || o) is null then false else not has_table_privilege('anon', 'public.' || o, 'SELECT') end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_11_save_to_earn.sql' else '' end
+    from unnest(array['money_challenges', 'user_badges', 'campaign_members']) as o
+    union all
+    select 'One active personal challenge per user (partial unique index)',
+           exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'money_challenges_one_active'),
+           'run v1_11_save_to_earn.sql'
+    union all
+    select 'Finished challenges are final (trigger)',
+           exists (select 1 from pg_trigger where tgname = 'trg_money_challenges_final'),
+           'run v1_11_save_to_earn.sql'
+    union all
+    select 'XP ledger accepts challenge_completed',
+           exists (select 1 from pg_constraint where conname = 'money_xp_ledger_reason_check' and pg_get_constraintdef(oid) like '%challenge_completed%'),
+           'run v1_11_save_to_earn.sql'
+
+    union all
     select 'Exactly one admin account (owner)',
            (select count(*) from public.profiles where role = 'admin') = 1,
            (select count(*)::text || ' admin(s); must also match ADMIN_EMAIL on the server' from public.profiles where role = 'admin')

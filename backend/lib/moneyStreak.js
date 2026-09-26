@@ -35,6 +35,7 @@ const XP = {
     weekly_goal: 50,
     month_within_budget: 30,
     streak_milestone: 100,
+    challenge_completed: 75, // per template in lib/saveToEarn (50–100)
 };
 const EXPENSE_XP_DAILY_CAP = 3;
 const STREAK_MILESTONE_DAYS = 7;
@@ -50,6 +51,7 @@ const LEVELS = [
     { level: 2, name: 'Budget Builder', minXp: 250 },
     { level: 3, name: 'Money Smart', minXp: 750 },
     { level: 4, name: 'Money Master', minXp: 2000 },
+    { level: 5, name: 'Money Pro', minXp: 4000 },
 ];
 
 const IMPULSE_CATEGORIES = new Set(['Shopping', 'Entertainment']);

@@ -6,6 +6,11 @@
  *   SPONSORED_CHALLENGES_ENABLED   default off  (needs a real sponsor, vouchers and challenge terms)
  *   CAMPAIGN_DASHBOARD_ENABLED     default off  (Owner Console campaign management)
  *   LIMITED_OFFER_ENABLED          default off  (only when the Play offer is configured)
+ *   SAVE_TO_EARN_ENABLED           default on   (personal Money Challenges, Victory Pot, badges)
+ *   PRO_CHALLENGES_ENABLED         default on   (the Pro-only challenge templates)
+ *   REWARD_REDEMPTION_ENABLED      default on   (revealing an earned sponsor voucher; only
+ *                                                reachable while sponsored challenges are on)
+ *   SPONSOR_DASHBOARD_ENABLED      default off  (partner accounts' aggregated campaign reports)
  *   STUDENT_PLAN_ENABLED           forced off   (no safe student verification exists yet)
  *
  * The app reads them from GET /api/features and hides what is off. Every
@@ -17,6 +22,10 @@ const DEFAULTS = {
     sponsoredChallengesEnabled: ['SPONSORED_CHALLENGES_ENABLED', false],
     campaignDashboardEnabled: ['CAMPAIGN_DASHBOARD_ENABLED', false],
     limitedOfferEnabled: ['LIMITED_OFFER_ENABLED', false],
+    saveToEarnEnabled: ['SAVE_TO_EARN_ENABLED', true],
+    proChallengesEnabled: ['PRO_CHALLENGES_ENABLED', true],
+    rewardRedemptionEnabled: ['REWARD_REDEMPTION_ENABLED', true],
+    sponsorDashboardEnabled: ['SPONSOR_DASHBOARD_ENABLED', false],
 };
 
 /**
@@ -47,6 +56,10 @@ function allFlags() {
         campaignDashboardEnabled: flag('campaignDashboardEnabled'),
         studentPlanEnabled: flag('studentPlanEnabled'),
         limitedOfferEnabled: flag('limitedOfferEnabled'),
+        saveToEarnEnabled: flag('saveToEarnEnabled'),
+        proChallengesEnabled: flag('proChallengesEnabled'),
+        rewardRedemptionEnabled: flag('rewardRedemptionEnabled'),
+        sponsorDashboardEnabled: flag('sponsorDashboardEnabled'),
     };
 }
 

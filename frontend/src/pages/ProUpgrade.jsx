@@ -31,6 +31,7 @@ const INCLUDES = [
   { title: 'Debit reminders and price-rise alerts', desc: 'The day before an expected debit' },
   { title: 'More Ask Vittova questions', desc: 'Free plan: 10 a day' },
   { title: 'More receipt scans and statement import' },
+  { title: 'Advanced Save-to-Earn challenges', desc: 'Savings sprints, weekend and no-cab challenges, full history' },
   { title: 'Sponsored money challenges', desc: 'Optional, with fixed voucher rewards', sponsored: true },
 ];
 

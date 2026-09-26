@@ -26,6 +26,13 @@ const UNIQUE_KEYS = {
     challenge_enrollments: ['user_id', 'campaign_id'],
     challenge_completions: ['enrollment_id'],
     reward_issuances: ['enrollment_id'],
+    user_badges: ['user_id', 'badge'],
+    campaign_members: ['user_id', 'sponsor_id'],
+};
+
+// Partial unique indexes (v1_11): one active personal challenge per user.
+const PARTIAL_UNIQUE = {
+    money_challenges: { keys: ['user_id'], where: (r) => r.status === 'active' },
 };
 
 // Rows that belong to a user and cascade when the auth user is deleted.
@@ -35,7 +42,8 @@ const CASCADE = [
     ['group_members', 'user_id'], ['groups', 'created_by'],
     ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['play_purchases', 'user_id'],
     ['recurring_decisions', 'user_id'], ['recurring_expectations', 'user_id'],
-    ['challenge_enrollments', 'user_id'], ['profiles', 'id'],
+    ['challenge_enrollments', 'user_id'], ['money_challenges', 'user_id'], ['user_badges', 'user_id'],
+    ['campaign_members', 'user_id'], ['profiles', 'id'],
 ];
 
 function ilikeTest(c, pattern) {
@@ -245,6 +253,10 @@ class Query {
                 const row = { id: crypto.randomUUID(), created_at: new Date().toISOString(), ...clone(v) };
                 const keys = this.op === 'upsert' && this.onConflict ? this.onConflict.split(',') : UNIQUE_KEYS[this.table];
                 const existing = keys ? table.find((r) => keys.every((k) => same(r[k], row[k]))) : null;
+                const partial = PARTIAL_UNIQUE[this.table];
+                if (partial && partial.where(row) && table.some((r) => partial.where(r) && partial.keys.every((k) => same(r[k], row[k])))) {
+                    return { data: null, error: { code: '23505', message: 'duplicate key' } };
+                }
                 if (existing) {
                     if (this.op === 'insert') return { data: null, error: { code: '23505', message: 'duplicate key' } };
                     Object.assign(existing, clone(v));

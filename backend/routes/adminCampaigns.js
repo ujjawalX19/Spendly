@@ -95,6 +95,36 @@ router.post('/sponsors', async (req, res) => {
     res.status(201).json({ success: true, sponsor: data });
 });
 
+// ─── Partner access (sponsor_viewer / campaign_manager) ─────────────────────
+// Grants a Vittova account read access to ONE sponsor's aggregated campaign
+// reports (and pause/resume for campaign_manager) via /api/partner.
+const memberSchema = z.object({ userId: z.string().regex(UUID), role: z.enum(['campaign_manager', 'sponsor_viewer']) }).strict();
+
+router.get('/sponsors/:id/members', idOk, async (req, res) => {
+    const { data, error } = await supabase.from('campaign_members').select('user_id, role, created_at').eq('sponsor_id', req.params.id);
+    if (error) return fail(res);
+    res.json({ success: true, members: data || [] });
+});
+
+router.post('/sponsors/:id/members', idOk, async (req, res) => {
+    const parsed = memberSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    if (!(await audit(req, 'partner_access_granted', { targetUserId: parsed.data.userId, details: { sponsor: req.params.id, role: parsed.data.role }, required: true }))) return fail(res);
+    const { error } = await supabase.from('campaign_members')
+        .upsert({ user_id: parsed.data.userId, sponsor_id: req.params.id, role: parsed.data.role }, { onConflict: 'user_id,sponsor_id' });
+    if (error?.code === '23503') return res.status(404).json({ success: false, message: 'Sponsor or account not found.' });
+    if (error) return fail(res);
+    res.status(201).json({ success: true });
+});
+
+router.delete('/sponsors/:id/members/:userId', idOk, async (req, res) => {
+    if (!UUID.test(String(req.params.userId))) return res.status(400).json({ success: false, message: 'Invalid id' });
+    if (!(await audit(req, 'partner_access_revoked', { targetUserId: req.params.userId, details: { sponsor: req.params.id }, required: true }))) return fail(res);
+    const { error } = await supabase.from('campaign_members').delete().eq('sponsor_id', req.params.id).eq('user_id', req.params.userId);
+    if (error) return fail(res);
+    res.json({ success: true });
+});
+
 // ─── Campaigns ──────────────────────────────────────────────────────────────
 
 router.get('/', async (req, res) => {

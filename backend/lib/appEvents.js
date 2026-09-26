@@ -54,6 +54,10 @@ const CLIENT_EVENTS = [
     'plan_selected',
     'purchase_started',
     'challenge_viewed',
+    // Save-to-Earn
+    'save_to_earn_viewed',
+    'challenge_detail_viewed',
+    'reward_viewed',
 ];
 
 /** Events the backend records itself. */
@@ -71,6 +75,7 @@ const SERVER_EVENTS = [
     'recurring_payment_confirmed', 'recurring_payment_dismissed', 'price_change_detected', 'recurring_payment_detected',
     'purchase_completed', 'purchase_restored', 'purchase_failed',
     'challenge_joined', 'challenge_completed', 'reward_issued', 'reward_redeemed',
+    'challenge_started', 'challenge_skipped', 'badge_unlocked',
     'student_verification_started', 'student_verification_passed',
 ];
 

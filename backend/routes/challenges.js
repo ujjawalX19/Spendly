@@ -76,7 +76,7 @@ router.post('/:id/seen', ...gates, idParam('id'), async (req, res) => {
     res.status(204).end();
 });
 
-router.post('/rewards/:enrollmentId/reveal', ...gates, idParam('enrollmentId'), async (req, res) => {
+router.post('/rewards/:enrollmentId/reveal', ...gates, requireFlag('rewardRedemptionEnabled'), idParam('enrollmentId'), async (req, res) => {
     try {
         res.json({ success: true, reward: await campaigns.revealReward(req.user.id, req.params.enrollmentId) });
     } catch (e) {

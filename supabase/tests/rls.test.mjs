@@ -129,6 +129,7 @@ const CURRENT = [
     'v1_8_play_billing.sql',
     'v1_9_subscription_audit.sql',
     'v1_10_sponsored_challenges.sql',
+    'v1_11_save_to_earn.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -437,7 +438,7 @@ test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
 });
 
 test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
-    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql'].includes(f)));
+    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql'].includes(f)));
     await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
     const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
     const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
@@ -647,7 +648,7 @@ test('production-like database: partial v1 extension, v1_1 applied, no v1_2', as
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 
@@ -786,5 +787,78 @@ test('release audit: every column that points at a user is removed or anonymised
     const covered = new Set(fks.rows.filter((r) => r.col === 'user_id').map((r) => r.tbl.replace(/^public\./, '')));
     const uncovered = userIdCols.rows.map((r) => r.table_name).filter((t) => !covered.has(t));
     assert.deepEqual(uncovered, [], 'user_id without a foreign key to the account');
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_11 Save-to-Earn (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    const challenge = (user, status = 'active') => `insert into public.money_challenges (user_id, template, duration_days, starts_on, ends_on, status) values ('${user}', 'no_food_delivery_7', 7, '2026-09-21', '2026-09-27', '${status}') returning id`;
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_11_save_to_earn.sql'));
+    });
+
+    await t.test('one active challenge per user; values are constrained', async () => {
+        assert.ok((await svc(challenge(USERS.alice))).ok);
+        assert.ok(!(await svc(challenge(USERS.alice))).ok, 'a second active challenge is refused');
+        assert.ok((await svc(challenge(USERS.alice, 'skipped'))).ok, 'finished ones are fine');
+        for (const bad of [
+            `insert into public.money_challenges (user_id, template, duration_days, starts_on, ends_on) values ('${USERS.bob}', 'spend_more_7', 7, '2026-09-21', '2026-09-27')`,
+            `insert into public.money_challenges (user_id, template, duration_days, starts_on, ends_on, status, impact_inr) values ('${USERS.bob}', 'log_daily_7', 7, '2026-09-21', '2026-09-27', 'completed', -5)`,
+            `insert into public.money_challenges (user_id, template, duration_days, starts_on, ends_on, status, impact_inr) values ('${USERS.bob}', 'log_daily_7', 7, '2026-09-21', '2026-09-27', 'skipped', 300)`,
+            `insert into public.user_badges (user_id, badge) values ('${USERS.bob}', 'opened_app_10_times')`,
+            `insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.bob}', 'challenge_completed', 'x', 500)`,
+        ]) {
+            const r = await svc(bad);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${bad}: ${JSON.stringify(r)}`);
+        }
+        assert.ok((await svc(`insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.bob}', 'challenge_completed', 'c1', 75)`)).ok);
+        assert.ok(!(await svc(`insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.bob}', 'challenge_completed', 'c1', 75)`)).ok, 'XP for a challenge is paid once');
+        assert.ok((await svc(`insert into public.user_badges (user_id, badge) values ('${USERS.bob}', 'first_challenge')`)).ok);
+        assert.ok(!(await svc(`insert into public.user_badges (user_id, badge) values ('${USERS.bob}', 'first_challenge')`)).ok, 'a badge is earned once');
+    });
+
+    await t.test('a finished challenge is final, even for the backend', async () => {
+        const ins = await svc(challenge(USERS.carol));
+        const id = ins.rows[0].id;
+        assert.ok((await svc(`update public.money_challenges set status = 'completed', impact_inr = 400, judged_at = now() where id = '${id}'`)).ok);
+        for (const change of ['impact_inr = 99999', "status = 'active'", "status = 'not_completed'"]) {
+            const r = await svc(`update public.money_challenges set ${change} where id = '${id}'`);
+            assert.ok(!r.ok && /cannot be changed/.test(r.error), change);
+        }
+        const another = await svc(challenge(USERS.carol));
+        const r = await svc(`update public.money_challenges set starts_on = '2026-01-01' where id = '${another.rows[0].id}'`);
+        assert.ok(!r.ok && /fixed once started/.test(r.error));
+    });
+
+    await t.test('users read only their own challenges, badges and memberships, and write none', async () => {
+        const own = await asUser(db, USERS.alice, 'select user_id from public.money_challenges');
+        assert.ok(own.rows.length >= 1 && own.rows.every((r) => r.user_id === USERS.alice));
+        assert.deepEqual((await asUser(db, USERS.alice, 'select * from public.user_badges')).rows, []);
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.alice, challenge(USERS.alice, 'skipped'))), role);
+            assert.ok(denied(await as(db, role, USERS.alice, 'update public.money_challenges set impact_inr = 5000')), role);
+            assert.ok(denied(await as(db, role, USERS.alice, `insert into public.user_badges (user_id, badge) values ('${USERS.alice}', 'habit_30')`)), role);
+            assert.ok(denied(await as(db, role, USERS.alice, `insert into public.campaign_members (user_id, sponsor_id, role) values ('${USERS.alice}', gen_random_uuid(), 'campaign_manager')`)), role);
+        }
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.money_challenges')));
+    });
+
+    await t.test('deleting the account removes challenges, badges and memberships', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['money_challenges', 'user_badges', 'campaign_members']) {
+            const r = await db.query(`select count(*)::int as n from public.${table} where user_id = '${USERS.alice}'`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_11 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const res = await db.query(sql('tests/verify_production.sql'));
+        assert.deepEqual(res.rows.filter((r) => r.result !== 'PASS'), []);
+    });
+
     await db.close();
 });
