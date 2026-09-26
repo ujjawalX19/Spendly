@@ -10,10 +10,10 @@ import { fileURLToPath } from 'node:url'
  * it is never part of the user app: `npm run build` (and therefore the
  * Capacitor/Android bundle, which syncs `dist/`) does not include it.
  *
- *   npm run dev:admin     http://localhost:5174/admin/
+ *   npm run dev:admin     http://localhost:5174/vittova-ops/
  *   npm run build:admin   -> admin/dist
  *   npm run build:web     user app -> dist/, console -> dist/admin/ (the Vercel
- *                         build for https://vittova.in/admin; never used for the
+ *                         build for https://vittova.in/vittova-ops; never used for the
  *                         Android bundle, which runs `npm run build` only)
  *
  * Environment variables are read from frontend/.env* like the user app:
@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url'
  * (falls back to VITE_API_URL). Never put a service-role key in any VITE_ var.
  */
 export default defineConfig({
-  // Served from https://vittova.in/admin/ by the existing Vercel project.
-  base: '/admin/',
+  // Served from https://vittova.in/vittova-ops/ by the existing Vercel project.
+  base: '/vittova-ops/',
   root: fileURLToPath(new URL('./admin', import.meta.url)),
   envDir: fileURLToPath(new URL('.', import.meta.url)),
   publicDir: fileURLToPath(new URL('./public', import.meta.url)),

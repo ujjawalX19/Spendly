@@ -11,7 +11,8 @@ const MIN_LENGTH = 8;
  * Set a new password after following a reset link.
  *
  * Reached with a recovery session: on the web supabase-js exchanges the link's
- * code on page load and emits PASSWORD_RECOVERY; on Android DeepLinkHandler
+ * `?code=` on page load (the URL marks the recovery, see
+ * lib/authRedirects.isPasswordRecoveryUrl); on Android DeepLinkHandler
  * exchanges it and marks recovery. Without a recovery session (expired link,
  * link already used, or opened on another device) the form is not shown.
  */

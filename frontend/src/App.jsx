@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
@@ -241,6 +241,30 @@ function DeepLinkHandler({ onMessage }) {
   return null;
 }
 
+/**
+ * Send a password-reset return to the form, wherever it landed.
+ *
+ * Supabase uses the Site URL when a redirect is not allow-listed, so the link
+ * can arrive at "/" instead of /reset-password. AuthProvider has already
+ * decided whether this load is a recovery (lib/authRedirects.isRecoveryReturn);
+ * this only moves the user to the form, once, and never fights navigation
+ * afterwards.
+ */
+function RecoveryRedirect() {
+  const { passwordRecovery } = useAuth();
+  const navigate = useNavigate();
+  const moved = useRef(false);
+
+  useEffect(() => {
+    if (moved.current || !passwordRecovery) return;
+    if (window.location.pathname.replace(/\/+$/, '').endsWith('/reset-password')) return;
+    moved.current = true;
+    navigate('/reset-password', { replace: true });
+  }, [passwordRecovery, navigate]);
+
+  return null;
+}
+
 function App() {
   const [authMessage, setAuthMessage] = useState('');
   // The brand moment runs over the app on a cold start while auth and data
@@ -254,6 +278,7 @@ function App() {
         <ProProvider>
           <Router>
             <DeepLinkHandler onMessage={setAuthMessage} />
+            <RecoveryRedirect />
             {authMessage ? (
               <div role="alert" className="fixed top-0 inset-x-0 z-50 bg-red-500/95 text-white text-sm px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-start gap-3">
                 <span className="flex-1">{authMessage}</span>

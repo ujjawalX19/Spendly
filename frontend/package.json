@@ -8,7 +8,7 @@
     "build": "vite build",
     "dev:admin": "vite --config vite.admin.config.js",
     "build:admin": "vite build --config vite.admin.config.js",
-    "build:web": "vite build && vite build --config vite.admin.config.js --outDir ../dist/admin --emptyOutDir",
+    "build:web": "vite build && vite build --config vite.admin.config.js --outDir ../dist/vittova-ops --emptyOutDir",
     "preview:admin": "vite preview --config vite.admin.config.js",
     "lint": "eslint .",
     "preview": "vite preview",

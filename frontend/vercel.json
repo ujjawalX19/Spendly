@@ -15,12 +15,12 @@
   ],
   "rewrites": [
     {
-      "source": "/admin",
-      "destination": "/admin/index.html"
+      "source": "/vittova-ops",
+      "destination": "/vittova-ops/index.html"
     },
     {
-      "source": "/admin/:path*",
-      "destination": "/admin/index.html"
+      "source": "/vittova-ops/:path*",
+      "destination": "/vittova-ops/index.html"
     },
     {
       "source": "/auth/app-callback",
@@ -49,7 +49,7 @@
   ],
   "headers": [
     {
-      "source": "/admin(.*)",
+      "source": "/vittova-ops(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",

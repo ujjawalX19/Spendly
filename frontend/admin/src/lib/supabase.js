@@ -12,7 +12,7 @@ if (!url || !anonKey) {
  * user app uses. It grants nothing beyond the owner's own profile row; every
  * admin read and action goes through the backend's owner-only API.
  *
- * The console is served on the same origin as the user app (vittova.in/admin),
+ * The console is served on the same origin as the user app (vittova.in/vittova-ops),
  * so its session uses a separate key AND sessionStorage: it lives only in this
  * tab, is gone when the tab closes, and is not readable from other tabs of
  * vittova.in.

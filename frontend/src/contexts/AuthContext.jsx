@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabaseClient';
-import { isNative, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/authRedirects';
+import { isNative, isRecoveryReturn, loginRedirectUrl, passwordResetRedirectUrl, RESET_REQUEST_KEY } from '../lib/authRedirects';
 import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
 import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
@@ -27,7 +27,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
   const [passwordRecovery, setPasswordRecovery] = useState(() => {
-    try { return window.sessionStorage.getItem('spendly.recovery') === '1'; } catch { return false; }
+    // A web reset link lands here with ?code=…; supabase-js emits SIGNED_IN for
+    // it, not PASSWORD_RECOVERY, so the URL is what marks the recovery.
+    try {
+      const requestedAt = Number(window.localStorage.getItem(RESET_REQUEST_KEY)) || null;
+      if (isRecoveryReturn(window.location.href, requestedAt)) {
+        try { window.sessionStorage.setItem('spendly.recovery', '1'); } catch { /* storage unavailable */ }
+        return true;
+      }
+      return window.sessionStorage.getItem('spendly.recovery') === '1';
+    } catch { return false; }
   });
   const lastUserId = useRef(null);
 
@@ -35,7 +44,10 @@ export function AuthProvider({ children }) {
     setPasswordRecovery(value);
     try {
       if (value) window.sessionStorage.setItem('spendly.recovery', '1');
-      else window.sessionStorage.removeItem('spendly.recovery');
+      else {
+        window.sessionStorage.removeItem('spendly.recovery');
+        window.localStorage.removeItem(RESET_REQUEST_KEY);
+      }
     } catch { /* storage unavailable */ }
   }, []);
 
@@ -221,6 +233,9 @@ export function AuthProvider({ children }) {
    * discover who uses Vittova.
    */
   const requestPasswordReset = async (email) => {
+    // Remembered so the return leg is recognised even if Supabase falls back
+    // to the Site URL instead of our redirect (see isRecoveryReturn).
+    try { window.localStorage.setItem(RESET_REQUEST_KEY, String(Date.now())); } catch { /* storage unavailable */ }
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: passwordResetRedirectUrl() });
     if (error) trackAuthFailure('password_reset_failed', 'email', error);
     else track('password_reset_requested', { method: 'email' });

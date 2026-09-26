@@ -227,7 +227,7 @@ of your developer account; organisation accounts are exempt.
 
 ### 4.4 Production
 Apply for production access → roll out to 10–20% first → watch Android vitals
-(crashes and ANRs) and the Owner Console (`https://vittova.in/admin`) for a few
+(crashes and ANRs) and the Owner Console (`https://vittova.in/vittova-ops`) for a few
 days before 100%.
 
 ### 4.5 Every upload
