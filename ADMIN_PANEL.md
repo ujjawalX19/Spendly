@@ -1,8 +1,9 @@
 # Vittova Owner Console
 
-A private operations console for the app owner at **https://vittova.in/admin**.
+A private operations console for the app owner at **https://vittova.in/vittova-ops**
+(the path is deliberately not `/admin`; see *Console path* below).
 It is a separate bundle (`frontend/admin`) built into the existing Vercel
-project's output under `/admin/`, talking to the backend's owner-only API
+project's output under `/vittova-ops/`, talking to the backend's owner-only API
 (`/api/admin/*`). It is not part of the Android app: the APK is built with
 `npm run build`, which never includes the console.
 
@@ -35,6 +36,26 @@ project's output under `/admin/`, talking to the backend's owner-only API
 | **Pro** | Free/Pro, source, expiries, entitlement history, quota usage by feature, users near limits, purchase attempts; **Billing: Not enabled**, no revenue | `profiles`, audit log, `app_events` |
 | **Audit Logs** | Every admin action and refused attempt | `admin_audit_log` |
 | **Settings** | Read-only: owner configured (masked), environment, billing/Gemini/Play Console status, free limits, migration status, retention | configuration probes |
+
+## Console path
+
+The console lives at `/vittova-ops`, not `/admin`, so scanners and casual
+visitors never reach the sign-in page. This is obscurity, not access control:
+authorization is enforced server-side on every request (`ADMIN_EMAIL` +
+`profiles.role = 'admin'`), and `/admin` simply falls through to the user app.
+
+To move it again, change all four together — nothing else hardcodes the path:
+
+| Where | What |
+|---|---|
+| `frontend/vite.admin.config.js` | `base: '/<path>/'` |
+| `frontend/package.json` | `build:web` → `--outDir ../dist/<path>` |
+| `frontend/vercel.json` | two `rewrites` sources + the `headers` source `/<path>(.*)` |
+| `frontend/tests/bundleSecrets.test.js` | the `dist/<path>` assertion |
+
+Then add `https://vittova.in/<path>/` to the Supabase redirect URLs if Google
+sign-in is used, and re-bookmark. The app's routes come from
+`import.meta.env.BASE_URL`, so no component changes.
 
 ## Telemetry (v1.6)
 
@@ -73,14 +94,14 @@ project's output under `/admin/`, talking to the backend's owner-only API
    `npm run build:web` (`frontend/vercel.json`), producing the user app in
    `dist/` and the console in `dist/admin/`. No new project or env vars.
 5. **Supabase Auth** (Google sign-in to the console only) — allow
-   `https://vittova.in/admin/` under *Authentication → URL Configuration →
+   `https://vittova.in/vittova-ops/` under *Authentication → URL Configuration →
    Redirect URLs*. Email/password sign-in needs nothing extra.
 
 Local development:
 
 ```bash
 cd backend && ADMIN_EMAIL=<owner email> npm run dev
-cd frontend && npm run dev:admin     # http://localhost:5174/admin/ (add the origin to ALLOWED_ORIGINS)
+cd frontend && npm run dev:admin     # http://localhost:5174/vittova-ops/ (add the origin to ALLOWED_ORIGINS)
 ```
 
 ## Not available (stated in the console, never estimated)

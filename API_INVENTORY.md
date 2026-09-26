@@ -57,7 +57,7 @@ test account (manual).
 | DELETE | /api/account | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
 | PUT | /api/account/budget, /api/account/investment-target | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
 
-### Owner admin API (Owner Console at https://vittova.in/admin, `frontend/admin`)
+### Owner admin API (Owner Console at https://vittova.in/vittova-ops, `frontend/admin`)
 
 All behind `protect` + `requireOwner`: confirmed email = `ADMIN_EMAIL` **and** `profiles.role = 'admin'`. No/invalid token → `401`; signed-in non-owners → `403`. See [ADMIN_PANEL.md](ADMIN_PANEL.md).
 

@@ -66,7 +66,7 @@ test('built bundles (user app and /admin) contain no server secret', (t) => {
     t.skip('dist/ not built — run `npm run build:web` first');
     return;
   }
-  assert.ok(built.some((f) => f.includes(join('dist', 'admin'))), 'dist/admin missing: build with `npm run build:web`');
+  assert.ok(built.some((f) => f.includes(join('dist', 'vittova-ops'))), 'dist/vittova-ops missing: build with `npm run build:web`');
   const secrets = serverSecrets();
   for (const file of built) {
     const text = readFileSync(file, 'utf8');
