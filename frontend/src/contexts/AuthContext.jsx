@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabaseClient';
-import { isNative, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/authRedirects';
+import { isNative, isPasswordRecoveryUrl, loginRedirectUrl, passwordResetRedirectUrl } from '../lib/authRedirects';
 import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
 import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
@@ -27,7 +27,15 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
   const [passwordRecovery, setPasswordRecovery] = useState(() => {
-    try { return window.sessionStorage.getItem('spendly.recovery') === '1'; } catch { return false; }
+    // A web reset link lands here with ?code=…; supabase-js emits SIGNED_IN for
+    // it, not PASSWORD_RECOVERY, so the URL is what marks the recovery.
+    try {
+      if (isPasswordRecoveryUrl(window.location.href)) {
+        try { window.sessionStorage.setItem('spendly.recovery', '1'); } catch { /* storage unavailable */ }
+        return true;
+      }
+      return window.sessionStorage.getItem('spendly.recovery') === '1';
+    } catch { return false; }
   });
   const lastUserId = useRef(null);
 

@@ -51,6 +51,34 @@ export function passwordResetRedirectUrl() {
 }
 
 /**
+ * Whether this URL is the landing page of a password-reset link.
+ *
+ * On the web the link is PKCE: /reset-password?code=… . supabase-js exchanges
+ * the code on load and emits SIGNED_IN — NOT PASSWORD_RECOVERY, which it only
+ * emits for the older implicit flow (#type=recovery). Relying on that event
+ * alone left the reset page thinking the link was invalid while the user was
+ * in fact signed in, so they were sent to the app instead of the form.
+ *
+ * The flag this drives only decides whether the form is shown; changing the
+ * password still requires the session the one-time code produced.
+ *
+ * @param {string} href
+ * @returns {boolean}
+ */
+export function isPasswordRecoveryUrl(href) {
+  let url;
+  try {
+    url = new URL(href);
+  } catch {
+    return false;
+  }
+  const hash = new URLSearchParams(String(url.hash || '').replace(/^#/, ''));
+  const onResetPage = /\/reset-password\/?$/.test(url.pathname);
+  return (onResetPage && (url.searchParams.has('code') || url.searchParams.get('type') === 'recovery'))
+    || hash.get('type') === 'recovery';
+}
+
+/**
  * Turn Supabase's error parameters into a message a person can act on.
  * Supabase reports them in the query string (PKCE) or the fragment.
  * @returns {string|null}
