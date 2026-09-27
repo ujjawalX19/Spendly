@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
 
           <Section title="1. Information you give us">
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong className="text-zinc-100">Account:</strong> your email address and name. If you sign in with Google, we receive your name and email address from Google. Passwords are handled by our authentication provider and are never visible to us.</li>
+              <li><strong className="text-zinc-100">Account:</strong> your email address and name. If you sign in with Google, we receive your name and email address from Google. Passwords are handled by our authentication provider and are never visible to us. Your month and year of birth, to confirm you are 18 or over.</li>
               <li><strong className="text-zinc-100">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, payment notification, or statement import).</li>
               <li><strong className="text-zinc-100">Budget settings:</strong> monthly budget, savings target, and recurring bills you add.</li>
               <li><strong className="text-zinc-100">Afford-It checks and SIP stress tests:</strong> the amount and optional description you enter are used to work out the answer and are not stored. We only count how many checks you used today, for the free-plan limit.</li>
@@ -146,7 +146,7 @@ export default function PrivacyPolicy() {
           </Section>
 
           <Section title="11. Children">
-            <p>Vittova is intended for people aged 18 and over. We do not knowingly collect data from children. If you believe a child has created an account, contact us and we will delete it.</p>
+            <p>Vittova is intended for people aged 18 and over. When you sign up we ask for your month and year of birth (never the day) to check this, and we keep only the month and year. If you are under 18, we do not create an account; an account created through Google sign-in is stopped straight away, no spending data is processed for it, and it can be deleted in one tap. We do not show ads, and we never use age or financial data for advertising. If you believe a child has created an account, contact us and we will delete it.</p>
           </Section>
 
           <Section title="12. Not financial advice">

@@ -81,11 +81,13 @@ test('key commitments are word-for-word the same in both copies', () => {
       'for up to 7 days. The notification text itself is not saved or uploaded.',
       'We do not sell or rent personal data, and we do not use your financial data for advertising.',
       'Vittova is intended for people aged 18 and over.',
+      'If you are under 18, we do not create an account;',
       'is not a SEBI-registered investment adviser.',
     ],
     terms: [
       'Deleting your Vittova account does not cancel a Google Play subscription.',
       'it is not money, cannot be withdrawn and has no cash value.',
+      'You must be 18 or over to create or use a Vittova account.',
       'Subscriptions renew automatically at the end of each billing period until you cancel.',
       'To the extent permitted by applicable law, we are not liable for any financial losses',
       'These terms are governed by the laws of India.',

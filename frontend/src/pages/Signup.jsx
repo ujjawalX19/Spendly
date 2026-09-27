@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, LockKeyhole, Mail, MailCheck, UserRound, Loader2 } from 'lucide-react';
 import AuthLayout, { GoogleButton, OrDivider } from '../components/AuthLayout';
+import { MONTHS, yearOptions, toBirthYearMonth, ageFrom, ADULT_AGE, rememberPendingAge } from '../lib/age';
 import { useOAuthBrowserReset } from '../hooks/useOAuthBrowserReset';
 
 export default function Signup() {
@@ -14,6 +15,9 @@ export default function Signup() {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [confirmationSent, setConfirmationSent] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [birthMonth, setBirthMonth] = useState('');
+    const [birthYear, setBirthYear] = useState('');
+    const [underAge, setUnderAge] = useState(false);
     const { signup, loginWithGoogle, session } = useAuth();
     const navigate = useNavigate();
     useOAuthBrowserReset(() => setGoogleLoading(false));
@@ -27,6 +31,10 @@ export default function Signup() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        const birthYearMonth = toBirthYearMonth(birthYear, birthMonth);
+        if (!birthYearMonth) { setError('Choose your month and year of birth.'); return; }
+        if (ageFrom(birthYearMonth) < ADULT_AGE) { setUnderAge(true); return; }
+        rememberPendingAge(birthYearMonth);
         setLoading(true);
         const res = await signup(name, email, password);
         setLoading(false);
@@ -154,7 +162,28 @@ export default function Signup() {
                             </button>
                         </div>
                     </div>
-                    <button
+                    <fieldset>
+                    <legend className="mb-2 block text-sm font-semibold text-zinc-300">Month and year of birth</legend>
+                    <div className="grid grid-cols-2 gap-3">
+                        <select aria-label="Birth month" value={birthMonth} onChange={(e) => { setBirthMonth(e.target.value); setUnderAge(false); }} required
+                            className="h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white focus:border-lime-400 focus:outline-none">
+                            <option value="" disabled>Month</option>
+                            {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                        </select>
+                        <select aria-label="Birth year" value={birthYear} onChange={(e) => { setBirthYear(e.target.value); setUnderAge(false); }} required
+                            className="h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white focus:border-lime-400 focus:outline-none">
+                            <option value="" disabled>Year</option>
+                            {yearOptions().map((y) => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                    <p className="mt-1.5 text-xs text-zinc-500">We keep only the month and year.</p>
+                </fieldset>
+                {underAge && (
+                    <p role="alert" className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
+                        Vittova is for people aged 18 and over for now, so we can&apos;t create an account for you yet. Nothing has been saved.
+                    </p>
+                )}
+                <button
                         type="submit"
                         disabled={loading || googleLoading}
                         className="v-press mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-[15px] font-extrabold text-black transition hover:bg-lime-300 focus:outline-none focus:ring-4 focus:ring-lime-400/20 disabled:cursor-not-allowed disabled:opacity-50"

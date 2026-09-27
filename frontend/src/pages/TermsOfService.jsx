@@ -30,6 +30,9 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">3. User Accounts</h2>
           <p>
+            You must be 18 or over to create or use a Vittova account. We ask for your month and year of birth to check this.
+          </p>
+          <p className="mt-2">
             You are responsible for maintaining the confidentiality of your account credentials. You are responsible for all activities that occur under your account. You must provide accurate information when creating your account.
           </p>
         </section>

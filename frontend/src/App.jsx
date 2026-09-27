@@ -15,6 +15,7 @@ import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
 import { onReminderOpened, refreshReminders } from './lib/debitReminders';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
+import AgeGate from './components/AgeGate';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
 // out user sees, and a lazy chunk there would add a spinner to cold start.
@@ -82,7 +83,7 @@ function ProtectedRoute({ children }) {
   // explanation, before the dashboard.
   if (!hasOnboarded()) return <Navigate to="/welcome" replace />;
 
-  return children;
+  return <AgeGate>{children}</AgeGate>;
 }
 
 function Layout({ children }) {

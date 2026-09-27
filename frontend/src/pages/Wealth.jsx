@@ -21,6 +21,7 @@ import { MonthShapeCard, SafeToInvestCard, SipStressTestCard } from '../componen
 import SpendScoreCard from '../components/SpendScoreCard';
 import { ErrorState, Row, SectionLabel, Skeleton, StatusPill, Surface } from '../components/ui';
 import { stateBadge } from '../lib/moneyDisplay';
+import { ageFrom, ADULT_AGE } from '../lib/age';
 
 const inr = (v) => `₹${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
 
@@ -164,7 +165,8 @@ function Unavailable() {
 }
 
 export default function Wealth() {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  const minor = Boolean(user?.birth_year_month) && ageFrom(user.birth_year_month) < ADULT_AGE;
   const [wealth, setWealth] = useState(null);
   const [error, setError] = useState('');
   const [waking, setWaking] = useState(false);
@@ -233,8 +235,8 @@ export default function Wealth() {
       {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
 
       <Surface className="divide-y divide-white/[0.06] py-1">
-        <Row label="Safe to invest this month" value={sti ? inr(sti.amount) : '—'} hint={open === 'invest' ? 'Hide' : 'How calculated'} onClick={() => toggle('invest')} />
-        <Row label="SIP stress test" hint={open === 'sip' ? 'Hide' : 'Test a monthly SIP'} onClick={() => toggle('sip')} />
+        {!minor && <Row label="Safe to invest this month" value={sti ? inr(sti.amount) : '—'} hint={open === 'invest' ? 'Hide' : 'How calculated'} onClick={() => toggle('invest')} />}
+        {!minor && <Row label="SIP stress test" hint={open === 'sip' ? 'Hide' : 'Test a monthly SIP'} onClick={() => toggle('sip')} />}
         <Row label="Month shape" hint={open === 'shape' ? 'Hide' : 'View month'} onClick={() => toggle('shape')}
           right={shapeBadge ? <StatusPill tone={shapeBadge.tone === 'good' ? 'good' : shapeBadge.tone === 'warn' ? 'warn' : 'bad'}>{shapeBadge.label}</StatusPill> : null} />
         <Row label="Spend Score" value={hasScore ? `${score.total}/${score.max || 100}` : '—'} hint={open === 'score' ? 'Hide' : 'Why this score'} onClick={() => toggle('score')} />
