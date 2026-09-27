@@ -130,6 +130,7 @@ const CURRENT = [
     'v1_9_subscription_audit.sql',
     'v1_10_sponsored_challenges.sql',
     'v1_11_save_to_earn.sql',
+    'v1_12_age_awareness.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -438,7 +439,7 @@ test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
 });
 
 test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
-    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql'].includes(f)));
+    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql'].includes(f)));
     await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
     const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
     const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
@@ -648,7 +649,7 @@ test('production-like database: partial v1 extension, v1_1 applied, no v1_2', as
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 
@@ -855,6 +856,49 @@ test('v1_11 Save-to-Earn (app v1.1)', async (t) => {
     });
 
     await t.test('verify_production.sql reports only PASS with v1_11 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const res = await db.query(sql('tests/verify_production.sql'));
+        assert.deepEqual(res.rows.filter((r) => r.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_12 age-aware accounts (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_12_age_awareness.sql'));
+    });
+
+    await t.test('month and year only, and only the backend can set it', async () => {
+        assert.ok((await svc(`update public.profiles set birth_year_month = '2007-04' where id = '${USERS.alice}'`)).ok);
+        for (const bad of ['2007-04-12', '2007-4', '1800-01', '2007-13']) {
+            const r = await svc(`update public.profiles set birth_year_month = '${bad}' where id = '${USERS.bob}'`);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), bad);
+        }
+        assert.ok(denied(await asUser(db, USERS.carol, `update public.profiles set birth_year_month = '1990-01' where id = '${USERS.carol}'`)), 'client cannot set its own age');
+    });
+
+    await t.test('guardian consent: backend writes, user reads own, verified needs a method', async () => {
+        assert.ok((await svc(`insert into public.guardian_consents (user_id) values ('${USERS.alice}')`)).ok);
+        const bad = await svc(`update public.guardian_consents set status = 'verified' where user_id = '${USERS.alice}'`);
+        assert.ok(!bad.ok && /check constraint/i.test(bad.error), 'verified without method/time is refused');
+        assert.ok((await svc(`update public.guardian_consents set status = 'verified', method = 'support_verified', decided_at = now() where user_id = '${USERS.alice}'`)).ok);
+        assert.equal((await asUser(db, USERS.alice, 'select status from public.guardian_consents')).rows[0].status, 'verified');
+        assert.deepEqual((await asUser(db, USERS.bob, 'select * from public.guardian_consents')).rows, []);
+        assert.ok(denied(await asUser(db, USERS.bob, `insert into public.guardian_consents (user_id, status, method, decided_at) values ('${USERS.bob}', 'verified', 'support_verified', now())`)));
+        assert.ok(denied(await as(db, 'anon', null, 'select * from public.guardian_consents')));
+    });
+
+    await t.test('deleting the account removes the consent record', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        assert.equal((await db.query(`select count(*)::int as n from public.guardian_consents where user_id = '${USERS.alice}'`)).rows[0].n, 0);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_12 applied', async () => {
         await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
         const res = await db.query(sql('tests/verify_production.sql'));
         assert.deepEqual(res.rows.filter((r) => r.result !== 'PASS'), []);

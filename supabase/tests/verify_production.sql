@@ -224,6 +224,27 @@ checks as (
            'run v1_11_save_to_earn.sql'
 
     union all
+    -- v1.12 (app v1.1): age-aware accounts
+    select 'profiles.birth_year_month exists (month/year only)',
+           exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'birth_year_month'),
+           'run v1_12_age_awareness.sql'
+    union all
+    select 'authenticated cannot UPDATE profiles.birth_year_month',
+           exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'birth_year_month')
+             and not has_column_privilege('authenticated', 'public.profiles', 'birth_year_month', 'UPDATE'),
+           'run v1_12_age_awareness.sql'
+    union all
+    select 'RLS enabled on guardian_consents',
+           coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.guardian_consents')), false),
+           'run v1_12_age_awareness.sql'
+    union all
+    select r || ' cannot INSERT/UPDATE guardian_consents',
+           case when to_regclass('public.guardian_consents') is null then false
+                else not (has_table_privilege(r, 'public.guardian_consents', 'INSERT') or has_table_privilege(r, 'public.guardian_consents', 'UPDATE')) end,
+           'run v1_12_age_awareness.sql'
+    from unnest(array['anon', 'authenticated']) as r
+
+    union all
     select 'Exactly one admin account (owner)',
            (select count(*) from public.profiles where role = 'admin') = 1,
            (select count(*)::text || ' admin(s); must also match ADMIN_EMAIL on the server' from public.profiles where role = 'admin')
@@ -235,7 +256,9 @@ checks as (
     -- (e.g. auth.scim_users) are managed by Supabase and excluded.
     select 'ON DELETE CASCADE: ' || con.conrelid::regclass::text || '.' || con.conname,
            con.confdeltype = 'c'
-             or (con.confdeltype = 'n' and (select relname from pg_class where oid = con.conrelid) in ('app_events', 'app_installs')),
+             or (con.confdeltype = 'n' and (select relname from pg_class where oid = con.conrelid) in ('app_events', 'app_installs'))
+             -- the admin who verified a guardian consent: the record stays, the verifier link is cleared
+             or (con.confdeltype = 'n' and con.conname = 'guardian_consents_verified_by_fkey'),
            ''
     from pg_constraint con
     where con.contype = 'f'

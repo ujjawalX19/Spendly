@@ -1,5 +1,6 @@
 const { supabase } = require('../config/supabase');
 const { userApiLimiter } = require('./rateLimits');
+const ageAccess = require('../lib/ageAccess');
 
 /**
  * Supabase JWT Auth Middleware — `protect`
@@ -8,6 +9,9 @@ const { userApiLimiter } = require('./rateLimits');
  *    deleted user's still-unexpired JWT is rejected).
  * 2. Rejects banned accounts. The ban flag is cached briefly to avoid a
  *    database round trip on every request.
+ * 2b. Works out the account's age experience (lib/ageAccess) from the same
+ *    cached profile read. An under-18 account that is blocked, or waiting for
+ *    guardian consent, can only reach its profile, age and deletion routes.
  * 3. Applies the per-user API rate limit, keyed on the verified user id.
  *
  * The backend uses the service-role key, which bypasses RLS. Every route must
@@ -19,23 +23,39 @@ const { userApiLimiter } = require('./rateLimits');
 const BAN_CACHE_MS = 30 * 1000;
 const banCache = new Map(); // userId -> { banned, at }
 
-async function isBanned(userId) {
+async function accessState(userId) {
     const cached = banCache.get(userId);
-    if (cached && Date.now() - cached.at < BAN_CACHE_MS) return cached.banned;
+    if (cached && Date.now() - cached.at < BAN_CACHE_MS) return cached;
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
         .from('profiles')
-        .select('is_banned')
+        .select('is_banned, birth_year_month')
         .eq('id', userId)
         .maybeSingle();
+    // Before v1_12 is applied the age column does not exist: fall back to the
+    // ban flag alone (everyone is treated as an adult, as before).
+    if (error && /birth_year_month/.test(String(error.message || ''))) {
+        ({ data, error } = await supabase.from('profiles').select('is_banned').eq('id', userId).maybeSingle());
+    }
 
     // A missing profile is not a ban; routes that need the profile handle it.
     // A lookup failure is not cached, so the next request tries again.
     if (error) throw error;
-    const banned = data?.is_banned === true;
+    let consent = null;
+    const provisional = ageAccess.experienceFor(data || {}, null);
+    if (ageAccess.isMinor(provisional.experience) && ageAccess.minorAccessEnabled()) {
+        const r = await supabase.from('guardian_consents').select('status').eq('user_id', userId).maybeSingle();
+        if (r.error) throw r.error;
+        consent = r.data;
+    }
+    const state = { banned: data?.is_banned === true, ...ageAccess.experienceFor(data || {}, consent), at: Date.now() };
     if (banCache.size > 10000) banCache.clear();
-    banCache.set(userId, { banned, at: Date.now() });
-    return banned;
+    banCache.set(userId, state);
+    return state;
+}
+
+async function isBanned(userId) {
+    return (await accessState(userId)).banned;
 }
 
 /** Forget a cached ban decision, e.g. right after an admin changes it. */
@@ -71,8 +91,10 @@ const protect = async (req, res, next) => {
         });
     }
 
+    let access;
     try {
-        if (await isBanned(user.id)) {
+        access = await accessState(user.id);
+        if (access.banned) {
             return res.status(403).json({
                 success: false,
                 code: 'ACCOUNT_SUSPENDED',
@@ -90,7 +112,20 @@ const protect = async (req, res, next) => {
 
     // Controllers use req.user.id for all user-scoped queries.
     // emailConfirmed comes from Supabase Auth, never from the client.
-    req.user = { id: user.id, email: user.email, emailConfirmed: Boolean(user.email_confirmed_at) };
+    req.user = {
+        id: user.id, email: user.email, emailConfirmed: Boolean(user.email_confirmed_at),
+        experience: access.experience, isMinor: ageAccess.isMinor(access.experience),
+    };
+    if ((access.experience === 'minor_blocked' || access.experience === 'minor_pending')
+        && !ageAccess.allowedWhileBlocked(req.method, (req.originalUrl || '').split('?')[0])) {
+        return res.status(403).json({
+            success: false,
+            code: access.experience === 'minor_pending' ? 'GUARDIAN_CONSENT_REQUIRED' : 'AGE_RESTRICTED',
+            message: access.experience === 'minor_pending'
+                ? 'A parent or guardian needs to confirm before you can use Vittova.'
+                : 'Vittova is available from age 18 for now. You can delete your account at any time.',
+        });
+    }
     return userApiLimiter(req, res, next);
 };
 
@@ -121,4 +156,12 @@ function touchActivity(userId) {
         .catch(() => { /* best effort */ });
 }
 
-module.exports = { protect, invalidateBanCache };
+/**
+ * For routes an under-18 account never gets, even with guardian consent
+ * (lib/ageAccess.ADULT_ONLY). Use after protect.
+ */
+const adultOnly = (req, res, next) => (req.user?.isMinor
+    ? res.status(403).json({ success: false, code: 'ADULTS_ONLY', message: 'This feature is available from age 18.' })
+    : next());
+
+module.exports = { protect, invalidateBanCache, adultOnly };

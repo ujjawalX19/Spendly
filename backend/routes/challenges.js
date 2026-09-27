@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, adultOnly } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
 const { userApiLimiter } = require('../middleware/rateLimits');
 const { requireFlag } = require('../lib/featureFlags');
@@ -23,7 +23,7 @@ const campaigns = require('../lib/campaigns');
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const gates = [protect, userApiLimiter, requireFlag('sponsoredChallengesEnabled'), proGate('sponsored_challenges')];
+const gates = [protect, adultOnly, userApiLimiter, requireFlag('sponsoredChallengesEnabled'), proGate('sponsored_challenges')];
 
 function send(res, e) {
     if (e instanceof campaigns.CampaignError) return res.status(e.status).json({ success: false, code: e.code, message: e.message });

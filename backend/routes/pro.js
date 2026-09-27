@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, adultOnly } = require('../middleware/authMiddleware');
 const appTime = require('../lib/appTime');
 const { FREE_LIMITS, COUNTERS } = require('../middleware/proGate');
 const { z } = require('zod');
@@ -112,7 +112,7 @@ function sendBillingError(res, e) {
 }
 
 // @route POST /api/pro/verify-purchase — the app hands over a Google Play purchase token
-router.post('/verify-purchase', protect, userApiLimiter, async (req, res) => {
+router.post('/verify-purchase', protect, adultOnly, userApiLimiter, async (req, res) => {
     if (!purchasesEnabled()) return billingUnavailable(req, res);
     const parsed = verifySchema.safeParse(req.body);
     if (!parsed.success) return validationError(res, parsed.error);

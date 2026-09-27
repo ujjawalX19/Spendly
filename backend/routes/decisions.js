@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, adultOnly } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
 const { userApiLimiter } = require('../middleware/rateLimits');
 const { validationError } = require('../lib/validation');
@@ -72,7 +72,7 @@ router.post('/afford', protect, userApiLimiter, validate(affordSchema), proGate(
 });
 
 // @route POST /api/decisions/sip-stress-test — cash-flow check for a monthly SIP
-router.post('/sip-stress-test', protect, userApiLimiter, validate(sipSchema), proGate('money_check'), async (req, res) => {
+router.post('/sip-stress-test', protect, adultOnly, userApiLimiter, validate(sipSchema), proGate('money_check'), async (req, res) => {
     try {
         const facts = await factsFor(req.user.id);
         res.json({ success: true, test: sipStressTest(facts, { monthlyAmount: req.valid.monthlyAmount }), quota: res.locals.quota || null });
@@ -91,7 +91,7 @@ router.get('/month-shape', protect, userApiLimiter, async (req, res) => {
 });
 
 // @route GET /api/decisions/safe-to-invest — spare cash-flow figure, education only
-router.get('/safe-to-invest', protect, userApiLimiter, async (req, res) => {
+router.get('/safe-to-invest', protect, adultOnly, userApiLimiter, async (req, res) => {
     try {
         res.json({ success: true, safeToInvest: safeToInvest(await factsFor(req.user.id)) });
     } catch (error) {

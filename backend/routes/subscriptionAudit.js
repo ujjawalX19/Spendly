@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 const { supabase } = require('../config/supabase');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, adultOnly } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
 const { userApiLimiter } = require('../middleware/rateLimits');
 const { requireFlag } = require('../lib/featureFlags');
@@ -23,7 +23,7 @@ const audit = require('../lib/recurringAudit');
  * charges" screen (/api/subscriptions) is unchanged.
  */
 
-const gates = [protect, userApiLimiter, requireFlag('subscriptionAuditEnabled'), proGate('subscription_audit')];
+const gates = [protect, adultOnly, userApiLimiter, requireFlag('subscriptionAuditEnabled'), proGate('subscription_audit')];
 
 router.get('/', ...gates, async (req, res) => {
     try {

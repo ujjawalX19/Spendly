@@ -4,6 +4,7 @@ const { z } = require('zod');
 const { supabase } = require('../config/supabase');
 const { protect, invalidateBanCache } = require('../middleware/authMiddleware');
 const { requireOwner } = require('../middleware/requireOwner');
+const ageAccess = require('../lib/ageAccess');
 const { audit } = require('../lib/adminAudit');
 const { hasActivePro, purchasesEnabled } = require('../lib/entitlements');
 const { validationError } = require('../lib/validation');
@@ -468,6 +469,33 @@ async function setSuspended(req, res, suspend) {
 }
 
 // @route POST /api/admin/users/:id/suspend   { reason }
+// ─── Guardian consent (under-18 accounts, only when MINOR_ACCESS_ENABLED) ────
+// Recorded after support has verified, outside the app, that the person giving
+// consent is the child's parent/guardian and an identifiable adult (DPDP Rules
+// 2025, r. 10). No documents or ID numbers are stored: only the outcome.
+const guardianSchema = z.object({ status: z.enum(['verified', 'revoked']), method: z.literal('support_verified') }).strict();
+router.post('/users/:id/guardian-consent', async (req, res) => {
+    if (!UUID_RE.test(String(req.params.id))) return res.status(400).json({ success: false, message: 'Invalid id' });
+    const parsed = guardianSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const { data: target, error: tErr } = await supabase.from('profiles').select('id, birth_year_month').eq('id', req.params.id).maybeSingle();
+    if (tErr) return res.status(503).json({ success: false, message: 'Unavailable' });
+    if (!target) return res.status(404).json({ success: false, message: 'User not found' });
+    const age = ageAccess.ageFrom(target.birth_year_month);
+    if (age === null || age >= ageAccess.ADULT_AGE) return res.status(409).json({ success: false, code: 'NOT_A_MINOR', message: 'This account is not an under-18 account.' });
+    if (!(await audit(req, 'guardian_consent_' + parsed.data.status, { targetUserId: target.id, details: { method: parsed.data.method }, required: true }))) {
+        return res.status(503).json({ success: false, message: 'Unavailable' });
+    }
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('guardian_consents').upsert(
+        { user_id: target.id, status: parsed.data.status, method: parsed.data.method, verified_by: req.user.id, decided_at: now },
+        { onConflict: 'user_id' },
+    );
+    if (error) return res.status(503).json({ success: false, message: 'Unavailable' });
+    invalidateBanCache(target.id);
+    res.json({ success: true });
+});
+
 router.post('/users/:id/suspend', (req, res) => setSuspended(req, res, true));
 // @route POST /api/admin/users/:id/reinstate { reason }
 router.post('/users/:id/reinstate', (req, res) => setSuspended(req, res, false));

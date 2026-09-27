@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { supabase } = require('../config/supabase');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, adultOnly } = require('../middleware/authMiddleware');
 const { proGate } = require('../middleware/proGate');
 const { pdfImportLimiter } = require('../middleware/rateLimits');
 const gemini = require('../lib/gemini');
@@ -44,7 +44,7 @@ function acceptPdf(req, res, next) {
     });
 }
 
-router.post('/', protect, pdfImportLimiter, proGate('pdf_import'), acceptPdf, async (req, res) => {
+router.post('/', protect, adultOnly, pdfImportLimiter, proGate('pdf_import'), acceptPdf, async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ success: false, message: 'No PDF file uploaded' });
     }

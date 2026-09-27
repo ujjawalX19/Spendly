@@ -28,6 +28,7 @@ const UNIQUE_KEYS = {
     reward_issuances: ['enrollment_id'],
     user_badges: ['user_id', 'badge'],
     campaign_members: ['user_id', 'sponsor_id'],
+    guardian_consents: ['user_id'],
 };
 
 // Partial unique indexes (v1_11): one active personal challenge per user.
@@ -43,7 +44,7 @@ const CASCADE = [
     ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['play_purchases', 'user_id'],
     ['recurring_decisions', 'user_id'], ['recurring_expectations', 'user_id'],
     ['challenge_enrollments', 'user_id'], ['money_challenges', 'user_id'], ['user_badges', 'user_id'],
-    ['campaign_members', 'user_id'], ['profiles', 'id'],
+    ['campaign_members', 'user_id'], ['guardian_consents', 'user_id'], ['profiles', 'id'],
 ];
 
 function ilikeTest(c, pattern) {

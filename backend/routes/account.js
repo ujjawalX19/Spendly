@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 const { supabase } = require('../config/supabase');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, invalidateBanCache } = require('../middleware/authMiddleware');
+const ageAccess = require('../lib/ageAccess');
 const { validationError } = require('../lib/validation');
 const telemetry = require('../lib/opsTelemetry');
 
@@ -28,6 +29,10 @@ const USER_TABLES = [
     ['recurring_decisions', 'user_id'],
     ['recurring_expectations', 'user_id'],
     ['challenge_enrollments', 'user_id'],
+    ['money_challenges', 'user_id'],
+    ['user_badges', 'user_id'],
+    ['campaign_members', 'user_id'],
+    ['guardian_consents', 'user_id'],
     ['profiles', 'id'],
 ];
 
@@ -145,6 +150,61 @@ router.put('/investment-target', protect, async (req, res) => {
         return res.status(500).json({ success: false, message: 'Failed to update target' });
     }
     res.json({ success: true, investment_target: data.investment_target });
+});
+
+// ---------------------------------------------------------------------------
+// @route   GET  /api/account/age     my age experience (never the birth month back)
+// @route   POST /api/account/age     { birthYearMonth: 'YYYY-MM' } — set once
+//
+// Month and year only. Set once from the user's own answer; changing it later
+// goes through support, so the age check cannot be undone by re-answering.
+// ---------------------------------------------------------------------------
+async function ageView(userId) {
+    const { data, error } = await supabase.from('profiles').select('birth_year_month').eq('id', userId).maybeSingle();
+    if (error) throw error;
+    let consent = null;
+    const provisional = ageAccess.experienceFor(data || {}, null);
+    if (ageAccess.isMinor(provisional.experience) && ageAccess.minorAccessEnabled()) {
+        const r = await supabase.from('guardian_consents').select('status').eq('user_id', userId).maybeSingle();
+        if (r.error) throw r.error;
+        consent = r.data;
+    }
+    const e = ageAccess.experienceFor(data || {}, consent);
+    return { ageKnown: e.ageKnown, experience: e.experience, adultOnlyFeatures: ageAccess.isMinor(e.experience) ? ageAccess.ADULT_ONLY : [], minorAccessEnabled: ageAccess.minorAccessEnabled() };
+}
+
+router.get('/age', protect, async (req, res) => {
+    try {
+        res.json({ success: true, age: await ageView(req.user.id) });
+    } catch {
+        res.status(503).json({ success: false, code: 'DB_UNAVAILABLE', message: 'Please try again in a moment.' });
+    }
+});
+
+const ageSchema = z.object({ birthYearMonth: z.string().regex(/^(19|20)\d{2}-(0[1-9]|1[0-2])$/, 'Choose your month and year of birth.') }).strict();
+
+router.post('/age', protect, async (req, res) => {
+    const parsed = ageSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    if (!ageAccess.validBirthYearMonth(parsed.data.birthYearMonth)) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_FAILED', message: 'Choose a real month and year of birth.' });
+    }
+    try {
+        // Only if not set yet (compare-and-set on NULL).
+        const { data, error } = await supabase.from('profiles')
+            .update({ birth_year_month: parsed.data.birthYearMonth, age_confirmed_at: new Date().toISOString() })
+            .eq('id', req.user.id).is('birth_year_month', null).select('id').maybeSingle();
+        if (error) throw error;
+        if (!data) return res.status(409).json({ success: false, code: 'AGE_ALREADY_SET', message: 'Your age is already set. Contact support@vittova.in if it is wrong.' });
+        invalidateBanCache(req.user.id);
+        const view = await ageView(req.user.id);
+        if (view.experience === 'minor_pending') {
+            await supabase.from('guardian_consents').insert({ user_id: req.user.id, status: 'pending' });
+        }
+        res.json({ success: true, age: view });
+    } catch {
+        res.status(503).json({ success: false, code: 'DB_UNAVAILABLE', message: 'Please try again in a moment.' });
+    }
 });
 
 module.exports = router;

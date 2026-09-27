@@ -1,4 +1,5 @@
 const express = require('express');
+const ageAccess = require('../lib/ageAccess');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { telemetryLimiter } = require('../middleware/rateLimits');
@@ -29,7 +30,11 @@ router.post('/events', telemetryLimiter, async (req, res) => {
     if (header.startsWith('Bearer ')) {
         try {
             const { data, error } = await supabase.auth.getUser(header.slice(7).trim());
-            if (!error && data?.user?.id) userId = data.user.id;
+            if (!error && data?.user?.id) {
+                // Under-18 accounts are never linked to usage events.
+                const { data: p } = await supabase.from('profiles').select('birth_year_month').eq('id', data.user.id).maybeSingle();
+                userId = ageAccess.isMinor(ageAccess.experienceFor(p || {}, null).experience) ? null : data.user.id;
+            }
         } catch { /* anonymous */ }
     }
 

@@ -212,7 +212,8 @@ function recordRequestOutcome(req, res, durationMs) {
         props = {};
     }
     recordServerEvent(name, {
-        userId: rule.anonymous ? null : req.user?.id || null,
+        // Under-18 accounts are never linked to usage events (DPDP s. 9: no tracking of children).
+        userId: rule.anonymous || req.user?.isMinor ? null : req.user?.id || null,
         props: { ...props, ...(status >= 400 ? { status } : {}) },
         statusCode: status,
         durationMs,
