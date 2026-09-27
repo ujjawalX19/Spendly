@@ -92,7 +92,7 @@ export default function ProUpgrade() {
             <Sparkles className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-black">Vittova Pro</h1>
-          <p className="mt-1 text-base font-bold text-zinc-200">Save smarter. Decide better.</p>
+          <p className="mt-1 text-base font-bold text-zinc-200">More clarity. Better decisions.</p>
           {isPro && <p className="mt-3 text-sm text-lime-300">Pro is active on your account.</p>}
           {!isPro && !purchasesAvailable && (
             <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-sm font-bold text-amber-300">

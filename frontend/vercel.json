@@ -43,6 +43,14 @@
       "destination": "/legal/support.html"
     },
     {
+      "source": "/students",
+      "destination": "/pages/students.html"
+    },
+    {
+      "source": "/young-professionals",
+      "destination": "/pages/young-professionals.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

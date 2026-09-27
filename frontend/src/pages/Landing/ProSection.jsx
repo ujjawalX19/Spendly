@@ -33,7 +33,7 @@ export default function ProSection() {
             <p className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-200">
               <Sparkles className="l-twinkle h-3.5 w-3.5" aria-hidden="true" /> Vittova Pro
             </p>
-            <h2 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">More than tracking. Better decisions.</h2>
+            <h2 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">More clarity. Better decisions.</h2>
             <p className="mt-4 text-zinc-400">Everything in the free plan, with no daily limits on decisions, plus the tools that catch money leaking out every month.</p>
             <p className="mt-6 text-xs font-bold uppercase tracking-wider text-amber-200/80">Planned pricing</p>
             <ul className="mt-2 grid gap-2 sm:grid-cols-3">

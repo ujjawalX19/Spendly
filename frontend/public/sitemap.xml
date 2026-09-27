@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://vittova.in/</loc>
-    <lastmod>2026-09-26</lastmod>
+    <lastmod>2026-09-27</lastmod>
   </url>
   <url>
     <loc>https://vittova.in/privacy</loc>
@@ -19,5 +19,13 @@
   <url>
     <loc>https://vittova.in/support</loc>
     <lastmod>2026-09-26</lastmod>
+  </url>
+  <url>
+    <loc>https://vittova.in/students</loc>
+    <lastmod>2026-09-27</lastmod>
+  </url>
+  <url>
+    <loc>https://vittova.in/young-professionals</loc>
+    <lastmod>2026-09-27</lastmod>
   </url>
 </urlset>

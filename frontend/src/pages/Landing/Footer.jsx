@@ -25,6 +25,8 @@ export default function Footer() {
           <ul className="mt-3 space-y-1 text-sm">
             <li><a className="inline-flex min-h-[36px] items-center text-zinc-300 hover:text-white" href="#features">Features</a></li>
             <li><a className="inline-flex min-h-[36px] items-center text-zinc-300 hover:text-white" href="#pro">Vittova Pro</a></li>
+            <li><a className="inline-flex min-h-[36px] items-center text-zinc-300 hover:text-white" href="/students">For students</a></li>
+            <li><a className="inline-flex min-h-[36px] items-center text-zinc-300 hover:text-white" href="/young-professionals">For young professionals</a></li>
             <li><Link className="inline-flex min-h-[36px] items-center text-zinc-300 hover:text-white" to="/login">Sign in</Link></li>
           </ul>
         </nav>

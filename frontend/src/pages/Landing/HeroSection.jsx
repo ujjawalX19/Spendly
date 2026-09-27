@@ -38,10 +38,10 @@ export default function HeroSection() {
             <span className="l-word text-lime-400" style={{ animationDelay: `${120 + WORDS.length * 70}ms` }}>next.</span>
           </h1>
           <p className="l-hero mx-auto mt-5 max-w-xl text-lg leading-relaxed text-zinc-400 lg:mx-0" style={{ animationDelay: '600ms' }}>
-            Vittova turns your real spending, bills and budget into simple decisions, so you know when to spend, when to wait and how much you can set aside.
+            Vittova turns your spending, budget and upcoming commitments into simple money decisions, so you know when to spend, when to wait and how much you can set aside.
           </p>
           <div className="l-hero mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start" style={{ animationDelay: '720ms' }}>
-            <PrimaryCta>Start free</PrimaryCta>
+            <PrimaryCta>Start Free</PrimaryCta>
             <SecondaryCta href="#how">See how it works</SecondaryCta>
           </div>
           <p className="l-hero mt-5 text-xs text-zinc-500" style={{ animationDelay: '820ms' }}>Free to start · Android and web · Not investment advice</p>
