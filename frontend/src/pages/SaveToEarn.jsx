@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { Flame, Trophy, Target, ChevronDown, Lock, Info, Gift, Sparkles, X } from 'lucide-react';
+import { Flame, Trophy, Target, ChevronDown, Lock, Info, Gift, Sparkles, X, Share2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { shareText, shareProgress } from '../lib/shareProgress';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
@@ -60,6 +62,7 @@ export default function SaveToEarn() {
   const [confirmSkip, setConfirmSkip] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(null);
+  const [sharing, setSharing] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -140,9 +143,13 @@ export default function SaveToEarn() {
 
   return (
     <div className="space-y-3 pb-6 text-white">
-      <header>
-        <h1 className="text-2xl font-black tracking-tight">Save-to-Earn</h1>
-        <p className="mt-1 text-sm text-zinc-400">Better money habits, rewarded. One challenge at a time.</p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight">Save-to-Earn</h1>
+          <p className="mt-1 text-sm text-zinc-400">Better money habits, rewarded. One challenge at a time.</p>
+        </div>
+        <button type="button" onClick={() => setSharing(true)} aria-label="Share your progress"
+          className="v-press flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 text-zinc-200"><Share2 className="h-4 w-4" /></button>
       </header>
 
       {/* Streak + Victory Pot */}
@@ -326,7 +333,64 @@ export default function SaveToEarn() {
       </Surface>
 
       <AnimatePresence>{streakOpen && streak && <StreakSheet streak={streak} onClose={() => setStreakOpen(false)} onChanged={load} />}</AnimatePresence>
+      {sharing && <ShareSheet hub={hub} streakDays={streak?.current || 0} onClose={() => setSharing(false)} />}
       {celebrate && <Celebration challenge={celebrate} badges={hub.badges} onClose={() => { markCelebrated(celebrate.id); setCelebrate(null); }} />}
+    </div>
+  );
+}
+
+/** Share a moment: the user picks what, and amounts are off unless ticked. */
+function ShareSheet({ hub, streakDays, onClose }) {
+  const lastDone = hub.history.find((c) => c.status === 'completed');
+  const badges = hub.badges.filter((b) => b.earned);
+  const options = [
+    streakDays > 0 && { key: 'streak', label: `${streakDays}-day Money Streak` },
+    lastDone && { key: 'challenge', label: `Completed: ${lastDone.title}` },
+    ...badges.map((b) => ({ key: `badge:${b.key}`, label: `Badge: ${b.title}` })),
+  ].filter(Boolean);
+  const [pick, setPick] = useState(options[0]?.key || '');
+  const [withAmount, setWithAmount] = useState(false);
+  const [status, setStatus] = useState('');
+  const badge = pick.startsWith('badge:') ? badges.find((b) => `badge:${b.key}` === pick) : null;
+  const text = pick ? shareText({
+    kind: badge ? 'badge' : pick, streakDays, badgeTitle: badge?.title, challengeTitle: lastDone?.title,
+    estimate: lastDone?.estimate?.impact, includeAmount: withAmount && pick === 'challenge',
+  }) : '';
+  const go = async () => {
+    const r = await shareProgress(text, { native: Capacitor.isNativePlatform(), share: navigator.share ? (d) => navigator.share(d) : null, clipboard: navigator.clipboard });
+    setStatus(r === 'copied' ? 'Copied. Paste it anywhere.' : r === 'shared' ? 'Shared.' : '');
+  };
+  return (
+    <div className="fixed inset-0 z-[220] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="share-title">
+      <div className="absolute inset-0 bg-black/75" onClick={onClose} />
+      <div className="s2e-done relative z-10 w-full max-w-md rounded-t-3xl border border-white/10 bg-zinc-900 p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:rounded-3xl">
+        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-xl text-zinc-400"><X className="h-5 w-5" /></button>
+        <h2 id="share-title" className="text-lg font-black">Share your progress</h2>
+        <p className="mt-1 text-xs text-zinc-400">Only what you choose is shared. Never your transactions, balance or budget.</p>
+        {options.length === 0 ? (
+          <p className="mt-4 text-sm text-zinc-400">Keep your streak or finish a challenge, and you'll have something to share.</p>
+        ) : (
+          <>
+            <fieldset className="mt-4 space-y-2">
+              <legend className="sr-only">What to share</legend>
+              {options.map((o) => (
+                <label key={o.key} className="flex min-h-[44px] items-center gap-3 rounded-xl border border-white/10 px-3 text-sm">
+                  <input type="radio" name="share" checked={pick === o.key} onChange={() => setPick(o.key)} className="h-4 w-4 accent-lime-400" />{o.label}
+                </label>
+              ))}
+            </fieldset>
+            {pick === 'challenge' && lastDone?.estimate?.impact > 0 && (
+              <label className="mt-3 flex min-h-[44px] items-center gap-3 text-sm text-zinc-300">
+                <input type="checkbox" checked={withAmount} onChange={(e) => setWithAmount(e.target.checked)} className="h-4 w-4 accent-lime-400" />
+                Include the estimated amount
+              </label>
+            )}
+            <p className="mt-3 rounded-xl bg-black/40 p-3 text-sm text-zinc-200">{text}</p>
+            <PrimaryButton className="mt-4" onClick={go}><Share2 className="h-4 w-4" aria-hidden="true" /> Share</PrimaryButton>
+            {status && <p role="status" className="mt-2 text-center text-xs text-zinc-400">{status}</p>}
+          </>
+        )}
+      </div>
     </div>
   );
 }
