@@ -7,7 +7,7 @@ import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/tele
 import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '../plugins/GoogleAuth';
-import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction } from '../lib/googleSignIn';
+import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode } from '../lib/googleSignIn';
 
 const AuthContext = createContext();
 
@@ -199,7 +199,7 @@ export function AuthProvider({ children }) {
         return { success: false, cancelled: true };
       }
       if (action === 'retry') return { success: false, message: 'Google sign-in was interrupted. Please try again.' };
-      track('login_failed', { method: 'google', code: 'native_unavailable' });
+      track('login_failed', { method: 'google', code: nativeFailureCode(err?.code) });
       return null;
     }
     const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: nonce.raw });

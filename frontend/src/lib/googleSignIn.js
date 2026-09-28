@@ -32,6 +32,17 @@ export async function makeNonce(cryptoImpl = globalThis.crypto) {
  *               Android OAuth client is not configured): use the browser flow
  *   retry     — transient: show a retry message
  */
+/**
+ * Telemetry code for a native failure that falls back to the browser, so a
+ * device report shows WHY (no account / Android OAuth client not matching the
+ * signing certificate usually surfaces as NO_CREDENTIAL). Never the message.
+ */
+export function nativeFailureCode(code) {
+  if (code === 'NO_CREDENTIAL') return 'native_no_credential';
+  if (code === 'FAILED') return 'native_failed';
+  return 'native_unavailable';
+}
+
 export function nativeFailureAction(code) {
   if (code === 'CANCELLED') return 'cancelled';
   if (code === 'INTERRUPTED') return 'retry';

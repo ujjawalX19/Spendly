@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeNonce, nativeFailureAction, GOOGLE_WEB_CLIENT_ID } from '../src/lib/googleSignIn.js';
+import { makeNonce, nativeFailureAction, nativeFailureCode, GOOGLE_WEB_CLIENT_ID } from '../src/lib/googleSignIn.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -39,4 +39,11 @@ test('the app signs in with the Google ID token and raw nonce, never with an ema
   assert.match(auth, /GoogleAuth\.signIn\(\{ serverClientId: GOOGLE_WEB_CLIENT_ID, nonce: nonce\.hashed \}\)/);
   // Logging out also clears the Credential Manager choice.
   assert.match(auth, /GoogleAuth\.signOut\(\)/);
+});
+
+test('a native fallback is reported with its reason, never the error message', () => {
+  assert.equal(nativeFailureCode('NO_CREDENTIAL'), 'native_no_credential');
+  assert.equal(nativeFailureCode('FAILED'), 'native_failed');
+  assert.equal(nativeFailureCode(undefined), 'native_unavailable');
+  for (const c of ['native_no_credential', 'native_failed', 'native_unavailable']) assert.match(c, /^[a-z0-9_]{1,40}$/);
 });
