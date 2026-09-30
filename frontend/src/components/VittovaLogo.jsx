@@ -1,10 +1,8 @@
 import { useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
-// The official Vittova pulse mark (see public/vittova-logo.svg). Two
-// interlocking strokes in the 1254×1254 artboard.
-const STROKE_UP = 'M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636';
-const STROKE_DOWN = 'M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998';
+// The official Vittova pulse mark (see public/vittova-logo.svg and lib/brandMark.js).
+import { SEPARATION_WIDTH, STROKE_DOWN, STROKE_UP, STROKE_WIDTH } from '../lib/brandMark';
 
 /**
  * Vittova logo.
@@ -58,7 +56,7 @@ export default function VittovaLogo({ size = 40, tile = true, animated = false, 
       <g fill="none" strokeLinecap="round" strokeLinejoin="round">
         <motion.g
           stroke="#7BEA2F"
-          strokeWidth="116"
+          strokeWidth={STROKE_WIDTH}
           filter={`url(#${id}-glow)`}
           initial={animate ? { opacity: 0.3 } : false}
           animate={animate ? { opacity: [0.3, 0.38, 0.2, 0.38] } : { opacity: 0.3 }}
@@ -67,9 +65,9 @@ export default function VittovaLogo({ size = 40, tile = true, animated = false, 
           <path d={STROKE_UP} />
           <path d={STROKE_DOWN} />
         </motion.g>
-        <motion.path d={STROKE_DOWN} stroke={`url(#${id}-pulse)`} strokeWidth="116" {...draw(0.45)} />
-        <motion.path d={STROKE_UP} stroke={tile ? '#07131A' : '#0B1220'} strokeWidth="134" {...draw(0)} />
-        <motion.path d={STROKE_UP} stroke={`url(#${id}-pulse)`} strokeWidth="116" {...draw(0)} />
+        <motion.path d={STROKE_DOWN} stroke={`url(#${id}-pulse)`} strokeWidth={STROKE_WIDTH} {...draw(0.45)} />
+        <motion.path d={STROKE_UP} stroke={tile ? '#07131A' : '#0B1220'} strokeWidth={SEPARATION_WIDTH} {...draw(0)} />
+        <motion.path d={STROKE_UP} stroke={`url(#${id}-pulse)`} strokeWidth={STROKE_WIDTH} {...draw(0)} />
       </g>
     </svg>
   );

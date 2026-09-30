@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Launch-screen mark (Android 12+ system splash and the androidx compat
+    splash on older versions). A vector, so it is sharp at any size: the
+    launcher bitmap it replaces was 108 dp and Android stretched it to 288 dp.
+
+    Android draws this 288 dp square centred on the screen and shows what falls
+    inside its central 192 dp circle. The mark is the Vittova pulse, centred in
+    a 1728-unit viewport (144 dp wide, well inside the circle).
+
+    The app-icon artwork's background-coloured rim under the rising stroke is
+    left out: the strokes never overlap, and on the launch screen the rim would
+    only show as an outline against the app's glow.
+
+    MUST match frontend/src/lib/brandMark.js (paths, gradient, translate): the
+    web splash draws the same frame at the same place, so the hand-off from
+    this screen to the app is invisible. tests/launchMark.test.js checks it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="1728"
+    android:viewportHeight="1728">
+
+    <group
+        android:translateX="239"
+        android:translateY="235">
+
+        <!-- Falling stroke -->
+        <path
+            android:pathData="M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998"
+            android:strokeWidth="116"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0"
+                    android:startY="320"
+                    android:endX="0"
+                    android:endY="950">
+                    <item android:offset="0" android:color="#FFE6FF4C" />
+                    <item android:offset="0.48" android:color="#FF8FF03A" />
+                    <item android:offset="1" android:color="#FF2BD460" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Rising stroke -->
+        <path
+            android:pathData="M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636"
+            android:strokeWidth="116"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0"
+                    android:startY="320"
+                    android:endX="0"
+                    android:endY="950">
+                    <item android:offset="0" android:color="#FFE6FF4C" />
+                    <item android:offset="0.48" android:color="#FF8FF03A" />
+                    <item android:offset="1" android:color="#FF2BD460" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>

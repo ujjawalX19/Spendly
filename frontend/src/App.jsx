@@ -16,6 +16,7 @@ import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
 import { onReminderOpened, refreshReminders } from './lib/debitReminders';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
+import { releaseLaunchScreen } from './plugins/LaunchScreen';
 import AgeGate from './components/AgeGate';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
@@ -273,6 +274,16 @@ function App() {
   // The brand moment runs over the app on a cold start while auth and data
   // load underneath; it never replays on navigation.
   const [splash, setSplash] = useState(() => shouldShowSplash(window.location.pathname, Capacitor.isNativePlatform()));
+
+  // Without the splash (already shown this session), let Android's launch
+  // screen go as soon as the app has drawn; the splash releases it otherwise.
+  const [splashAtStart] = useState(splash);
+  useEffect(() => {
+    if (splashAtStart) return undefined;
+    const t = setTimeout(releaseLaunchScreen, 150);
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(t); releaseLaunchScreen(); }));
+    return () => { clearTimeout(t); cancelAnimationFrame(raf); };
+  }, [splashAtStart]);
 
   return (
     <ThemeProvider>

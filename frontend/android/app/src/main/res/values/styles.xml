@@ -13,14 +13,20 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- The launch colour behind the WebView, so there is never a white or
+             grey frame between the launch screen and the app's first paint. -->
+        <item name="android:windowBackground">@color/splash_background</item>
     </style>
 
-
+    <!--
+        Launch screen (Android 12+ system splash; the androidx compat splash
+        draws the same on older versions). MainActivity keeps it up until the
+        web splash has painted the identical frame underneath (LaunchScreen).
+    -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
-        <!-- Android 12+ system splash: Vittova mark on the brand background. -->
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <!-- A vector: sharp at the 288 dp Android draws it at. -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

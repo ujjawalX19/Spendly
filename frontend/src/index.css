@@ -154,18 +154,51 @@ body {
 @keyframes v-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 .v-celebrate { animation: v-pop 420ms cubic-bezier(0.3, 1.4, 0.5, 1) 1; }
 
-/* Startup splash */
-@keyframes v-splash-logo { from { opacity: 0; transform: translateY(6px) scale(0.92); } to { opacity: 1; transform: none; } }
-@keyframes v-splash-tagline { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.v-splash-logo { animation: v-splash-logo 550ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.v-splash-tagline { animation: v-splash-tagline 540ms cubic-bezier(0.16, 1, 0.3, 1) 280ms both; }
-.v-splash { transition: opacity 250ms ease-out; }
-.v-splash-out { opacity: 0; }
-.v-splash-static .v-splash-logo, .v-splash-static .v-splash-tagline { animation: none; }
+/*
+ * Startup splash (components/StartupSplash.jsx). It starts as an exact copy of
+ * Android's launch screen, so only opacity and a stroke offset animate: the
+ * vector mark is never scaled or moved, and stays sharp.
+ */
+/* Exit in two steps, never a double exposure of splash and app: the mark and
+   tagline fade out, then the background dissolves onto the app. Taps reach
+   the app as soon as the exit starts. */
+.v-launch-content { transition: opacity 160ms cubic-bezier(0.4, 0, 1, 1); }
+.v-splash-out .v-launch-content { opacity: 0; }
+.v-splash { transition: opacity 200ms cubic-bezier(0, 0, 0.2, 1) 120ms; }
+.v-splash-out { opacity: 0; pointer-events: none; }
+
+/* A short light segment runs along each stroke (pathLength = 1). It is fully
+   transparent while off the ends of the path, so round caps never leave a dot. */
+.v-launch-light { stroke-dasharray: 0.16 1.6; stroke-dashoffset: 0.16; opacity: 0; }
+@keyframes v-launch-sweep {
+  0% { stroke-dashoffset: 0.16; opacity: 0; }
+  16% { opacity: 0.7; }
+  84% { opacity: 0.7; }
+  100% { stroke-dashoffset: -1.02; opacity: 0; }
+}
+.v-splash-play .v-launch-light-up { animation: v-launch-sweep 440ms cubic-bezier(0.45, 0, 0.25, 1) 120ms both; }
+.v-splash-play .v-launch-light-down { animation: v-launch-sweep 400ms cubic-bezier(0.45, 0, 0.25, 1) 360ms both; }
+
+/* The glow is blurred once, on its own layer; only its opacity changes. */
+.v-launch-glow { opacity: 0; will-change: opacity; }
+@keyframes v-launch-bloom { 0% { opacity: 0; } 45% { opacity: 0.55; } 100% { opacity: 0.32; } }
+.v-splash-play .v-launch-glow { animation: v-launch-bloom 780ms cubic-bezier(0.33, 0, 0.2, 1) 120ms both; }
+
+.v-launch-tagline { opacity: 0; will-change: opacity, transform; }
+@keyframes v-launch-tagline { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.v-splash-play .v-launch-tagline { animation: v-launch-tagline 400ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both; }
+
+/* Reduced motion: no light, no bloom; the tagline is simply there. */
+.v-splash-static .v-launch-light { display: none; }
+.v-splash-static .v-launch-glow, .v-splash-static .v-launch-tagline { animation: none; }
+.v-splash-static.v-splash-play .v-launch-tagline { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .v-press, .v-press:active { transition: none; transform: none; }
-  .v-enter, .v-page, .v-celebrate, .v-splash-logo, .v-splash-tagline { animation: none; }
+  .v-enter, .v-page, .v-celebrate { animation: none; }
+  .v-launch-light { display: none; }
+  .v-splash-play .v-launch-glow, .v-splash-play .v-launch-tagline { animation: none; }
+  .v-splash-play .v-launch-tagline { opacity: 1; }
 }
 
 /* ── Landing (public homepage) ─────────────────────────────── */
