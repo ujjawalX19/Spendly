@@ -1,5 +1,6 @@
 package com.vittova.app;
 
+import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -16,8 +17,11 @@ import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 import java.util.List;
 
@@ -50,7 +54,12 @@ import java.util.List;
  *   removePendingPayment({ fingerprint })         older name for "dismissed"
  *   event "paymentDetected"                       a detection was just queued
  */
-@CapacitorPlugin(name = "UpiNotification")
+@CapacitorPlugin(
+    name = "UpiNotification",
+    permissions = {
+        @Permission(alias = "sms", strings = { Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS }),
+    }
+)
 public class UpiNotificationPlugin extends Plugin {
 
     private static final String TAG = "UpiNotificationPlugin";
@@ -202,8 +211,69 @@ public class UpiNotificationPlugin extends Plugin {
         call.resolve(trackingInfo());
     }
 
+    // ── Bank SMS ────────────────────────────────────────────────────────────
+
+    /**
+     * Android's SMS permission dialog. The web layer calls this only from a tap
+     * on a screen that has just explained what is read and why.
+     */
+    @PluginMethod
+    public void requestSmsPermission(PluginCall call) {
+        if (getPermissionState("sms") == PermissionState.GRANTED) {
+            onSmsGranted();
+            call.resolve(trackingInfo());
+            return;
+        }
+        requestPermissionForAlias("sms", call, "smsPermissionResult");
+    }
+
+    @PermissionCallback
+    private void smsPermissionResult(PluginCall call) {
+        if (getPermissionState("sms") == PermissionState.GRANTED) onSmsGranted();
+        call.resolve(trackingInfo());
+    }
+
+    private void onSmsGranted() {
+        PendingPaymentStore.markSmsGranted(getContext(), System.currentTimeMillis());
+        PendingPaymentStore.setSmsEnabled(getContext(), true);
+    }
+
+    /** Vittova's own switch for bank SMS (on by default once access is granted). */
+    @PluginMethod
+    public void setSmsEnabled(PluginCall call) {
+        Boolean enabled = call.getBoolean("enabled");
+        if (enabled == null) {
+            call.reject("enabled is required");
+            return;
+        }
+        PendingPaymentStore.setSmsEnabled(getContext(), enabled);
+        call.resolve(trackingInfo());
+    }
+
+    /** Catch up on bank SMS the receiver missed. Reads only messages since the last catch-up. */
+    @PluginMethod
+    public void scanSmsInbox(PluginCall call) {
+        new Thread(() -> {
+            int added = 0;
+            try {
+                if (SmsIntake.smsGranted(getContext())) PendingPaymentStore.markSmsGranted(getContext(), System.currentTimeMillis());
+                added = SmsIntake.scanInbox(getContext());
+            } catch (Exception e) {
+                Log.w(TAG, "SMS catch-up failed");
+            }
+            JSObject result = new JSObject();
+            result.put("added", added);
+            call.resolve(result);
+        }, "vittova-sms-scan").start();
+    }
+
     private JSObject trackingInfo() {
         JSObject result = new JSObject();
+        boolean smsGranted = SmsIntake.smsGranted(getContext());
+        result.put("smsGranted", smsGranted);
+        result.put("smsEnabled", PendingPaymentStore.smsEnabled(getContext()));
+        // "prompt" | "prompt-with-rationale" | "denied" (Android will not ask again) | "granted"
+        result.put("smsPermission", getPermissionState("sms") == null ? "prompt" : getPermissionState("sms").toString());
         result.put("granted", isGranted());
         result.put("trackingEnabled", PendingPaymentStore.trackingEnabled(getContext()));
         result.put("listenerConnected", PendingPaymentStore.listenerConnected(getContext()));

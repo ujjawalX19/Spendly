@@ -1,16 +1,16 @@
 /**
- * Onboarding.jsx — three screens, then the notification-access ask.
+ * Onboarding.jsx — three screens, then the bank-SMS ask.
  *
- * The order here is the whole point. Vittova's best feature is automatic UPI
- * tracking, and it needs Notification Access — a permission Android presents
- * with a genuinely alarming warning screen. Asked cold on first launch, with
- * no explanation, most people decline, and a user who declines never sees the
- * thing that makes the app worth keeping.
+ * Vittova's best feature is automatic tracking, and payment apps mostly post
+ * no notification for a payment: the reliable signal is the bank's debit SMS.
+ * Asked cold, with no explanation, most people decline an SMS permission.
  *
- * So: explain what the app does, explain what the permission is and
- * explicitly what it is not (it does not read SMS), and only then send them
- * to the settings screen. Skipping is always available and never penalised —
- * manual tracking works perfectly well.
+ * So: explain what the app does, then exactly what is read and kept (business
+ * senders only, never messages from people; amount, payee, bank and time only)
+ * — this screen is Google Play's prominent disclosure — and only then show
+ * Android's dialog, from a tap. Skipping is always available and never
+ * penalised: manual tracking works perfectly well. Payment-app notifications
+ * are an optional extra in Profile.
  */
 
 import { useState } from 'react';
@@ -18,13 +18,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import VittovaLogo from '../components/VittovaLogo';
 import { Capacitor } from '@capacitor/core';
-import { Zap, PieChart, TrendingUp, Bell, ShieldCheck, ArrowRight, Check } from 'lucide-react';
+import { Zap, PieChart, TrendingUp, MessageSquareText, ShieldCheck, ArrowRight, Check } from 'lucide-react';
 
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
-import { SUPPORTED_PAYMENT_APPS } from '../lib/supportedPaymentApps';
 import { recordNotificationPromptDismissed } from '../lib/notificationPrompt';
-import NotificationAccessSheet from '../components/NotificationAccessSheet';
+import { SMS_DISCLOSURE } from '../components/SmsAccessSheet';
 
 export const ONBOARDING_KEY = 'spendly.onboarded.v1';
 
@@ -54,7 +53,7 @@ const SLIDES = [
     icon: Zap,
     tint: 'text-lime-400 bg-lime-400/15',
     title: 'Track without typing',
-    body: 'With your permission, Vittova adds payments from supported UPI and bank apps to your expenses automatically, even when the app is closed. Or add expenses yourself — both work.',
+    body: "With your permission, Vittova adds payments from your bank's debit SMS to your expenses automatically, even when the app is closed. Or add expenses yourself — both work.",
   },
   {
     icon: PieChart,
@@ -73,14 +72,13 @@ const SLIDES = [
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const {
-    isSupported, permissionGranted, openPermissionSettings, openAppSettings, restrictedSettingsLikely, checkPermissionNow,
-  } = usePaymentNotifications();
+  const { isSupported, openAppSettings } = usePaymentNotifications();
   const tracking = usePaymentTracking();
-  const [showAccessSheet, setShowAccessSheet] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [declined, setDeclined] = useState(false);
 
   // The permission screen is Android-only; on web the third slide is the last.
-  const showPermissionStep = isSupported && Capacitor.isNativePlatform() && !permissionGranted;
+  const showPermissionStep = isSupported && Capacitor.isNativePlatform() && !tracking.smsGranted;
   const lastStep = showPermissionStep ? SLIDES.length : SLIDES.length - 1;
 
   const finish = () => {
@@ -119,19 +117,6 @@ export default function Onboarding() {
           </button>
         </div>
 
-        <AnimatePresence>
-          {showAccessSheet && (
-            <NotificationAccessSheet
-              permissionGranted={permissionGranted}
-              restrictedSettingsLikely={restrictedSettingsLikely}
-              checkPermissionNow={checkPermissionNow}
-              openPermissionSettings={openPermissionSettings}
-              openAppSettings={openAppSettings}
-              onClose={() => { setShowAccessSheet(false); navigate('/dash', { replace: true }); }}
-            />
-          )}
-        </AnimatePresence>
-
         <AnimatePresence mode="wait">
           {onPermissionScreen ? (
             <motion.div
@@ -141,7 +126,7 @@ export default function Onboarding() {
               className="flex flex-1 flex-col"
             >
               <span className="mb-7 flex h-16 w-16 items-center justify-center rounded-2xl bg-lime-400/15 text-lime-400">
-                <Bell className="h-8 w-8" />
+                <MessageSquareText className="h-8 w-8" />
               </span>
 
               <h1 className="text-3xl font-black leading-tight tracking-tight">
@@ -149,17 +134,12 @@ export default function Onboarding() {
               </h1>
 
               <p className="mt-4 text-base leading-relaxed text-zinc-400">
-                To detect payments automatically, Vittova needs Android Notification Access. Android shows a
-                strong warning because this access is powerful, so here is exactly how Vittova uses it.
+                Payment apps rarely announce a payment, but your bank always sends a debit SMS. With SMS access,
+                Vittova turns those alerts into expenses. Here is exactly what it reads and keeps.
               </p>
 
               <ul className="mt-6 space-y-3">
-                {[
-                  'Only notifications from the supported payment and bank apps listed below are processed. Notifications from WhatsApp, messages, email, social and every other app are ignored.',
-                  'From a payment notification Vittova keeps only the amount, payee name, app name and time. The notification text itself is not stored or uploaded.',
-                  'Clear payments are added to your Vittova expenses automatically, even when the app is closed (they upload the next time Vittova opens while you are signed in). If a notification is unclear, Vittova asks you first.',
-                  'Vittova does not read SMS, contacts, or anything you type. Turn tracking off any time in Profile → Payment tracking, or in Android settings.',
-                ].map(line => (
+                {SMS_DISCLOSURE.map(line => (
                   <li key={line} className="flex gap-3 text-sm leading-relaxed text-zinc-300">
                     <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-lime-400" />
                     <span>{line}</span>
@@ -167,27 +147,42 @@ export default function Onboarding() {
                 ))}
               </ul>
 
-              <details className="mt-5 rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs text-zinc-400">
-                <summary className="cursor-pointer font-bold text-zinc-300">Supported apps ({SUPPORTED_PAYMENT_APPS.length})</summary>
-                <p className="mt-2 leading-relaxed">{SUPPORTED_PAYMENT_APPS.map((a) => a.name).join(', ')}</p>
-              </details>
+              {declined && (
+                <p role="status" className="mt-5 rounded-xl border border-amber-400/25 bg-amber-400/[.06] p-3 text-sm text-amber-100">
+                  {tracking.smsPermission === 'denied'
+                    ? 'Android will not ask again. You can allow SMS later in App info → Permissions → SMS.'
+                    : "SMS access wasn't allowed. You can add expenses yourself, or allow it later in Profile."}
+                </p>
+              )}
 
               <div className="mt-auto space-y-3 pt-8">
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Mark first: the sheet sends the user out to Android
-                    // Settings, and if Android restarts the app meanwhile they
-                    // should land on the dashboard, not here again.
-                    markOnboarded();
-                    // The screen above says clear payments are added automatically.
-                    tracking.setMode('auto');
-                    setShowAccessSheet(true);
-                  }}
-                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black"
-                >
-                  Turn on automatic tracking <ArrowRight className="h-4 w-4" />
-                </button>
+                {tracking.smsPermission === 'denied' && declined ? (
+                  <button
+                    type="button"
+                    onClick={() => { markOnboarded(); openAppSettings(); }}
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black"
+                  >
+                    Open App info <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={asking}
+                    onClick={async () => {
+                      // Mark first: if Android restarts the app during its
+                      // dialog, the user should land on Home, not here again.
+                      markOnboarded();
+                      setAsking(true);
+                      const info = await tracking.requestSms();
+                      setAsking(false);
+                      if (info?.smsGranted) finish();
+                      else setDeclined(true);
+                    }}
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black disabled:opacity-60"
+                  >
+                    {asking ? 'Waiting for Android…' : <>Allow bank SMS <ArrowRight className="h-4 w-4" /></>}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => { recordNotificationPromptDismissed(); finish(); }}

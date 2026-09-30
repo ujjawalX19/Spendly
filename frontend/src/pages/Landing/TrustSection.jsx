@@ -6,7 +6,7 @@ import { SUPPORT_EMAIL } from '../../lib/legal';
 // Each point describes how Vittova actually works (see /privacy).
 const POINTS = [
   { icon: Lock, title: 'Your data is yours alone', body: 'Each account can read only its own records, and every change goes through our server over HTTPS.' },
-  { icon: BellOff, title: 'No bank password, no SMS', body: "Vittova never connects to your bank and doesn't ask for SMS access. Payment tracking on Android needs your permission and reads only supported payment apps." },
+  { icon: BellOff, title: 'No bank password', body: "Vittova never connects to your bank or asks for its password. With your permission, the Android app reads your bank's debit SMS to add payments for you, and never messages from people." },
   { icon: EyeOff, title: 'No ads, no selling data', body: "We don't show ads, sell your data or use your finances for advertising. The AI never receives your name or email." },
   { icon: Download, title: 'Export any time', body: 'Download all your expenses as a CSV file from your profile.' },
   { icon: Trash2, title: 'Delete in one place', body: 'Delete your account and data from the app, or follow the steps on our website if you can\'t sign in.' },

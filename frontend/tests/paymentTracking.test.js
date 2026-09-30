@@ -35,11 +35,35 @@ test('the app never claims tracking is active unless it is', () => {
     const claimsActive = /are added|is on|active/i.test(`${copy.label} ${copy.detail}`);
     assert.equal(claimsActive, state === TRACKING.ENABLED, state);
   }
-  assert.equal(stateCopy(TRACKING.PERMISSION_REQUIRED).action, 'open_access');
+  // Bank SMS is the main source, so a missing permission asks for SMS first.
+  assert.equal(stateCopy(TRACKING.PERMISSION_REQUIRED).action, 'allow_sms');
   assert.equal(stateCopy(TRACKING.TEMPORARILY_UNAVAILABLE).action, 'open_app_settings');
   // Manufacturer-specific advice only where it is relevant.
   assert.match(stateCopy(TRACKING.TEMPORARILY_UNAVAILABLE, { manufacturer: 'vivo' }).detail, /auto-start/);
   assert.doesNotMatch(stateCopy(TRACKING.TEMPORARILY_UNAVAILABLE, { manufacturer: 'google' }).detail, /auto-start/);
+});
+
+test('bank SMS alone is enough, and it does not depend on the notification listener', () => {
+  const sms = { granted: false, smsGranted: true, smsEnabled: true, trackingEnabled: true, listenerConnected: false, listenerChangedAt: T };
+  assert.equal(trackingState({ supported: true, info: sms }), TRACKING.ENABLED);
+  // Vittova's own SMS switch off and no notifications: nothing can be captured.
+  assert.equal(trackingState({ supported: true, info: { ...sms, smsEnabled: false } }), TRACKING.PERMISSION_REQUIRED);
+  // Android permission removed: the stored switch alone does not count.
+  assert.equal(trackingState({ supported: true, info: { ...sms, smsGranted: false } }), TRACKING.PERMISSION_REQUIRED);
+  // The master switch still wins.
+  assert.equal(trackingState({ supported: true, info: { ...sms, trackingEnabled: false } }), TRACKING.DISABLED);
+  // Both sources: the listener dropping out does not pause tracking.
+  assert.equal(trackingState({ supported: true, info: { ...sms, granted: true } }), TRACKING.ENABLED);
+
+  // The "On" wording names only the sources that are really on.
+  const smsOnly = stateCopy(TRACKING.ENABLED, { info: sms });
+  assert.match(smsOnly.detail, /bank's debit SMS/);
+  assert.equal(smsOnly.action, null);
+  const both = stateCopy(TRACKING.ENABLED, { info: { ...sms, granted: true } });
+  assert.match(both.detail, /bank SMS and supported payment apps/);
+  const notifOnly = stateCopy(TRACKING.ENABLED, { info: { granted: true, trackingEnabled: true } });
+  assert.doesNotMatch(notifOnly.detail, /from your bank/);
+  assert.equal(notifOnly.action, 'allow_sms');
 });
 
 test('automatic adding needs a choice made with the automatic wording in front of the user', () => {

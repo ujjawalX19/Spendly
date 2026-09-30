@@ -21,7 +21,7 @@ import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import PermissionBanner from '../components/PermissionBanner';
-import NotificationAccessSheet from '../components/NotificationAccessSheet';
+import SmsAccessSheet from '../components/SmsAccessSheet';
 import AffordItCard from '../components/AffordItCard';
 import MoneyStreakCard from '../components/MoneyStreakCard';
 import { MoneyStatus, MoneyHealth, InsightCard } from '../components/HomeCards';
@@ -257,8 +257,7 @@ export default function Dashboard() {
   // Android Notification Access is only ever requested from an explicit tap on
   // "Enable". The dashboard must never send the user to Settings on its own.
   const {
-    isSupported, permissionGranted, permissionChecked, pending, resolvePayment, confirmPayment, openPermissionSettings,
-    restrictedSettingsLikely, openAppSettings, checkPermissionNow,
+    isSupported, permissionChecked, pending, resolvePayment, confirmPayment, openAppSettings,
   } = usePaymentNotifications();
   const tracking = usePaymentTracking();
   const [showAccessSheet, setShowAccessSheet] = useState(false);
@@ -444,14 +443,13 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* Notification Access explanation and re-check */}
+      {/* Bank SMS: the explanation, then Android's permission dialog on a tap */}
       <AnimatePresence>
         {showAccessSheet && (
-          <NotificationAccessSheet
-            permissionGranted={permissionGranted}
-            restrictedSettingsLikely={restrictedSettingsLikely}
-            checkPermissionNow={checkPermissionNow}
-            openPermissionSettings={openPermissionSettings}
+          <SmsAccessSheet
+            smsGranted={tracking.smsGranted}
+            smsPermission={tracking.smsPermission}
+            requestSms={tracking.requestSms}
             openAppSettings={openAppSettings}
             onClose={() => setShowAccessSheet(false)}
           />
@@ -490,7 +488,7 @@ export default function Dashboard() {
           <section className="rounded-2xl border border-lime-400/20 bg-[#141414] p-4" aria-labelledby="auto-add-title">
             <h2 id="auto-add-title" className="text-sm font-bold text-white">Add detected payments automatically?</h2>
             <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-              Vittova can now add clear payments from supported UPI and bank apps to your expenses by itself, even when the app is closed.
+              Vittova can now add clear payments to your expenses by itself, even when the app is closed.
               Unclear ones still wait for you. You can change this in Profile.
             </p>
             <div className="mt-3 flex gap-2">
@@ -500,12 +498,12 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Payment-notification access (Android) */}
+        {/* Automatic tracking from bank SMS (Android) */}
         <PermissionBanner
           isSupported={isSupported}
-          permissionGranted={permissionGranted}
+          smsGranted={tracking.smsGranted}
           permissionChecked={permissionChecked}
-          onEnable={() => { tracking.setMode('auto'); setShowAccessSheet(true); }}
+          onEnable={() => setShowAccessSheet(true)}
         />
 
         {/* 1. How much can I spend? */}

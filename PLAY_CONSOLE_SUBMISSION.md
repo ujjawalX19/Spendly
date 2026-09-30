@@ -158,15 +158,16 @@ form's help text before answering "No" to sharing.
 | App info and performance → **Diagnostics** | Yes | No | No | Required | Analytics |
 | Device or other IDs (random installation ID created by the app) | Yes | No | No | Required | Analytics |
 
-**Do not declare** (not collected): location, contacts, SMS or call log,
-messages, calendar, health, audio, files and docs (bank statement import is
+**Do not declare** (not collected): location, contacts, call log, calendar, health, audio, files and docs (bank statement import is
 not available; declare it if you enable it), web browsing, purchase history,
 payment card or bank account numbers, advertising ID.
 
-**Notification data:** supported payment notifications are parsed **on the
-device** and nothing leaves the phone unless the user taps *Add expense*, and
-then it becomes an expense (already declared as financial info). On-device-only
-processing is not "collected" under Play's definition. **Verify**.
+**Bank SMS and notification data:** debit SMS and supported payment
+notifications are parsed **on the device**; the text never leaves the phone.
+The detected payment is uploaded as an expense (amount, payee, time), which is
+already declared as financial info. On-device-only processing is not
+"collected" under Play's definition; the conservative alternative is to also
+declare Messages → SMS or MMS. **Verify** (see PLAY_DECLARATIONS_V1_1.md).
 
 **Security practices:** data encrypted in transit: Yes. Deletion: Yes.
 Independent security review: No.
@@ -180,27 +181,31 @@ Independent security review: No.
   notification text).
 
 ### 3.12 Sensitive permissions and APIs
-The merged release manifest requests **only** `INTERNET` (plus an Android
-system receiver permission declared by the app itself). There is **no** SMS,
-call log, location, contacts, storage, camera, accessibility or
-`QUERY_ALL_PACKAGES` permission, so no Permissions Declaration Form applies.
+From versionCode 10 the release manifest requests `RECEIVE_SMS` and
+`READ_SMS` for automatic tracking from bank debit SMS, so the **SMS and Call
+Log Permissions Declaration Form is required** ("SMS-based money
+management"). The declaration text, video script and Data safety notes are in
+[PLAY_DECLARATIONS_V1_1.md](PLAY_DECLARATIONS_V1_1.md#sms-permissions-versioncode-10-onwards).
+There is no call log, location, contacts, storage, camera, accessibility or
+`QUERY_ALL_PACKAGES` permission. `android.hardware.telephony` is declared
+optional so tablets and Chromebooks are not filtered out.
 
 **Notification access** (`NotificationListenerService`, bound with
-`BIND_NOTIFICATION_LISTENER_SERVICE`) is still personal and sensitive data
-under the User Data policy. If Play asks:
+`BIND_NOTIFICATION_LISTENER_SERVICE`) is an optional extra source and still
+personal and sensitive data under the User Data policy. If Play asks:
 
 > Vittova uses Android Notification Access only when the user turns it on, to
 > detect completed payments from supported UPI and bank apps (Google Pay,
-> PhonePe, Paytm, BHIM and others listed in the privacy policy) and offer to
-> log them as expenses. Notifications from all other apps are ignored without
-> being read. From a supported notification the app keeps only the amount,
-> payee, app name and time on the device for at most 7 days; nothing is
-> uploaded unless the user taps "Add expense". The app does not read SMS.
+> PhonePe, Paytm, BHIM and others listed in the privacy policy).
+> Notifications from all other apps are ignored without being read. From a
+> supported notification the app keeps only the amount, payee, app name and
+> time on the device, for at most 30 days, until the payment is uploaded as an
+> expense or reviewed. The notification text is not stored or uploaded.
 
-**Prominent disclosure (in-app):** Onboarding → the notification screen, and
-Dashboard → "Enable Notification Access". Both explain the use before Android
-Settings opens. Keep a 30–60 second screen recording of this flow on the
-release build ready to upload if asked.
+**Prominent disclosure (in-app):** Onboarding → the SMS permission screen, and
+Home banner / Profile → the SMS sheet. Both explain what is read and kept
+before Android's dialog appears, and the dialog opens only from a tap. Record
+this flow on the release build for the declaration.
 
 ---
 

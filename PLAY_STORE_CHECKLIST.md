@@ -84,8 +84,11 @@ Answer from the actual behaviour, not aspiration. `SECURITY.md` documents it.
       notifications for automatic expense entry, that it is opt-in via Android
       settings, and that notification content is never transmitted or logged.
       Attach a short screen recording of the permission flow.
-- [ ] Confirm **no** `READ_SMS` / `RECEIVE_SMS` anywhere in the manifest —
-      Play restricts these heavily and a stray declaration will fail review
+- [ ] `RECEIVE_SMS` / `READ_SMS` (versionCode 10+) — submit the **SMS and
+      Call Log Permissions Declaration Form** ("SMS-based money management")
+      with the video before rolling out. Text and script:
+      PLAY_DECLARATIONS_V1_1.md → SMS permissions. Confirm `SEND_SMS` and
+      call-log permissions are absent from the merged manifest.
 
 ### Content and audience
 

@@ -37,6 +37,9 @@ final class PendingPaymentStore {
     private static final String OWNER = "owner";
     private static final String LISTENER_CONNECTED = "listener_connected";
     private static final String LISTENER_CHANGED_AT = "listener_changed_at";
+    private static final String SMS = "sms";                 // "off" when the user turned bank SMS off
+    private static final String SMS_SINCE = "sms_since";     // when SMS access was first granted
+    private static final String SMS_LAST_SCAN = "sms_last_scan";
     private static final Object LOCK = new Object();
 
     private PendingPaymentStore() { }
@@ -142,6 +145,47 @@ final class PendingPaymentStore {
 
     static long listenerChangedAt(Context context) {
         return prefs(context).getLong(LISTENER_CHANGED_AT, 0L);
+    }
+
+    // ── Bank SMS ────────────────────────────────────────────────────────────
+
+    /** Reading bank SMS is on unless the user turned it off in Vittova. */
+    static boolean smsEnabled(Context context) {
+        return !"off".equals(prefs(context).getString(SMS, "on"));
+    }
+
+    static void setSmsEnabled(Context context, boolean enabled) {
+        prefs(context).edit().putString(SMS, enabled ? "on" : "off").commit();
+    }
+
+    /**
+     * Android granted SMS access. Tracking starts from this moment: Vittova
+     * never imports messages from before the user allowed it.
+     */
+    static void markSmsGranted(Context context, long nowMs) {
+        synchronized (LOCK) {
+            SharedPreferences prefs = prefs(context);
+            if (prefs.getLong(SMS_SINCE, 0L) == 0L) {
+                prefs.edit().putLong(SMS_SINCE, nowMs).putLong(SMS_LAST_SCAN, nowMs).commit();
+            }
+        }
+    }
+
+    /** Start of the inbox catch-up: after the last message read, never before access was granted. */
+    static long smsScanFrom(Context context) {
+        SharedPreferences prefs = prefs(context);
+        long since = prefs.getLong(SMS_SINCE, 0L);
+        if (since == 0L) return 0L;
+        return Math.max(since, prefs.getLong(SMS_LAST_SCAN, since));
+    }
+
+    static void setSmsLastScan(Context context, long receivedAtMs) {
+        synchronized (LOCK) {
+            SharedPreferences prefs = prefs(context);
+            if (receivedAtMs > prefs.getLong(SMS_LAST_SCAN, 0L)) {
+                prefs.edit().putLong(SMS_LAST_SCAN, receivedAtMs).commit();
+            }
+        }
     }
 
     // ── Serialisation ───────────────────────────────────────────────────────

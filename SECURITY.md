@@ -101,12 +101,21 @@ backup, or device-to-device transfer.
 
 ## What the app collects, and what it does not
 
-- The notification listener reads **notifications only**. It does not read SMS,
-  contacts, or the clipboard. It requires the user to grant Notification Access
-  explicitly in Android settings, and it ignores every app outside its
-  allow-list of payment and banking apps.
-- Notification text is **never logged**. It contains payee names and amounts,
-  and `logcat` is readable over `adb` and by crash reporters.
+- Bank SMS (`RECEIVE_SMS`, `READ_SMS`) is asked at runtime only from a tap,
+  after an in-app disclosure. Only DLT business sender IDs are read: messages
+  from phone numbers and promotional (`-P`) headers are skipped before the
+  body is fetched, and only messages received after access was granted are
+  read. The `SMS_RECEIVED` receiver is exported but protected by
+  `BROADCAST_SMS`, which only the system holds, so no app can inject fake
+  alerts. No `SEND_SMS`, no default-SMS role, no call log.
+- The notification listener is optional. It requires the user to grant
+  Notification Access explicitly in Android settings, and it ignores every app
+  outside its allow-list of payment and banking apps. It does not read
+  contacts or the clipboard.
+- SMS and notification text is **never stored, uploaded or logged**. It
+  contains payee names and amounts, and `logcat` is readable over `adb` and by
+  crash reporters. Only amount, payee, bank/app, time and a hashed reference
+  are kept in the on-device queue.
 - Receipt images are sent to Google Gemini for OCR. The prompt instructs the
   model to omit card numbers, CVVs, account numbers and UPI IDs, and the parsed
   result is filtered before storage. Treat this as best-effort, not a

@@ -38,7 +38,7 @@ export default function PrivacyPolicy() {
           <Section title="1. Information you give us">
             <ul className="list-disc space-y-1 pl-5">
               <li><strong className="text-zinc-100">Account:</strong> your email address and name. If you sign in with Google, we receive your name and email address from Google. Passwords are handled by our authentication provider and are never visible to us. Your month and year of birth, to confirm you are 18 or over.</li>
-              <li><strong className="text-zinc-100">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, payment notification, or statement import).</li>
+              <li><strong className="text-zinc-100">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, bank SMS, payment notification, or statement import).</li>
               <li><strong className="text-zinc-100">Budget settings:</strong> monthly budget, savings target, and recurring bills you add.</li>
               <li><strong className="text-zinc-100">Afford-It checks and SIP stress tests:</strong> the amount and optional description you enter are used to work out the answer and are not stored. We only count how many checks you used today, for the free-plan limit.</li>
               <li><strong className="text-zinc-100">Coach conversations:</strong> the questions you ask the money coach and its answers.</li>
@@ -58,22 +58,39 @@ export default function PrivacyPolicy() {
             <p>We do not use advertising IDs, third-party analytics or crash-reporting SDKs, or location data, and we do not show ads.</p>
           </Section>
 
-          <Section title="3. Payment notifications (Android, optional)">
+          <Section title="3. Payment tracking on Android (optional)">
             <p>
-              Payment tracking is switched on in Vittova by default, but it only works after you allow Android{' '}
-              <strong className="text-zinc-100">Notification Access</strong> for Vittova. Android asks you for this; Vittova
-              cannot grant it itself. With access allowed, the app detects payments from these supported apps only:
+              Payment tracking is switched on in Vittova by default, but it only works after you allow it in Android:{' '}
+              <strong className="text-zinc-100">SMS access</strong> for your bank's debit alerts and, optionally,{' '}
+              <strong className="text-zinc-100">Notification Access</strong> for payment-app notifications. Android asks you for
+              these; Vittova cannot grant them itself.
+            </p>
+            <p>
+              <strong className="text-zinc-100">Bank SMS.</strong> Most payment apps do not announce a payment, but your bank sends a
+              debit SMS. Vittova uses SMS only to find these alerts (Google Play: SMS-based money management).
+            </p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Vittova reads SMS only from the business sender IDs that banks, card issuers and payment services use (for example VM-HDFCBK). Messages from people (phone numbers) are never read.</li>
+              <li>One-time passwords, offers and other messages that are not payments are skipped. From a debit alert, Vittova keeps only the amount, payee, bank, time and a coded reference used to avoid adding a payment twice. The message itself is not saved or uploaded.</li>
+              <li>Vittova reads only messages that arrive after you allow SMS access; it does not import older messages.</li>
+              <li>Vittova does not send SMS and does not request call-log access.</li>
+            </ul>
+            <p>
+              <strong className="text-zinc-100">Payment-app notifications (optional).</strong> With Notification Access, Vittova also
+              detects payments from these supported apps only:
             </p>
             <p className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs leading-6 text-zinc-400">
               {SUPPORTED_PAYMENT_APPS.map((a) => a.name).join(', ')}.
             </p>
             <ul className="list-disc space-y-1 pl-5">
-              <li>Notifications from every other app (for example WhatsApp, SMS/messages, email and social apps) are ignored and not read.</li>
-              <li>A supported notification is analysed on your phone, including while Vittova is closed. If it describes a completed payment, Vittova keeps only the amount, payee name, app name, time and payment type in a private queue on your device until it is uploaded or reviewed, for up to 30 days. The notification text itself is not saved or uploaded.</li>
-              <li>Clear payments are added to your expenses automatically: the next time Vittova runs while you are signed in, the amount, payee name and time are saved to your account as an expense. If a notification is unclear, Vittova asks you before adding it. In Profile → Payment tracking you can choose to be asked about every payment.</li>
+              <li>Notifications from every other app (for example WhatsApp, messaging, email and social apps) are ignored and not read.</li>
+            </ul>
+            <p>For both:</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>A detected payment is analysed on your phone, including while Vittova is closed. If it is a completed payment, Vittova keeps only the amount, payee name, bank or app name, time and payment type in a private queue on your device until it is uploaded or reviewed, for up to 30 days.</li>
+              <li>Clear payments are added to your expenses automatically: the next time Vittova runs while you are signed in, the amount, payee name and time are saved to your account as an expense. If a message or notification is unclear, Vittova asks you before adding it. In Profile → Payment tracking you can choose to be asked about every payment.</li>
               <li>Payments detected on your phone are only added to the account signed in on it. If a different account signs in, anything still waiting on the phone is deleted.</li>
-              <li>Vittova does not request SMS permission and does not read SMS.</li>
-              <li>You can switch payment tracking off in Profile → Payment tracking, or turn Notification Access off at any time in Android settings.</li>
+              <li>You can switch payment tracking off in Profile → Payment tracking, or remove SMS access or Notification Access at any time in Android settings.</li>
             </ul>
           </Section>
 
@@ -144,7 +161,7 @@ export default function PrivacyPolicy() {
               <li><strong className="text-zinc-100">Access and portability:</strong> export your expenses as a CSV file from Settings.</li>
               <li><strong className="text-zinc-100">Correction:</strong> edit or delete any expense in the app.</li>
               <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">Vittova account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score, streak and Money XP history, import history and coach conversations, and the group pools you created.</li>
-              <li><strong className="text-zinc-100">Withdraw consent:</strong> switch off payment tracking in Profile or turn off Notification Access in Android settings, or stop using AI features.</li>
+              <li><strong className="text-zinc-100">Withdraw consent:</strong> switch off payment tracking in Profile or remove SMS access or Notification Access in Android settings, or stop using AI features.</li>
             </ul>
             <p>To exercise any right or raise a grievance, email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
           </Section>

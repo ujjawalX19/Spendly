@@ -77,13 +77,18 @@ test('the privacy policy lists exactly the supported payment apps', () => {
 test('key commitments are word-for-word the same in both copies', () => {
   const phrases = {
     privacy: [
-      'Vittova does not request SMS permission and does not read SMS.',
-      // Automatic payment tracking: exactly what the code does (PaymentTrackingContext, PendingPaymentQueue).
-      'but it only works after you allow Android Notification Access for Vittova. Android asks you for this; Vittova cannot grant it itself.',
+      // Automatic payment tracking: exactly what the code does (SmsSources, SmsIntake,
+      // PaymentTrackingContext, PendingPaymentQueue).
+      'but it only works after you allow it in Android: SMS access for your bank\'s debit alerts and, optionally, Notification Access for payment-app notifications. Android asks you for these; Vittova cannot grant them itself.',
+      'Messages from people (phone numbers) are never read.',
+      'One-time passwords, offers and other messages that are not payments are skipped.',
+      'The message itself is not saved or uploaded.',
+      'Vittova reads only messages that arrive after you allow SMS access; it does not import older messages.',
+      'Vittova does not send SMS and does not request call-log access.',
       'including while Vittova is closed.',
-      'for up to 30 days. The notification text itself is not saved or uploaded.',
+      'until it is uploaded or reviewed, for up to 30 days.',
       'Clear payments are added to your expenses automatically: the next time Vittova runs while you are signed in,',
-      'If a notification is unclear, Vittova asks you before adding it.',
+      'If a message or notification is unclear, Vittova asks you before adding it.',
       'If a different account signs in, anything still waiting on the phone is deleted.',
       'We do not sell or rent personal data, and we do not use your financial data for advertising.',
       'Vittova is intended for people aged 18 and over.',

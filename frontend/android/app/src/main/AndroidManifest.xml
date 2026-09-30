@@ -77,6 +77,20 @@
             </intent-filter>
         </service>
 
+        <!-- Bank debit SMS (SMS-based money management). Protected by
+             BROADCAST_SMS, which only the system's telephony stack holds, so no
+             other app can inject a fake SMS. Receives nothing until the user
+             grants SMS access. Messages from people are dropped before their
+             text is read (SmsSources, SmsIntake). -->
+        <receiver
+            android:name=".SmsPaymentReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -95,9 +109,18 @@
         above is protected by BIND_NOTIFICATION_LISTENER_SERVICE (which only the
         system holds), and the user grants access in Android settings.
         POST_NOTIFICATIONS is only for the optional expected-debit reminders below.
-        SMS permissions are not requested.
+        RECEIVE_SMS / READ_SMS: bank debit alerts, asked at runtime only after an
+        in-app explanation and a tap ("SMS-based money management" in Google
+        Play's SMS policy; declared in Play Console). Only business sender IDs
+        are read; SEND_SMS and call-log permissions are not requested.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- The SMS permissions would otherwise make Google Play require a phone
+         radio and hide Vittova from tablets and Chromebooks. Without one,
+         tracking simply has no SMS to read; everything else works. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <!-- Expected-debit reminders (Vittova Pro). Asked at runtime on Android 13+
          only when the user turns reminders on. No exact-alarm permission. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

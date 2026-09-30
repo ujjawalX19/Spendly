@@ -8,16 +8,17 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
   ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
-  Users, Repeat, Radar, Gift, Bell, Trophy, Zap, Settings2
+  Users, Repeat, Radar, Gift, Bell, Trophy, Zap, Settings2, MessageSquareText
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import { TRACKING } from '../lib/paymentTracking';
+import SmsAccessSheet from '../components/SmsAccessSheet';
 import { useExpenses } from '../hooks/useExpenses';
 import { friendlyError } from '../lib/errors';
 import { API_URL as API_BASE_URL, apiJson } from '../lib/apiConfig';
@@ -272,6 +273,7 @@ export default function Settings() {
   const { isPro, features } = usePro();
   const tracking = usePaymentTracking();
   const [trackingBusy, setTrackingBusy] = useState(false);
+  const [showSmsSheet, setShowSmsSheet] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -470,9 +472,20 @@ export default function Settings() {
               if (turningOn) tracking.setMode('auto');
               setTrackingBusy(false);
             }} />
-          {tracking.state === TRACKING.PERMISSION_REQUIRED && (
-            <SettingRow icon={Bell} label="Allow Notification Access" value="Opens Android settings. Needed to capture payments." onClick={tracking.openAccessSettings} />
+          {/* Bank SMS: the main source (payment apps rarely announce a payment). */}
+          {tracking.smsGranted ? (
+            <ToggleRow icon={MessageSquareText} label="Bank SMS"
+              detail="Debit alerts from banks and cards. Messages from people are never read."
+              on={tracking.smsEnabled} onToggle={() => tracking.setSmsEnabled(!tracking.smsEnabled)} />
+          ) : (
+            <SettingRow icon={MessageSquareText} label="Allow bank SMS"
+              value={tracking.smsPermission === 'denied' ? 'Allowed only in App info → Permissions → SMS' : 'Debit alerts from banks. Never messages from people.'}
+              onClick={() => setShowSmsSheet(true)} />
           )}
+          {/* Payment-app notifications: an optional extra source. */}
+          <SettingRow icon={Bell} label="Payment-app notifications (optional)"
+            value={tracking.granted ? 'On. Change in Android settings.' : 'Off. Also catch payments GPay, PhonePe and others announce.'}
+            onClick={tracking.openAccessSettings} />
           {tracking.state === TRACKING.TEMPORARILY_UNAVAILABLE && (
             <SettingRow icon={Settings2} label="Check background settings" value="Opens App info for Vittova" onClick={tracking.openAppSettings} />
           )}
@@ -489,6 +502,18 @@ export default function Settings() {
           )}
         </div>
       )}
+
+      <AnimatePresence>
+        {showSmsSheet && (
+          <SmsAccessSheet
+            smsGranted={tracking.smsGranted}
+            smsPermission={tracking.smsPermission}
+            requestSms={tracking.requestSms}
+            openAppSettings={tracking.openAppSettings}
+            onClose={() => setShowSmsSheet(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Notifications</p>

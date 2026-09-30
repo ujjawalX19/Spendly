@@ -31,8 +31,51 @@ New in 1.1:
 | `INTERNET` | Everything | — |
 | `com.android.vending.BILLING`, `ACCESS_NETWORK_STATE` | Google Play Billing Library | — |
 | `POST_NOTIFICATIONS` (new) | Expected-debit reminders; asked only when the user turns them on | No declaration. Not a sensitive permission. |
-| Notification Access (user setting, unchanged) | Payment-notification detection from 21 listed payment apps | Unchanged from 1.0 (prominent disclosure in onboarding). The subscription audit does **not** add any notification or SMS access. |
-| No `SCHEDULE_EXACT_ALARM`, SMS, contacts, location | — | — |
+| `RECEIVE_SMS`, `READ_SMS` (new, versionCode 10) | Automatic expense tracking from bank debit SMS | **Permissions Declaration Form required** before this build can be published. See "SMS permissions" below. |
+| Notification Access (user setting) | Optional extra source: payment-app notifications from the listed apps | Prominent disclosure in the access sheet. |
+| No `SEND_SMS`, call log, `SCHEDULE_EXACT_ALARM`, contacts, location | — | — |
+
+## SMS permissions (versionCode 10 onwards)
+
+Why: most UPI apps post no notification for a completed payment (confirmed on
+a Pixel 9 Pro, 2026-09-30), so Notification Access alone captured nothing. The
+bank's debit SMS is the one signal every payment produces.
+
+What the code does (`SmsSources`, `SmsIntake`, `SmsPaymentReceiver`):
+
+- Asked at runtime only from a tap, after an in-app disclosure (Onboarding
+  permission screen; Home banner / Profile → the SMS sheet). Never at launch.
+- Reads only DLT business sender IDs (`XX-HDFCBK`); promotional (`-P`)
+  headers and all phone numbers are skipped **before** the body is read.
+- Only new messages: live via `SMS_RECEIVED` (receiver protected by
+  `BROADCAST_SMS`), and an inbox catch-up limited to messages received after
+  the grant / last scan. Older messages are never imported.
+- OTPs, offers, credits, failed or declined payments, mandates and dues are
+  dropped. From a debit, only amount, payee, bank, time and a hashed reference
+  are kept on the phone; the SMS text is never stored, logged or uploaded.
+- The expense (amount, payee, time) is uploaded like any other expense.
+- No `SEND_SMS`, no default-SMS-handler role, no call log.
+
+Play Console → App content → Sensitive permissions → **SMS and Call Log**:
+
+| Field | Answer |
+|---|---|
+| Core functionality | **SMS-based money management** — "apps that track and manage budget" is a listed permitted exception. |
+| Permissions | `RECEIVE_SMS`, `READ_SMS` |
+| Description (draft) | Vittova is a personal budgeting app for India. Its core feature is automatic expense tracking: when the user allows SMS access, Vittova reads debit alerts from banks' business sender IDs and records the amount, payee and time as an expense in the user's budget. Messages from phone numbers are never read, one-time passwords and promotional messages are skipped, only messages received after the user allows access are read, and the message text is not stored or uploaded. The user can turn this off in the app or revoke the permission at any time. |
+| Video | Release build, ~60 s: Onboarding → SMS disclosure screen → "Allow bank SMS" → Android dialog → a real ₹1 UPI payment → debit SMS arrives → expense appears on Home → Profile → Payment tracking → Bank SMS switch. Upload it unlisted and paste the link. |
+
+Honest risk: Google decides whether SMS tracking is "core" for this app, and
+reviews of this exception are strict. If the declaration is rejected, the
+fallback is a build without `RECEIVE_SMS`/`READ_SMS` (notification-only
+tracking); the app handles no SMS access everywhere already.
+
+Data safety for SMS: the SMS content itself never leaves the phone, and
+on-device-only processing is not "collected" in Play's definition. The
+expense it produces is **Financial info → Other financial info** (already
+declared). If unsure, declaring **Messages → SMS or MMS** as collected
+(optional, app functionality, not shared) is the conservative answer.
+**Verify against Play's current wording before submitting.**
 
 ## Subscriptions (when billing is switched on)
 

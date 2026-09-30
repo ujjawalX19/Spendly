@@ -26,10 +26,12 @@ Vittova is a personal financial copilot for India. It helps you see where your
 money goes and what you can safely spend, without spreadsheets.
 
 TRACK WITHOUT TYPING
-• Optional: turn on Android Notification Access and Vittova spots payment
-  notifications from Google Pay, PhonePe, Paytm, BHIM and other supported UPI
-  and bank apps, then asks you before adding an expense.
-• Vittova does not read SMS and does not connect to your bank account.
+• Optional: allow SMS access and Vittova turns your bank's debit alerts into
+  expenses automatically. It reads only banks' sender IDs, never messages
+  from people, and skips OTPs and offers. The message text stays on your phone.
+• Optional: add Notification Access to also catch payments that Google Pay,
+  PhonePe, Paytm, BHIM and other supported apps announce.
+• No bank password and no bank-account connection.
 • Prefer manual entry? Add expenses yourself, or scan a receipt.
 
 KNOW WHAT YOU CAN SPEND

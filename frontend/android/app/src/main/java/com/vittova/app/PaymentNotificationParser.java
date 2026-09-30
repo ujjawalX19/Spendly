@@ -126,12 +126,22 @@ public final class PaymentNotificationParser {
     );
 
     /**
+     * Bank SMS only: an amount written without a currency, directly after the
+     * debit verb — SBI's "A/C X1234 debited by 250.0 on date 29Sep26".
+     */
+    private static final Pattern BARE_AMOUNT_PATTERN = Pattern.compile(
+        "\\b(?:debited|spent|paid|sent|transferred|withdrawn)\\s+(?:by|for|with|of)\\s+(?:₹|rs\\.?|inr)?\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\b",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /**
      * Words that, immediately before an amount, mean it is NOT the transaction
      * value — a balance, a limit, a reward. Checked against the ~28 characters
-     * preceding the match.
+     * preceding the match. ("Avlbl Amt" and "Avail.bal" are how Bank of Baroda
+     * and Canara Bank label the balance in their SMS.)
      */
     private static final List<String> AMOUNT_DISQUALIFIERS = Arrays.asList(
-        "balance", "bal", "avl", "available", "limit", "due", "outstanding",
+        "balance", "bal", "avl", "avlbl", "avail", "available", "limit", "due", "outstanding",
         "cashback of up to", "up to", "upto", "save", "off on", "worth"
     );
 
@@ -153,15 +163,28 @@ public final class PaymentNotificationParser {
 
     private static final List<String> INCOME_WORDS = Arrays.asList(
         "received from", "you received", "has been credited", "is credited",
-        "credited to your", "credited", "money added", "added to your wallet",
-        "received", "deposited"
+        "credited to your", "transferred to your", "credited", "money added",
+        "added to your wallet", "received", "deposited"
     );
 
     private static final List<String> EXPENSE_WORDS = Arrays.asList(
         "you have paid", "you paid", "payment of", "paid to", "sent to",
         "has been debited", "is debited", "debited from", "debited",
         "successfully paid", "money sent", "you sent", "withdrawn", "spent",
-        "purchase of", "paid", "sent"
+        "purchase of", "transferred from", "money transfer", "used for a transaction",
+        "paid", "sent"
+    );
+
+    /**
+     * One-time passwords. A bank OTP SMS names an amount and a merchant
+     * ("123456 is the OTP for your transaction of Rs.1,299 at AMAZON") but is
+     * not a payment — and is never read further. Warnings such as "never
+     * share your OTP" are deliberately not matched.
+     */
+    private static final List<String> OTP_WORDS = Arrays.asList(
+        "is your otp", "is the otp", "otp is", "otp for", "otp to",
+        "one time password", "one-time password", "verification code",
+        "security code", "authentication code"
     );
 
     /**
@@ -183,18 +206,59 @@ public final class PaymentNotificationParser {
         "scratch card", "cashback of up to", "assured", "win", "won",
         "offer", "offers", "voucher", "coupon", "reward points", "get flat", "flat",
         "sign up", "refer", "referral", "invite", "lucky", "congratulations",
-        "statement is ready", "bill is due", "due on", "autopay set",
-        "will be debited", "will be deducted", "scheduled"
+        "statement is ready", "bill is due", "due on", "is due", "amount due", "autopay set",
+        "will be debited", "will be deducted", "scheduled",
+        // Setting up a UPI mandate is not a payment (its later debits are).
+        "mandate created", "mandate is created", "mandate has been created",
+        "mandate is successfully created", "mandate registered"
     );
 
     // ── Counterparty ────────────────────────────────────────────────────────
 
+    /** Where a payee's name ends: "to SWIGGY on 29/09", "trf to SWIGGY Refno …". */
+    private static final String NAME_END =
+        "(?=\\s*(?:\\.|,|;|!|\\(|$|\\bvia\\b|\\busing\\b|\\bon\\b|\\bfor\\b|\\bfrom\\b|\\bupi\\b|\\bref\\b"
+            + "|\\brefno\\b|\\brrn\\b|\\butr\\b|\\btxn\\b|\\bavl\\b|\\bbal\\b|\\bnot\\b|\\bif\\b|\\bcall\\b))";
+
     private static final Pattern PAYEE_PATTERN = Pattern.compile(
         "(?:paid\\s+to|sent\\s+to|payment\\s+to|transferred\\s+to|to)\\s+"
-            + "([A-Za-z0-9][A-Za-z0-9 &.@'_\\-]{0,48}?)"
-            + "(?=\\s*(?:\\.|,|!|$|\\bvia\\b|\\busing\\b|\\bon\\b|\\bfor\\b|\\bfrom\\b|\\bupi\\b|\\bref\\b|\\btxn\\b))",
+            + "([A-Za-z0-9][A-Za-z0-9 &.@'_\\-]{0,48}?)" + NAME_END,
         Pattern.CASE_INSENSITIVE
     );
+
+    /** Bank SMS (Axis, Canara and others): "UPI/P2M/412345678901/SWIGGY". */
+    private static final Pattern SMS_UPI_PATH_PAYEE = Pattern.compile(
+        "\\bupi/(?:p2[am]|[a-z]{2,4})/[0-9]{6,20}/([A-Za-z0-9][A-Za-z0-9 &.@'_\\-]{0,40}?)(?=\\s*(?:/|\\.|,|;|\\n|$))",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /** Bank SMS (ICICI): "…debited for Rs 250.00 on 29-Sep-26; SWIGGY credited." */
+    private static final Pattern SMS_CREDITED_PAYEE = Pattern.compile(
+        ";\\s*([A-Za-z0-9][A-Za-z0-9 &.@'_\\-]{0,40}?)\\s+credited\\b",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /** Card spends: "…spent on HDFC Bank Card xx1234 at AMAZON on 2026-09-29". */
+    private static final Pattern SMS_AT_PAYEE = Pattern.compile(
+        "\\bat\\s+([A-Za-z0-9][A-Za-z0-9 &.@'_*\\-]{0,40}?)" + NAME_END,
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /**
+     * Where a bank SMS stops describing the payment and starts its standard
+     * tail ("Not you? Call 1800…", "SMS BLOCK …", balances). Payees are only
+     * looked for before it, so "Fwd this SMS to 9264092640 to block UPI" is
+     * never read as a payee.
+     */
+    private static final Pattern SMS_TAIL = Pattern.compile(
+        "(?:\\bnot\\s+you\\b|\\bnot\\s+u\\b|\\bif\\s+not\\b|\\bcall\\s+\\d|\\bsms\\s+block\\b|\\bfwd\\s+this\\b"
+            + "|\\breport\\s+at\\b|\\btotal\\s+bal|\\bavl\\.?\\s*bal|\\bavail|\\bavlbl)",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /** Cash, not spending on something: always confirmed by the user. */
+    private static final Pattern ATM_PATTERN = Pattern.compile(
+        "\\b(?:atm|cash\\s+withdrawal|withdrawn\\s+at)\\b", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern PAYER_PATTERN = Pattern.compile(
         "(?:received\\s+from|credited\\s+by|from)\\s+"
@@ -215,6 +279,12 @@ public final class PaymentNotificationParser {
         Pattern.CASE_INSENSITIVE
     );
 
+    /** Bank SMS: "UPI:412345678901", "to:UPI/412345678901", "UPI/P2M/412345678901/…". */
+    private static final Pattern UPI_REF_PATTERN = Pattern.compile(
+        "\\bupi\\s*[:/]\\s*(?:(?:p2[am]|[a-z]{2,4})/)?([0-9]{9,20})\\b",
+        Pattern.CASE_INSENSITIVE
+    );
+
     /** The reference in the text, or "" when there is none. */
     static String extractReference(String raw) {
         if (raw == null) return "";
@@ -225,6 +295,8 @@ public final class PaymentNotificationParser {
             for (int i = 0; i < v.length(); i++) if (Character.isDigit(v.charAt(i))) digits++;
             if (digits >= 6) return v.toUpperCase(Locale.ROOT);
         }
+        Matcher upi = UPI_REF_PATTERN.matcher(raw);
+        if (upi.find()) return upi.group(1);
         return "";
     }
 
@@ -248,8 +320,35 @@ public final class PaymentNotificationParser {
         if (raw.isEmpty()) {
             return unknown(appName, "empty notification");
         }
+        return classify(raw, appName, packageName, postTimeMs, false);
+    }
 
+    /**
+     * Parse one bank SMS. The caller ({@link SmsIntake}) has already checked
+     * the sender is a business sender ID, such as "VM-HDFCBK", and not a
+     * person: messages from phone numbers never reach this method.
+     *
+     * @param sender   the SMS sender ID
+     * @param body     the full message (multi-part messages joined)
+     * @param timeMs   when the bank sent it
+     */
+    public static Result parseSms(String sender, String body, long timeMs) {
+        String bank = SmsSources.bankName(sender);
+        if (body == null || body.trim().isEmpty()) {
+            return unknown(bank, "empty sms");
+        }
+        return classify(body, bank, SmsSources.sourceKey(sender), timeMs, true);
+    }
+
+    /** The shared decision for app notifications and bank SMS. */
+    private static Result classify(String raw, String appName, String sourceKey, long postTimeMs, boolean sms) {
         String lower = normalize(raw);
+
+        // 0. One-time passwords name an amount and a merchant but are not payments.
+        String otp = firstMatch(lower, OTP_WORDS);
+        if (otp != null) {
+            return unknown(appName, "one-time password");
+        }
 
         // 1. Reject requests, reminders, offers and balance updates outright.
         String marketing = firstMatch(lower, NON_TRANSACTION_WORDS);
@@ -281,14 +380,16 @@ public final class PaymentNotificationParser {
         else if (winner == income) kind = Kind.INCOME;
         else                       kind = Kind.EXPENSE;
 
-        // 4. Amount, preferring the one nearest the verb we matched.
+        // 4. Amount, preferring the one nearest the verb we matched. Bank SMS
+        //    may omit the currency ("debited by 250.0").
         Amount amount = extractAmount(raw, lower, winner.index);
+        if (amount == null && sms) amount = extractBareAmount(raw);
         if (amount == null) {
             return unknown(appName, "no trustworthy amount found");
         }
 
         // 5. Counterparty.
-        String merchant = extractCounterparty(raw, kind);
+        String merchant = sms ? extractSmsPayee(raw) : extractCounterparty(raw, kind);
 
         // 6. Confidence. Anything uncertain is surfaced to the user rather
         //    than silently written to their ledger.
@@ -299,7 +400,9 @@ public final class PaymentNotificationParser {
             confirm = true;
             reason += "; more than one amount in the text";
         }
-        if ("Unknown".equals(merchant) && kind == Kind.EXPENSE) {
+        // A payment app's notification without a payee is unusual; a bank
+        // debit alert often names none ("thru UPI:4123…") and is still certain.
+        if (!sms && "Unknown".equals(merchant) && kind == Kind.EXPENSE) {
             confirm = true;
             reason += "; no payee identified";
         }
@@ -308,8 +411,14 @@ public final class PaymentNotificationParser {
             confirm = true;
             reason += "; unusually large amount";
         }
+        if (kind == Kind.EXPENSE && ATM_PATTERN.matcher(raw).find()) {
+            // Cash is moved, not spent yet: the user decides.
+            confirm = true;
+            merchant = "Cash withdrawal";
+            reason += "; cash withdrawal";
+        }
 
-        String fingerprint = fingerprint(packageName, kind, amount.value, merchant, postTimeMs);
+        String fingerprint = fingerprint(sourceKey, kind, amount.value, merchant, postTimeMs);
         return new Result(kind, amount.value, merchant, appName, fingerprint, confirm, reason,
                 extractReference(raw));
     }
@@ -452,6 +561,9 @@ public final class PaymentNotificationParser {
      */
     private static Amount extractAmount(String raw, String lower, int verbIndex) {
         Matcher m = AMOUNT_PATTERN.matcher(raw);
+        // Same length and positions as `raw` (unlike `lower`, whose collapsed
+        // whitespace shifts positions in multi-line bank SMS).
+        String rawLower = raw.toLowerCase(Locale.ROOT);
         double bestValue = -1;
         int bestDistance = Integer.MAX_VALUE;
         int candidates = 0;
@@ -461,8 +573,7 @@ public final class PaymentNotificationParser {
 
             // Look back a short way for wording that reframes this number.
             int from = Math.max(0, start - 28);
-            String preceding = lower.substring(Math.min(from, lower.length()),
-                                               Math.min(start, lower.length()));
+            String preceding = rawLower.substring(from, start).replaceAll("\\s+", " ");
             if (firstMatch(preceding, AMOUNT_DISQUALIFIERS) != null) continue;
 
             double value;
@@ -489,16 +600,81 @@ public final class PaymentNotificationParser {
         Pattern p = (kind == Kind.INCOME || kind == Kind.REFUND) ? PAYER_PATTERN : PAYEE_PATTERN;
         Matcher m = p.matcher(raw);
         if (m.find()) {
-            String found = cleanName(m.group(1));
+            String found = cleanPayee(m.group(1));
             if (!found.isEmpty()) return found;
         }
         // Fall back to the other direction — notification wording is not consistent.
         Matcher other = (p == PAYEE_PATTERN ? PAYER_PATTERN : PAYEE_PATTERN).matcher(raw);
         if (other.find()) {
-            String found = cleanName(other.group(1));
+            String found = cleanPayee(other.group(1));
             if (!found.isEmpty()) return found;
         }
         return "Unknown";
+    }
+
+    /**
+     * The payee of a bank debit SMS, in order of how reliably each format
+     * names it: "UPI/P2M/ref/NAME", "; NAME credited", a card's "at NAME",
+     * then "to NAME". Only the part before the SMS's standard tail is read.
+     */
+    private static String extractSmsPayee(String raw) {
+        String head = smsHead(raw);
+        for (Pattern p : new Pattern[] { SMS_UPI_PATH_PAYEE, SMS_CREDITED_PAYEE, SMS_AT_PAYEE, PAYEE_PATTERN }) {
+            Matcher m = p.matcher(head);
+            while (m.find()) {
+                String found = cleanPayee(m.group(1));
+                if (!found.isEmpty()) return found;
+            }
+        }
+        return "Unknown";
+    }
+
+    /** The SMS up to its standard tail ("Not you? Call …", balances, block instructions). */
+    static String smsHead(String raw) {
+        Matcher tail = SMS_TAIL.matcher(raw);
+        return tail.find() ? raw.substring(0, tail.start()) : raw;
+    }
+
+    /** SBI-style amounts without a currency, right after the debit verb. */
+    private static Amount extractBareAmount(String raw) {
+        Matcher m = BARE_AMOUNT_PATTERN.matcher(raw);
+        if (!m.find()) return null;
+        try {
+            double value = Double.parseDouble(m.group(1).replace(",", ""));
+            if (value <= 0 || value > 10_000_000d) return null;
+            return new Amount(round2(value), false);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * A name fit to store as the expense's description. A UPI id is shortened
+     * to its handle ("swiggy@icici" → "swiggy"), and one made of a phone number
+     * becomes "UPI transfer": Vittova never stores someone's phone number.
+     * Masked account numbers and "your account" are not payees.
+     */
+    static String cleanPayee(String s) {
+        String name = cleanName(s);
+        if (name.isEmpty()) return "";
+        int at = name.indexOf('@');
+        if (at > 0) {
+            String handle = name.substring(0, at);
+            int digits = 0;
+            for (int i = 0; i < handle.length(); i++) if (Character.isDigit(handle.charAt(i))) digits++;
+            if (digits >= 6) return "UPI transfer";
+            name = cleanName(handle);
+            if (name.isEmpty()) return "";
+        }
+        int digits = 0;
+        for (int i = 0; i < name.length(); i++) if (Character.isDigit(name.charAt(i))) digits++;
+        if (digits >= 7) return "";
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (lower.equals("you") || lower.startsWith("your ") || lower.startsWith("a/c") || lower.startsWith("ac ")
+                || lower.startsWith("account") || name.matches("^[Xx*]+[0-9]{0,6}$")) {
+            return "";
+        }
+        return name;
     }
 
     private static String cleanName(String s) {

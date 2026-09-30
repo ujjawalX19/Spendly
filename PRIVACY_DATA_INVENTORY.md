@@ -13,7 +13,8 @@ Google Play **Data safety** form. Update all three together.
 | Coach questions and answers | User asks | `ai_chat_history` | API, Supabase, **Google Gemini** (question + spending summary) | Until deletion; Google per Gemini API terms | Account deletion |
 | Receipt photo | Receipt scan | **Not stored** by Vittova; extracted merchant/items/total in `expenses.receipt_data` | API (memory), **Google Gemini** | Photo: request lifetime; Google per terms | Extracted data: expense/account deletion |
 | Bank statement PDF (Pro, not yet purchasable) | Upload | **Not stored**; extracted transactions in `expenses`; summary in `pdf_imports` | API (memory), **Google Gemini** (text ≤15,000 chars) | PDF: request lifetime | Account deletion |
-| Payment notification data (Android, opt-in) | Notification from an allowlisted app | **Device only**: SharedPreferences queue with kind, amount, payee, app name, time, fingerprint. Raw text never stored. | Nothing, unless user taps *Add expense* (then amount/payee/time as an expense) | ≤7 days or until add/dismiss | Dismiss, sign-out clears JS state, uninstall |
+| Bank debit SMS (Android, opt-in, versionCode 10+) | SMS from a bank's business sender ID (never phone numbers), received after access was granted | **Device only**: queue with kind, amount, payee, bank, time, hashed reference. SMS text never stored. | Amount, payee, time as an expense (automatically, or after the user confirms if unclear / ask-first mode) | ≤30 days or until uploaded/reviewed | Bank SMS switch in Profile, revoke SMS in Android, account switch clears, uninstall |
+| Payment notification data (Android, opt-in) | Notification from an allowlisted app | **Device only**: queue with kind, amount, payee, app name, time, hashed reference. Raw text never stored. | Amount, payee, time as an expense (as above) | ≤30 days or until uploaded/reviewed | Tracking switch in Profile, revoke access in Android, account switch clears, uninstall |
 | Session tokens | Sign-in | Device (WebView localStorage), excluded from backup | Supabase | Until sign-out/expiry | Sign-out, deletion |
 | Server logs | Every request | Render | — | Provider default (limited) | Rotation |
 | Afford-It / SIP stress-test amount and description (v1.1) | User runs a check | **Not stored**; used to compute the answer only | API (memory) | Request lifetime | — |
@@ -34,7 +35,7 @@ not an advertising ID, Android ID, IMEI or hardware identifier. Events never
 contain amounts, descriptions, payees, coach text, notification text, emails,
 tokens or IPs. Allow-lists: `backend/lib/appEvents.js`, `frontend/src/lib/telemetryCore.js`.
 
-**Not collected:** SMS, contacts, location, advertising ID, hardware device ID,
+**Not collected:** SMS text (read on the device only; see above), contacts, location, advertising ID, hardware device ID,
 payment card data, bank credentials.
 
 **Not present:** ads, third-party analytics SDKs, crash reporting SDKs, push
@@ -54,8 +55,10 @@ notifications, Google Play Billing, data sale or sharing for advertising.
   confirm classification against current Play definitions).
 - Encrypted in transit: Yes. User can request deletion: Yes (in-app and
   `/delete-account` web page).
-- Notification access: declare in the permissions/sensitive-access section with
-  the in-app prominent disclosure (Onboarding → permission screen).
+- SMS (`RECEIVE_SMS`, `READ_SMS`): Permissions Declaration Form, "SMS-based
+  money management"; see PLAY_DECLARATIONS_V1_1.md. Prominent disclosure:
+  Onboarding → SMS screen, and the SMS sheet (Home banner, Profile).
+- Notification access: optional extra source; disclosed in the access sheet.
 
 ## Open items (manual)
 

@@ -127,6 +127,10 @@ export function PaymentTrackingProvider({ children }) {
     if (syncing.current) return syncing.current;
     syncing.current = (async () => {
       try {
+        // Bank SMS the receiver missed (the app was force-stopped, or the
+        // phone was still locked after a restart). Only messages since the
+        // last catch-up are read; nothing from before SMS access was granted.
+        try { await UpiNotification.scanSmsInbox(); } catch { /* no SMS access, or an older native build */ }
         const idempotent = await serverIsIdempotent(sessionRef.current);
         const result = await runSync({
           list: refreshQueue,
@@ -228,6 +232,41 @@ export function PaymentTrackingProvider({ children }) {
     }
   }, [supported, refreshInfo]);
 
+  /**
+   * Android's SMS permission dialog. Only ever call from a tap on a screen
+   * that has just explained what is read (SmsAccessSheet, onboarding): the
+   * explanation says clear payments are added automatically, so it also
+   * chooses automatic adding.
+   */
+  const requestSms = useCallback(async () => {
+    if (!supported) return null;
+    try {
+      const next = await UpiNotification.requestSmsPermission();
+      setInfo(next);
+      track('payment_tracking_switch', { code: next?.smsGranted ? 'sms_granted' : 'sms_declined' });
+      if (next?.smsGranted) {
+        setMode('auto');
+        syncNow();
+      }
+      return next;
+    } catch {
+      return refreshInfo();
+    }
+  }, [supported, refreshInfo, setMode, syncNow]);
+
+  /** Vittova's own switch for bank SMS. */
+  const setSmsEnabled = useCallback(async (enabled) => {
+    if (!supported) return null;
+    try {
+      const next = await UpiNotification.setSmsEnabled({ enabled });
+      setInfo(next);
+      track('payment_tracking_switch', { code: enabled ? 'sms_on' : 'sms_off' });
+      return next;
+    } catch {
+      return refreshInfo();
+    }
+  }, [supported, refreshInfo]);
+
   /** Opens Android's Notification Access screen. Only ever call from a user tap. */
   const openAccessSettings = useCallback(async () => {
     if (!supported) return;
@@ -283,8 +322,14 @@ export function PaymentTrackingProvider({ children }) {
     checked,
     info,
     state,
-    copy: stateCopy(state, { manufacturer: info?.manufacturer }),
+    copy: stateCopy(state, { manufacturer: info?.manufacturer, info }),
     granted: Boolean(info?.granted),
+    smsGranted: Boolean(info?.smsGranted),
+    smsEnabled: info ? info.smsEnabled !== false : true,
+    // 'prompt' | 'prompt-with-rationale' | 'denied' (Android will not ask again) | 'granted'
+    smsPermission: info?.smsPermission || 'prompt',
+    requestSms,
+    setSmsEnabled,
     trackingEnabled: info ? info.trackingEnabled !== false : true,
     restrictedSettingsLikely: Boolean(info?.restrictedSettingsLikely),
     mode,
@@ -318,6 +363,7 @@ const FALLBACK = {
   supported: false, checked: true, info: null, state: TRACKING.UNSUPPORTED, copy: stateCopy(TRACKING.UNSUPPORTED),
   granted: false, trackingEnabled: false, restrictedSettingsLikely: false, mode: 'review', needsChoice: false,
   payments: [], reviewItems: [], waiting: 0, reviewCount: 0, lastResult: null,
+  smsGranted: false, smsEnabled: false, smsPermission: 'prompt', requestSms: noop, setSmsEnabled: noop,
   setMode: () => {}, setTrackingEnabled: noop, openAccessSettings: noop, openAppSettings: noop, refresh: noop,
   syncNow: noop, dismissPayment: noop, confirmPayment: async () => ({ success: false }), clearDeviceData: noop,
 };

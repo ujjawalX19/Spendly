@@ -19,42 +19,68 @@
 // ── The truthful tracking state ─────────────────────────────────────────────
 
 export const TRACKING = Object.freeze({
-  ENABLED: 'ENABLED',                         // switched on AND Android access granted
+  ENABLED: 'ENABLED',                         // switched on AND at least one source granted by Android
   DISABLED: 'DISABLED',                       // the user switched it off in Vittova
-  PERMISSION_REQUIRED: 'PERMISSION_REQUIRED', // switched on, Android access not granted
-  TEMPORARILY_UNAVAILABLE: 'TEMPORARILY_UNAVAILABLE', // granted, but Android dropped the listener
+  PERMISSION_REQUIRED: 'PERMISSION_REQUIRED', // switched on, but Android has granted no source
+  TEMPORARILY_UNAVAILABLE: 'TEMPORARILY_UNAVAILABLE', // notifications only, and Android dropped the listener
   ERROR: 'ERROR',                             // the state could not be read
   UNSUPPORTED: 'UNSUPPORTED',                 // not the Android app
 });
 
 /**
- * Vittova's own switch (on by default) and Android's Notification Access are
- * different things; tracking is only ENABLED when both are on.
+ * The two ways Vittova can see a payment, each needing Android's permission:
+ *   sms    bank debit SMS (SMS permission, and Vittova's SMS switch on)
+ *   notif  supported payment-app notifications (Notification Access)
+ * Many payment apps post no notification for a payment, so bank SMS is the
+ * main source; notifications are an extra.
+ */
+export function sources(info) {
+  return {
+    sms: Boolean(info?.smsGranted) && info?.smsEnabled !== false,
+    notif: Boolean(info?.granted),
+  };
+}
+
+/**
+ * Vittova's own switch (on by default) and Android's permissions are
+ * different things; tracking is only ENABLED when the switch is on AND Android
+ * has granted at least one source.
  *
  * @param {{ supported: boolean, info?: object|null, error?: boolean }} args
- *   info = UpiNotification.getTrackingInfo(): { granted, trackingEnabled,
- *          listenerConnected, listenerChangedAt }
+ *   info = UpiNotification.getTrackingInfo(): { trackingEnabled, smsGranted,
+ *          smsEnabled, granted, listenerConnected, listenerChangedAt }
  */
 export function trackingState({ supported, info, error = false }) {
   if (!supported) return TRACKING.UNSUPPORTED;
   if (error || !info) return TRACKING.ERROR;
   if (info.trackingEnabled === false) return TRACKING.DISABLED;
-  if (!info.granted) return TRACKING.PERMISSION_REQUIRED;
-  // A recorded disconnect that Android has not undone. (No record at all just
-  // means the listener has not reported yet, e.g. right after an update.)
-  if (info.listenerConnected === false && Number(info.listenerChangedAt) > 0) return TRACKING.TEMPORARILY_UNAVAILABLE;
+  const { sms, notif } = sources(info);
+  if (!sms && !notif) return TRACKING.PERMISSION_REQUIRED;
+  // Notifications only, and a recorded disconnect Android has not undone. (No
+  // record at all just means the listener has not reported yet.) With bank SMS
+  // on, payments are still captured whatever the listener does.
+  if (!sms && info.listenerConnected === false && Number(info.listenerChangedAt) > 0) return TRACKING.TEMPORARILY_UNAVAILABLE;
   return TRACKING.ENABLED;
 }
 
 /** What to show for each state. Never says tracking is active unless it is. */
-export function stateCopy(state, { manufacturer = '' } = {}) {
+export function stateCopy(state, { manufacturer = '', info = null } = {}) {
+  const { sms, notif } = sources(info);
   switch (state) {
     case TRACKING.ENABLED:
-      return { label: 'On', detail: 'Payments from supported UPI and bank apps are added, even when Vittova is closed.', action: null };
+      return {
+        label: 'On',
+        detail: sms && notif
+          ? 'Payments are added from your bank SMS and supported payment apps, even when Vittova is closed.'
+          : sms
+            ? "Payments are added from your bank's debit SMS, even when Vittova is closed."
+            : "Payments are added from supported payment-app notifications. Allow bank SMS to catch payments those apps don't announce.",
+        action: sms ? null : 'allow_sms',
+      };
     case TRACKING.DISABLED:
       return { label: 'Off', detail: 'Turned off in Vittova. Nothing is captured.', action: null };
     case TRACKING.PERMISSION_REQUIRED:
-      return { label: 'Needs access', detail: 'Android Notification Access is off, so nothing is captured yet.', action: 'open_access' };
+      return { label: 'Needs permission', detail: 'Allow bank SMS so Vittova can see your payments. Nothing is captured yet.', action: 'allow_sms' };
     case TRACKING.TEMPORARILY_UNAVAILABLE: {
       const oem = /vivo|oppo|realme|xiaomi|redmi|poco|oneplus|huawei|honor|samsung/.test(String(manufacturer).toLowerCase());
       return {

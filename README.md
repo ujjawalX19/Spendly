@@ -16,9 +16,10 @@ entering every UPI payment, which almost nobody sustains past week two.
 
 ## The approach
 
-**Track without typing.** Vittova reads the payment notifications your UPI and
-banking apps already post — with your explicit permission, and nothing else —
-and turns the real ones into expenses. It does not read SMS.
+**Track without typing.** With your permission, Vittova reads your bank's
+debit SMS (business sender IDs only, never messages from people) and,
+optionally, the payment notifications your UPI apps post, and turns the real
+payments into expenses. The message text never leaves the phone.
 
 **Answer the question you actually have.** Not "you spent ₹12,000" but "you can
 safely spend about ₹850 a day until your next income", with the assumptions

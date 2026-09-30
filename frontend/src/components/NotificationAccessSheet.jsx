@@ -89,7 +89,7 @@ export default function NotificationAccessSheet({
           <>
             {phase !== 'still_off' && (
               <p className="text-sm leading-relaxed text-zinc-400">
-                Vittova uses it only to detect payment notifications from supported UPI and bank apps. It does not read SMS.
+                Vittova uses it only to detect payment notifications from supported UPI and bank apps.
               </p>
             )}
 
