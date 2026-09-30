@@ -12,10 +12,12 @@ import { motion } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
   ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
-  Users, Repeat, Radar, Gift, Bell, Trophy
+  Users, Repeat, Radar, Gift, Bell, Trophy, Zap, Settings2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
+import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
+import { TRACKING } from '../lib/paymentTracking';
 import { useExpenses } from '../hooks/useExpenses';
 import { friendlyError } from '../lib/errors';
 import { API_URL as API_BASE_URL, apiJson } from '../lib/apiConfig';
@@ -268,6 +270,8 @@ export default function Settings() {
   const navigate = useNavigate();
   const { user, session, logout, applyServerProfile } = useAuth();
   const { isPro, features } = usePro();
+  const tracking = usePaymentTracking();
+  const [trackingBusy, setTrackingBusy] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -369,7 +373,9 @@ export default function Settings() {
         body: JSON.stringify({ confirmation: 'DELETE_MY_ACCOUNT' }),
       });
       if (!response.ok) throw await httpError(response);
-      // The server has deleted the login and revoked its sessions; clear this device too.
+      // The server has deleted the login and revoked its sessions; clear this device too,
+      // including payments captured on the phone and not yet uploaded.
+      await tracking.clearDeviceData();
       setShowDeleteModal(false);
       await logout();
       navigate('/login', { replace: true, state: { accountDeleted: true } });
@@ -377,6 +383,7 @@ export default function Settings() {
       setShowDeleteModal(false);
       if (err.data?.code === 'PARTIAL_DELETION') {
         // Login already removed; do not leave the user in a half-signed-in app.
+        await tracking.clearDeviceData();
         await logout();
         navigate('/login', { replace: true, state: { accountDeleted: true } });
         return;
@@ -448,6 +455,40 @@ export default function Settings() {
           onClick={() => setShowTargetModal(true)}
         />
       </div>
+
+      {tracking.supported && (
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Payment tracking</p>
+          {/* Vittova's own switch (on by default). It only captures once Android
+              Notification Access is granted, and says so. */}
+          <ToggleRow icon={Zap} label="Payment tracking" detail={`${tracking.copy.label}. ${tracking.copy.detail}`}
+            on={tracking.trackingEnabled} busy={trackingBusy}
+            onToggle={async () => {
+              setTrackingBusy(true);
+              const turningOn = !tracking.trackingEnabled;
+              await tracking.setTrackingEnabled(turningOn);
+              if (turningOn) tracking.setMode('auto');
+              setTrackingBusy(false);
+            }} />
+          {tracking.state === TRACKING.PERMISSION_REQUIRED && (
+            <SettingRow icon={Bell} label="Allow Notification Access" value="Opens Android settings. Needed to capture payments." onClick={tracking.openAccessSettings} />
+          )}
+          {tracking.state === TRACKING.TEMPORARILY_UNAVAILABLE && (
+            <SettingRow icon={Settings2} label="Check background settings" value="Opens App info for Vittova" onClick={tracking.openAppSettings} />
+          )}
+          {tracking.trackingEnabled && (
+            <ToggleRow icon={Check} label="Add payments automatically"
+              detail={tracking.mode === 'auto' ? 'Clear payments are added for you; unclear ones wait on Home.' : 'Every detected payment waits for you on Home.'}
+              on={tracking.mode === 'auto'} onToggle={() => tracking.setMode(tracking.mode === 'auto' ? 'review' : 'auto')} />
+          )}
+          {(tracking.waiting > 0 || tracking.reviewCount > 0) && (
+            <p role="status" className="px-1 text-xs text-zinc-400">
+              {tracking.waiting > 0 ? `${tracking.waiting} waiting to upload. ` : ''}
+              {tracking.reviewCount > 0 ? `${tracking.reviewCount} waiting for your review on Home.` : ''}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Notifications</p>

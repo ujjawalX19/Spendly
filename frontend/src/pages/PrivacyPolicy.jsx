@@ -60,18 +60,20 @@ export default function PrivacyPolicy() {
 
           <Section title="3. Payment notifications (Android, optional)">
             <p>
-              If you turn on Android <strong className="text-zinc-100">Notification Access</strong> for Vittova, the app can
-              detect payments from these supported apps only:
+              Payment tracking is switched on in Vittova by default, but it only works after you allow Android{' '}
+              <strong className="text-zinc-100">Notification Access</strong> for Vittova. Android asks you for this; Vittova
+              cannot grant it itself. With access allowed, the app detects payments from these supported apps only:
             </p>
             <p className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs leading-6 text-zinc-400">
               {SUPPORTED_PAYMENT_APPS.map((a) => a.name).join(', ')}.
             </p>
             <ul className="list-disc space-y-1 pl-5">
               <li>Notifications from every other app (for example WhatsApp, SMS/messages, email and social apps) are ignored and not read.</li>
-              <li>A supported notification is analysed on your phone. If it describes a completed payment, Vittova keeps only the amount, payee name, app name, time and payment type in a private queue on your device for up to 7 days. The notification text itself is not saved or uploaded.</li>
-              <li>Nothing is sent to our servers unless you tap <em>Add expense</em>. Only then are the amount, payee name and time saved to your account as an expense.</li>
+              <li>A supported notification is analysed on your phone, including while Vittova is closed. If it describes a completed payment, Vittova keeps only the amount, payee name, app name, time and payment type in a private queue on your device until it is uploaded or reviewed, for up to 30 days. The notification text itself is not saved or uploaded.</li>
+              <li>Clear payments are added to your expenses automatically: the next time Vittova runs while you are signed in, the amount, payee name and time are saved to your account as an expense. If a notification is unclear, Vittova asks you before adding it. In Profile → Payment tracking you can choose to be asked about every payment.</li>
+              <li>Payments detected on your phone are only added to the account signed in on it. If a different account signs in, anything still waiting on the phone is deleted.</li>
               <li>Vittova does not request SMS permission and does not read SMS.</li>
-              <li>You can turn Notification Access off at any time in Android settings.</li>
+              <li>You can switch payment tracking off in Profile → Payment tracking, or turn Notification Access off at any time in Android settings.</li>
             </ul>
           </Section>
 
@@ -121,15 +123,17 @@ export default function PrivacyPolicy() {
 
           <Section title="8. Stored on your device">
             <p>
-              The app stores your sign-in session, whether you have completed onboarding, your choice about notification access,
-              and the pending payment queue described in section 3. Signing out removes the session and these app preferences from the device.
+              The app stores your sign-in session, whether you have completed onboarding, your payment-tracking choices, and the
+              payment queue described in section 3. Signing out removes the session from the device. Payments still waiting in the
+              queue stay on the phone for the same account, are deleted if a different account signs in, and are deleted when you
+              delete your account in the app.
             </p>
           </Section>
 
           <Section title="9. Retention">
             <ul className="list-disc space-y-1 pl-5">
               <li>Account and expense data: kept until you delete it or delete your account.</li>
-              <li>Pending payment detections on your device: until you add or dismiss them, and at most 7 days.</li>
+              <li>Payments detected on your device and not yet uploaded: until they are uploaded, reviewed or dismissed, and at most 30 days. Payments already uploaded or dismissed are remembered on the device for 3 days only, so a repeated notification is not added twice.</li>
               <li>Server logs: kept for a limited period for security and debugging.</li>
               <li>Database backups kept by our hosting provider may contain deleted data until they expire on their normal schedule.</li>
             </ul>
@@ -140,7 +144,7 @@ export default function PrivacyPolicy() {
               <li><strong className="text-zinc-100">Access and portability:</strong> export your expenses as a CSV file from Settings.</li>
               <li><strong className="text-zinc-100">Correction:</strong> edit or delete any expense in the app.</li>
               <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">Vittova account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score, streak and Money XP history, import history and coach conversations, and the group pools you created.</li>
-              <li><strong className="text-zinc-100">Withdraw consent:</strong> turn off Notification Access in Android settings, or stop using AI features.</li>
+              <li><strong className="text-zinc-100">Withdraw consent:</strong> switch off payment tracking in Profile or turn off Notification Access in Android settings, or stop using AI features.</li>
             </ul>
             <p>To exercise any right or raise a grievance, email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
           </Section>

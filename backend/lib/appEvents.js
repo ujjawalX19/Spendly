@@ -58,6 +58,11 @@ const CLIENT_EVENTS = [
     'save_to_earn_viewed',
     'challenge_detail_viewed',
     'reward_viewed',
+    // Payment tracking: switches and outcomes only (no amounts, payees or notification text)
+    'payment_auto_added',
+    'payment_tracking_switch',
+    'payment_tracking_mode',
+    'payment_queue_cleared',
 ];
 
 /** Events the backend records itself. */

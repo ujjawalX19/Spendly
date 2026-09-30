@@ -67,9 +67,20 @@ public final class PaymentNotificationParser {
         public final boolean needsConfirmation;
         /** Why this was classified as it was — for the confirmation prompt and tests. */
         public final String reason;
+        /**
+         * The UPI / bank reference (RRN, UTR, Ref No, Txn ID) when the text
+         * carries one, else "". Used only to tell payments apart during
+         * duplicate detection; the listener stores a hash of it, never the value.
+         */
+        public final String reference;
 
         Result(Kind kind, double amount, String merchant, String appName,
                String fingerprint, boolean needsConfirmation, String reason) {
+            this(kind, amount, merchant, appName, fingerprint, needsConfirmation, reason, "");
+        }
+
+        Result(Kind kind, double amount, String merchant, String appName,
+               String fingerprint, boolean needsConfirmation, String reason, String reference) {
             this.kind = kind;
             this.amount = amount;
             this.merchant = merchant;
@@ -77,6 +88,7 @@ public final class PaymentNotificationParser {
             this.fingerprint = fingerprint;
             this.needsConfirmation = needsConfirmation;
             this.reason = reason;
+            this.reference = reference == null ? "" : reference;
         }
 
         /** True when this should become a row in the user's ledger. */
@@ -92,53 +104,16 @@ public final class PaymentNotificationParser {
     }
 
     // ── Supported sources ───────────────────────────────────────────────────
-    // A strict allowlist of payment and banking apps. Notifications from any
-    // other package are ignored before their text is read — in particular
-    // messaging (WhatsApp, Telegram, SMS), email, social and shopping apps,
-    // where people routinely write "I paid ₹500" in conversation.
-    //
-    // MUST match frontend/src/lib/supportedPaymentApps.js, which is what the
-    // onboarding screen and privacy policy show users. A frontend test fails
-    // if the two lists differ. Package ids must be verified against the Play
-    // Store listing before adding a new entry.
-
-    private static final String[][] KNOWN_PACKAGES = {
-        // UPI apps
-        { "com.google.android.apps.nbu.paisa.user", "GPay" },
-        { "com.phonepe.app",                        "PhonePe" },
-        { "net.one97.paytm",                        "Paytm" },
-        { "in.org.npci.upiapp",                     "BHIM" },
-        { "com.sbi.SBIFreedomPlus",                 "BHIM SBI Pay" },
-        { "com.dreamplug.androidapp",               "CRED" },
-        { "money.super.payments",                   "super.money" },
-        { "com.mobikwik_new",                       "MobiKwik" },
-        { "com.freecharge.android",                 "Freecharge" },
-        { "com.fampay.in",                          "FamPay" },
-        // Bank apps
-        { "com.snapwork.hdfc",                      "HDFC Bank" },
-        { "com.csam.icici.bank.imobile",            "ICICI Bank" },
-        { "com.sbi.lotusintouch",                   "SBI YONO" },
-        { "com.msf.kbank.mobile",                   "Kotak" },
-        { "com.axis.mobile",                        "Axis Bank" },
-        { "com.bankofbaroda.mconnect",              "Bank of Baroda" },
-        { "com.infrasoft.uboi",                     "Union Bank" },
-        { "com.fss.pnbpsp",                         "PNB" },
-        { "com.canarabank.mobility",                "Canara Bank" },
-        { "com.indusind.indusmobile",               "IndusInd Bank" },
-        { "com.idfcfirstbank.optimus",              "IDFC FIRST Bank" },
-    };
+    // The allowlist lives in {@link PaymentSources}. Notifications from any
+    // other package are ignored before their text is read.
 
     /** Human-readable name for a package, or null when the app is not supported. */
     public static String appNameFor(String packageName) {
-        if (packageName == null) return null;
-        for (String[] row : KNOWN_PACKAGES) {
-            if (row[0].equals(packageName)) return row[1];
-        }
-        return null;
+        return PaymentSources.nameFor(packageName);
     }
 
     public static boolean isSupportedPackage(String packageName) {
-        return appNameFor(packageName) != null;
+        return PaymentSources.isSupported(packageName);
     }
 
     // ── Amounts ─────────────────────────────────────────────────────────────
@@ -229,6 +204,31 @@ public final class PaymentNotificationParser {
     );
 
     /**
+     * A transaction reference: "UPI Ref No. 123456789012", "Ref: 3092…",
+     * "RRN 1234…", "UTR …", "Txn ID T2309…", "Transaction ID …". The value must
+     * contain at least six digits, so words and masked account numbers
+     * ("A/c XX1234") never qualify.
+     */
+    private static final Pattern REFERENCE_PATTERN = Pattern.compile(
+        "(?:\\b(?:upi\\s*)?(?:ref(?:erence)?|rrn|utr|txn|transaction)\\s*(?:no\\.?|number|id|#)?\\s*[:.#-]?\\s*)"
+            + "([A-Za-z0-9]{6,30})",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /** The reference in the text, or "" when there is none. */
+    static String extractReference(String raw) {
+        if (raw == null) return "";
+        Matcher m = REFERENCE_PATTERN.matcher(raw);
+        while (m.find()) {
+            String v = m.group(1);
+            int digits = 0;
+            for (int i = 0; i < v.length(); i++) if (Character.isDigit(v.charAt(i))) digits++;
+            if (digits >= 6) return v.toUpperCase(Locale.ROOT);
+        }
+        return "";
+    }
+
+    /**
      * Parse one notification.
      *
      * @param packageName posting app's package id
@@ -310,7 +310,8 @@ public final class PaymentNotificationParser {
         }
 
         String fingerprint = fingerprint(packageName, kind, amount.value, merchant, postTimeMs);
-        return new Result(kind, amount.value, merchant, appName, fingerprint, confirm, reason);
+        return new Result(kind, amount.value, merchant, appName, fingerprint, confirm, reason,
+                extractReference(raw));
     }
 
     // ── Fingerprinting ──────────────────────────────────────────────────────
@@ -357,7 +358,7 @@ public final class PaymentNotificationParser {
         };
     }
 
-    private static String normalizeMerchant(String merchant) {
+    static String normalizeMerchant(String merchant) {
         if (merchant == null) return "unknown";
         return merchant.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }

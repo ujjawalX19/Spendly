@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { apiUrl } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
+import { EXPENSES_CHANGED_EVENT } from '../lib/paymentTracking';
 
 const API_URL = apiUrl('/expenses');
 const PAGE_SIZE = 50;
@@ -97,6 +98,13 @@ export function useTransactionSearch() {
   }, [session, key]);
 
   useEffect(() => { fetchPage(0, false); }, [fetchPage]);
+
+  // Payments detected while the app was closed were just saved: reload.
+  useEffect(() => {
+    const reload = () => { fetchPage(0, false); };
+    window.addEventListener(EXPENSES_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(EXPENSES_CHANGED_EVENT, reload);
+  }, [fetchPage]);
 
   const setFilter = useCallback((name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }));

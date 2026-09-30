@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.service.notification.NotificationListenerService;
 import android.util.Log;
 
 import androidx.core.app.NotificationManagerCompat;
@@ -21,19 +22,33 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.List;
 
 /**
- * UpiNotificationPlugin — bridge between the notification listener and the
- * web layer.
+ * UpiNotificationPlugin — bridge between the payment-tracking store and the
+ * web layer. The listener never needs this plugin: it captures and stores
+ * payments on its own while the app is closed.
  *
- *   checkPermission() / hasNotificationAccess()  -> { granted }
+ *   getTrackingInfo()  -> { granted, trackingEnabled, listenerConnected,
+ *                           listenerChangedAt, restrictedSettingsLikely,
+ *                           sdkInt, manufacturer }
+ *        `granted` is Android's real Notification Access state, read fresh on
+ *        every call; `trackingEnabled` is Vittova's own switch (on by default).
+ *   setTrackingEnabled({ enabled })               Vittova's switch
+ *   ensureListenerBound()                          ask Android to reconnect the
+ *        listener if access is granted (after an OEM battery manager stopped it)
+ *   getPendingPayments()  -> { payments: [...] }  queued detections
+ *   resolvePendingPayment({ id, outcome })         "synced" | "dismissed" | "rejected"
+ *   markSyncAttempt({ id, error })                 failed upload (short code)
+ *   markForReview({ id })                           needs the user after all
+ *   bindOwner({ userId })  -> { action }           "keep" | "claim" | "clear"
+ *   clearTrackingData()                            on account deletion
  *   requestNotificationPermission() / openNotificationSettings()
  *        Opens Android's Notification Access screen (Vittova's own page on
  *        Android 11+). The web layer must only call this from an explicit tap.
  *   openAppSettings()                             Vittova's App info screen, where
- *        Android 13+ offers ⋮ → "Allow restricted settings" for APK installs.
- *   getAccessInfo()   -> { granted, restrictedSettingsLikely, sdkInt }
- *   getPendingPayments()                          -> { payments: [...] }
- *   removePendingPayment({ fingerprint })        -> { removed }
- *   event "paymentDetected"                       live copy of a queued detection
+ *        Android 13+ offers ⋮ → "Allow restricted settings" for APK installs
+ *        and manufacturers put battery / background settings.
+ *   checkPermission() / hasNotificationAccess() / getAccessInfo()   older names
+ *   removePendingPayment({ fingerprint })         older name for "dismissed"
+ *   event "paymentDetected"                       a detection was just queued
  */
 @CapacitorPlugin(name = "UpiNotification")
 public class UpiNotificationPlugin extends Plugin {
@@ -56,34 +71,38 @@ public class UpiNotificationPlugin extends Plugin {
         super.handleOnDestroy();
     }
 
-    static void notifyPayment(PendingPaymentQueue.Entry entry) {
+    static void notifyPayment(PendingPaymentQueue.Payment payment) {
         UpiNotificationPlugin plugin = instance;
         if (plugin == null) return;
         try {
-            plugin.notifyListeners("paymentDetected", toJs(entry));
+            plugin.notifyListeners("paymentDetected", toJs(payment));
         } catch (Exception e) {
             Log.w(TAG, "Could not deliver a live payment event");
         }
     }
 
-    private static JSObject toJs(PendingPaymentQueue.Entry e) {
+    private static JSObject toJs(PendingPaymentQueue.Payment p) {
         JSObject o = new JSObject();
-        o.put("fingerprint", e.fingerprint);
-        o.put("kind", e.kind);
-        o.put("amount", e.amount);
-        o.put("merchant", e.merchant);
-        o.put("app", e.app);
-        o.put("timestamp", e.timestamp);
-        o.put("needsConfirmation", e.needsConfirmation);
+        o.put("id", p.id);
+        o.put("fingerprint", p.id); // older web builds key on this
+        o.put("kind", p.kind);
+        o.put("amount", p.amount);
+        o.put("merchant", p.merchant);
+        o.put("app", p.app);
+        o.put("timestamp", p.timestamp);
+        o.put("needsConfirmation", p.needsConfirmation);
+        o.put("status", p.status);
+        o.put("attempts", p.attempts);
+        o.put("lastError", p.lastError);
         return o;
     }
 
     @PluginMethod
     public void getPendingPayments(PluginCall call) {
         try {
-            List<PendingPaymentQueue.Entry> entries = PendingPaymentStore.list(getContext());
+            List<PendingPaymentQueue.Payment> entries = PendingPaymentStore.list(getContext());
             JSArray payments = new JSArray();
-            for (PendingPaymentQueue.Entry e : entries) payments.put(toJs(e));
+            for (PendingPaymentQueue.Payment p : entries) payments.put(toJs(p));
             JSObject result = new JSObject();
             result.put("payments", payments);
             call.resolve(result);
@@ -93,15 +112,115 @@ public class UpiNotificationPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void resolvePendingPayment(PluginCall call) {
+        String id = call.getString("id");
+        String outcome = call.getString("outcome", "dismissed");
+        if (id == null || id.isEmpty() || !("synced".equals(outcome) || "dismissed".equals(outcome) || "rejected".equals(outcome))) {
+            call.reject("id and a valid outcome are required");
+            return;
+        }
+        JSObject result = new JSObject();
+        result.put("removed", PendingPaymentStore.resolve(getContext(), id, outcome));
+        call.resolve(result);
+    }
+
+    /** Older web builds: removing a detection meant the user logged or dismissed it. */
+    @PluginMethod
     public void removePendingPayment(PluginCall call) {
-        String fingerprint = call.getString("fingerprint");
-        if (fingerprint == null || fingerprint.isEmpty()) {
+        String id = call.getString("fingerprint");
+        if (id == null || id.isEmpty()) {
             call.reject("fingerprint is required");
             return;
         }
         JSObject result = new JSObject();
-        result.put("removed", PendingPaymentStore.remove(getContext(), fingerprint));
+        result.put("removed", PendingPaymentStore.resolve(getContext(), id, "dismissed"));
         call.resolve(result);
+    }
+
+    @PluginMethod
+    public void markSyncAttempt(PluginCall call) {
+        String id = call.getString("id");
+        if (id == null || id.isEmpty()) {
+            call.reject("id is required");
+            return;
+        }
+        JSObject result = new JSObject();
+        result.put("updated", PendingPaymentStore.markAttempt(getContext(), id, call.getString("error", "")));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void markForReview(PluginCall call) {
+        String id = call.getString("id");
+        if (id == null || id.isEmpty()) {
+            call.reject("id is required");
+            return;
+        }
+        JSObject result = new JSObject();
+        result.put("updated", PendingPaymentStore.markForReview(getContext(), id));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void bindOwner(PluginCall call) {
+        String userId = call.getString("userId");
+        if (userId == null || !userId.matches("^[0-9a-fA-F-]{36}$")) {
+            call.reject("a user id is required");
+            return;
+        }
+        JSObject result = new JSObject();
+        result.put("action", PendingPaymentStore.bindOwner(getContext(), userId));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void clearTrackingData(PluginCall call) {
+        PendingPaymentStore.clearAll(getContext());
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void setTrackingEnabled(PluginCall call) {
+        Boolean enabled = call.getBoolean("enabled");
+        if (enabled == null) {
+            call.reject("enabled is required");
+            return;
+        }
+        PendingPaymentStore.setTrackingEnabled(getContext(), enabled);
+        if (enabled) requestRebind();
+        call.resolve(trackingInfo());
+    }
+
+    @PluginMethod
+    public void ensureListenerBound(PluginCall call) {
+        if (isGranted() && PendingPaymentStore.trackingEnabled(getContext())) requestRebind();
+        call.resolve(trackingInfo());
+    }
+
+    @PluginMethod
+    public void getTrackingInfo(PluginCall call) {
+        call.resolve(trackingInfo());
+    }
+
+    private JSObject trackingInfo() {
+        JSObject result = new JSObject();
+        result.put("granted", isGranted());
+        result.put("trackingEnabled", PendingPaymentStore.trackingEnabled(getContext()));
+        result.put("listenerConnected", PendingPaymentStore.listenerConnected(getContext()));
+        result.put("listenerChangedAt", PendingPaymentStore.listenerChangedAt(getContext()));
+        result.put("sdkInt", Build.VERSION.SDK_INT);
+        result.put("manufacturer", Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT));
+        result.put("restrictedSettingsLikely", InstallSource.restrictedSettingsLikely(Build.VERSION.SDK_INT, installerPackage()));
+        return result;
+    }
+
+    /** Ask Android to (re)connect the listener. Harmless when it is already connected. */
+    private void requestRebind() {
+        try {
+            NotificationListenerService.requestRebind(new ComponentName(getContext(), PaymentNotificationListener.class));
+        } catch (Exception e) {
+            Log.w(TAG, "Could not request a listener rebind");
+        }
     }
 
     @PluginMethod

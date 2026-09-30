@@ -1,19 +1,29 @@
 import { registerPlugin } from '@capacitor/core';
 
 /**
- * UpiNotification — native bridge to the Android payment-notification listener
+ * UpiNotification — native bridge to Android payment tracking
  * (android/app/src/main/java/com/vittova/app/UpiNotificationPlugin.java).
+ * Capture does not need this bridge: the listener stores payments on the phone
+ * while Vittova is closed. The web layer uploads them (contexts/PaymentTrackingContext.jsx).
  *
- *   checkPermission()                    -> { granted: boolean }
+ *   getTrackingInfo()                    -> { granted, trackingEnabled, listenerConnected,
+ *                                            listenerChangedAt, restrictedSettingsLikely, sdkInt, manufacturer }
+ *   setTrackingEnabled({ enabled })      Vittova's own switch (on by default)
+ *   ensureListenerBound()                ask Android to reconnect the listener
+ *   getPendingPayments()                 -> { payments: TrackedPayment[] }
+ *   resolvePendingPayment({ id, outcome })  'synced' | 'dismissed' | 'rejected'
+ *   markSyncAttempt({ id, error })       failed upload (short code, never a message)
+ *   markForReview({ id })                the user must decide after all
+ *   bindOwner({ userId })                -> { action: 'keep' | 'claim' | 'clear' }
+ *   clearTrackingData()                  on account deletion
  *   requestNotificationPermission()      opens Android Notification Access settings
  *                                        (call only from an explicit user tap)
- *   openAppSettings()                    opens Vittova's App info (⋮ → Allow restricted settings)
- *   getAccessInfo()                      -> { granted, restrictedSettingsLikely, sdkInt }
- *   getPendingPayments()                 -> { payments: PendingPayment[] }
- *   removePendingPayment({ fingerprint }) -> { removed: boolean }
- *   addListener('paymentDetected', cb)   live copy of a newly queued detection
+ *   openAppSettings()                    opens Vittova's App info (restricted settings, battery)
+ *   checkPermission() / getAccessInfo()  older names: -> { granted, ... }
+ *   addListener('paymentDetected', cb)   a payment was just captured while the app is open
  *
- * PendingPayment: { fingerprint, kind: 'EXPENSE'|'INCOME'|'REFUND', amount,
- *                   merchant, app, timestamp, needsConfirmation }
+ * TrackedPayment: { id (32 hex, also the upload's client_ref), kind: 'EXPENSE', amount,
+ *                   merchant, app, timestamp, status: 'PENDING_SYNC'|'NEEDS_REVIEW',
+ *                   needsConfirmation, attempts, lastError }
  */
 export const UpiNotification = registerPlugin('UpiNotification');

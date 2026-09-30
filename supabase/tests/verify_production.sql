@@ -245,6 +245,21 @@ checks as (
     from unnest(array['anon', 'authenticated']) as r
 
     union all
+    -- v1_13: a payment the phone uploads twice is stored once
+    select 'expenses.client_ref exists (detected-payment id)',
+           exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'expenses' and column_name = 'client_ref'),
+           'run v1_13_notification_expenses.sql'
+    union all
+    select 'expenses: unique (user_id, client_ref)',
+           exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'expenses' and indexname = 'expenses_client_ref_once'),
+           'run v1_13_notification_expenses.sql'
+    union all
+    select r || ' cannot INSERT/UPDATE expenses',
+           not (has_table_privilege(r, 'public.expenses', 'INSERT') or has_table_privilege(r, 'public.expenses', 'UPDATE')),
+           'run v1_2_security_p0.sql'
+    from unnest(array['anon', 'authenticated']) as r
+
+    union all
     select 'Exactly one admin account (owner)',
            (select count(*) from public.profiles where role = 'admin') = 1,
            (select count(*)::text || ' admin(s); must also match ADMIN_EMAIL on the server' from public.profiles where role = 'admin')

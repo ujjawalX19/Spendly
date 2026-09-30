@@ -19,6 +19,7 @@ import { Camera, Zap, AlertCircle, Plus, X, Check, CheckCircle } from 'lucide-re
 import { useAuth } from '../contexts/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
+import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import PermissionBanner from '../components/PermissionBanner';
 import NotificationAccessSheet from '../components/NotificationAccessSheet';
 import AffordItCard from '../components/AffordItCard';
@@ -256,9 +257,10 @@ export default function Dashboard() {
   // Android Notification Access is only ever requested from an explicit tap on
   // "Enable". The dashboard must never send the user to Settings on its own.
   const {
-    isSupported, permissionGranted, permissionChecked, pending, resolvePayment, openPermissionSettings,
+    isSupported, permissionGranted, permissionChecked, pending, resolvePayment, confirmPayment, openPermissionSettings,
     restrictedSettingsLikely, openAppSettings, checkPermissionNow,
   } = usePaymentNotifications();
+  const tracking = usePaymentTracking();
   const [showAccessSheet, setShowAccessSheet] = useState(false);
   const pendingPayment = pending[0] || null;
   const [savingPayment, setSavingPayment] = useState(false);
@@ -376,18 +378,13 @@ export default function Dashboard() {
       return;
     }
 
-    const merchant = payment.merchant && payment.merchant !== 'Unknown' ? payment.merchant : 'UPI payment';
+    // Saved with the phone's id for this payment, so a retry cannot add it twice.
     setSavingPayment(true);
-    const result = await addExpense(confirmedAmount, 'Other', merchant.slice(0, 200), {
-      source: 'upi_auto',
-      occurredAt: new Date(payment.timestamp).toISOString(),
-    });
+    const result = await confirmPayment(payment.fingerprint, confirmedAmount);
     setSavingPayment(false);
 
-    if (result.success) {
-      await resolvePayment(payment.fingerprint);
-    } else {
-      // Keep it in the queue so the user can retry.
+    if (!result.success) {
+      // Kept on the phone so the user can retry.
       setScanToast({ type: 'error', message: result.message || 'Could not save that payment.' });
     }
   };
@@ -488,12 +485,27 @@ export default function Dashboard() {
           </button>
         </header>
 
+        {/* Tracking was turned on under "ask before adding": ask once how to continue. */}
+        {tracking.needsChoice && (
+          <section className="rounded-2xl border border-lime-400/20 bg-[#141414] p-4" aria-labelledby="auto-add-title">
+            <h2 id="auto-add-title" className="text-sm font-bold text-white">Add detected payments automatically?</h2>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+              Vittova can now add clear payments from supported UPI and bank apps to your expenses by itself, even when the app is closed.
+              Unclear ones still wait for you. You can change this in Profile.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={() => tracking.setMode('auto')} className="v-press min-h-[44px] rounded-xl bg-lime-400 px-4 text-xs font-black text-black">Add automatically</button>
+              <button type="button" onClick={() => tracking.setMode('review')} className="v-press min-h-[44px] rounded-xl bg-zinc-800 px-4 text-xs font-bold text-zinc-300">Keep asking me</button>
+            </div>
+          </section>
+        )}
+
         {/* Payment-notification access (Android) */}
         <PermissionBanner
           isSupported={isSupported}
           permissionGranted={permissionGranted}
           permissionChecked={permissionChecked}
-          onEnable={() => setShowAccessSheet(true)}
+          onEnable={() => { tracking.setMode('auto'); setShowAccessSheet(true); }}
         />
 
         {/* 1. How much can I spend? */}

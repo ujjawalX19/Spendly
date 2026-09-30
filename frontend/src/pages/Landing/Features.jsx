@@ -55,7 +55,7 @@ const CARDS = [
   },
   {
     icon: ScanLine, title: 'Scan and track',
-    body: 'Snap a receipt, import a bank statement PDF, or confirm payments Vittova spots from supported UPI and bank apps on Android.',
+    body: 'Snap a receipt, import a bank statement PDF, or let Vittova add payments from supported UPI and bank apps on Android automatically.',
     visual: (
       <div className="flex gap-2 text-[11px] font-semibold text-zinc-300">
         {['Receipt', 'PDF', 'UPI'].map((x) => <span key={x} className="rounded-full border border-white/10 px-2.5 py-1">{x}</span>)}

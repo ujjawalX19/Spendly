@@ -52,7 +52,7 @@ export default function PermissionBanner({ isSupported, permissionGranted, permi
         <div className="min-w-0 flex-1">
           <h2 id="notif-access-title" className="text-sm font-bold text-white">Automatically detect UPI payments</h2>
           <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-            Vittova can detect supported payment notifications from {SUPPORTED_APPS_SUMMARY} and ask you before adding them.
+            Vittova can add payments from {SUPPORTED_APPS_SUMMARY} to your expenses automatically, even when the app is closed, and asks you about unclear ones.
             It needs Android Notification Access; Vittova ignores notifications from every other app, and does not read SMS.
           </p>
           <div className="mt-4 flex gap-2">

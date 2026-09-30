@@ -34,6 +34,7 @@ const UNIQUE_KEYS = {
 // Partial unique indexes (v1_11): one active personal challenge per user.
 const PARTIAL_UNIQUE = {
     money_challenges: { keys: ['user_id'], where: (r) => r.status === 'active' },
+    expenses: { keys: ['user_id', 'client_ref'], where: (r) => r.client_ref != null },
 };
 
 // Rows that belong to a user and cascade when the auth user is deleted.

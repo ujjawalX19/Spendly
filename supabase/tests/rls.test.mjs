@@ -131,6 +131,7 @@ const CURRENT = [
     'v1_10_sponsored_challenges.sql',
     'v1_11_save_to_earn.sql',
     'v1_12_age_awareness.sql',
+    'v1_13_notification_expenses.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -649,7 +650,7 @@ test('production-like database: partial v1 extension, v1_1 applied, no v1_2', as
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql', 'v1_13_notification_expenses.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 
@@ -904,5 +905,66 @@ test('v1_12 age-aware accounts (app v1.1)', async (t) => {
         assert.deepEqual(res.rows.filter((r) => r.result !== 'PASS'), []);
     });
 
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_13 idempotent automatic expenses (app v1.1)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    const REF = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+    const insert = (userId, ref) => svc(`insert into public.expenses (user_id, amount, description, source, client_ref) values ('${userId}', 150, 'Chai Point', 'upi_auto', ${ref === null ? 'null' : `'${ref}'`})`);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_13_notification_expenses.sql'));
+    });
+
+    await t.test('one detected payment is stored once per account', async () => {
+        assert.ok((await insert(USERS.alice, REF)).ok);
+        const again = await insert(USERS.alice, REF);
+        assert.ok(!again.ok && /duplicate key|unique/i.test(again.error), 'the same detection twice is refused');
+        assert.ok((await insert(USERS.bob, REF)).ok, 'another account is unaffected');
+        // Ordinary expenses have no reference and are never constrained by it.
+        assert.ok((await insert(USERS.alice, null)).ok);
+        assert.ok((await insert(USERS.alice, null)).ok);
+    });
+
+    await t.test('only the device format is accepted', async () => {
+        for (const bad of ['short', 'A1B2C3D4E5F60718293A4B5C6D7E8F90', `${REF}0`]) {
+            const r = await insert(USERS.carol, bad);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), bad);
+        }
+    });
+
+    await t.test('clients still cannot write expenses directly', async () => {
+        assert.ok(denied(await asUser(db, USERS.carol, `insert into public.expenses (user_id, amount, source, client_ref) values ('${USERS.carol}', 10, 'upi_auto', '${'c'.repeat(32)}')`)));
+        assert.ok(denied(await asUser(db, USERS.alice, `update public.expenses set client_ref = '${'d'.repeat(32)}' where user_id = '${USERS.alice}'`)));
+        assert.ok(denied(await as(db, 'anon', null, `insert into public.expenses (user_id, amount) values ('${USERS.carol}', 10)`)));
+        // Users read only their own detected payments.
+        const bobs = await asUser(db, USERS.bob, 'select user_id, client_ref from public.expenses');
+        assert.ok(bobs.ok);
+        assert.ok(bobs.rows.every((r) => r.user_id === USERS.bob));
+    });
+
+    await t.test('deleting the account removes its detected payments', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        assert.equal((await db.query(`select count(*)::int as n from public.expenses where user_id = '${USERS.alice}'`)).rows[0].n, 0);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_13 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const res = await db.query(sql('tests/verify_production.sql'));
+        assert.deepEqual(res.rows.filter((r) => r.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+test('verify_production.sql flags a database where v1_13 has not been applied', async () => {
+    const db = await buildDatabase(CURRENT.filter((f) => f !== 'v1_13_notification_expenses.sql'));
+    await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
+    const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+    const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
+    assert.deepEqual(failing.sort(), ['expenses.client_ref exists (detected-payment id)', 'expenses: unique (user_id, client_ref)'].sort());
     await db.close();
 });

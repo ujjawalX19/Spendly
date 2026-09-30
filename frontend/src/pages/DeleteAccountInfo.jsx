@@ -53,7 +53,7 @@ export default function DeleteAccountInfo() {
                 <section className="mt-8 space-y-3 text-sm leading-7">
                     <h2 className="text-lg font-bold text-white">What may remain</h2>
                     <ul className="list-disc space-y-1 pl-5">
-                        <li>Payment notifications are never stored by Vittova unless you logged them, so nothing remains on our servers from notification access.</li>
+                        <li>Payments detected from notifications are saved to your account as expenses and are deleted with it. Payments still waiting on your phone are deleted from the phone when you delete your account in the app. Notification text is never stored.</li>
                         <li>Encrypted database backups kept by our database provider may contain your data until they expire on their normal rotation schedule; they are not used to restore individual accounts.</li>
                         <li>Server logs contain no expense amounts or notification text, and are retained only for a limited period for security and debugging.</li>
                         <li>App usage events are kept without any link to you, so they no longer identify your account.</li>

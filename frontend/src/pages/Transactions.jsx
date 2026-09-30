@@ -14,8 +14,10 @@ import {
   ArrowDownUp, Receipt, Check,
 } from 'lucide-react';
 
+import { useNavigate } from 'react-router-dom';
 import { useTransactionSearch, EMPTY_FILTERS } from '../hooks/useTransactionSearch';
 import { useExpenses } from '../hooks/useExpenses';
+import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
@@ -65,6 +67,9 @@ function toDateInput(iso) {
 export default function Transactions() {
   const s = useTransactionSearch();
   const { editExpense, deleteExpense } = useExpenses();
+  const tracking = usePaymentTracking();
+  const navigate = useNavigate();
+  const plural = (n) => `${n} detected payment${n === 1 ? '' : 's'}`;
 
   const [showFilters, setShowFilters] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -128,6 +133,22 @@ export default function Transactions() {
             : `${s.total.toLocaleString('en-IN')} ${s.total === 1 ? 'expense' : 'expenses'}${s.isFiltered ? ' matching' : ''} · ${rupees(pageTotal)} shown`}
         </p>
       </header>
+
+      {/* Payments captured while the app was closed that are not in the list yet */}
+      {tracking.supported && (tracking.waiting > 0 || tracking.reviewCount > 0) && (
+        <div role="status" className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-xs text-zinc-300">
+          <span className="flex-1">
+            {tracking.waiting > 0 && `${plural(tracking.waiting)} waiting to upload. `}
+            {tracking.reviewCount > 0 && `${plural(tracking.reviewCount)} need${tracking.reviewCount === 1 ? 's' : ''} your review.`}
+          </span>
+          {tracking.waiting > 0 && (
+            <button type="button" onClick={() => tracking.syncNow()} className="v-press min-h-[40px] shrink-0 font-bold text-lime-300">Retry</button>
+          )}
+          {tracking.reviewCount > 0 && (
+            <button type="button" onClick={() => navigate('/dash')} className="v-press min-h-[40px] shrink-0 font-bold text-lime-300">Review</button>
+          )}
+        </div>
+      )}
 
       {/* Search + filter toggle */}
       <div className="mb-3 flex gap-2">

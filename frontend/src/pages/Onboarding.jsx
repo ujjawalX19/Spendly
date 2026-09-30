@@ -21,6 +21,7 @@ import { Capacitor } from '@capacitor/core';
 import { Zap, PieChart, TrendingUp, Bell, ShieldCheck, ArrowRight, Check } from 'lucide-react';
 
 import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
+import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import { SUPPORTED_PAYMENT_APPS } from '../lib/supportedPaymentApps';
 import { recordNotificationPromptDismissed } from '../lib/notificationPrompt';
 import NotificationAccessSheet from '../components/NotificationAccessSheet';
@@ -53,7 +54,7 @@ const SLIDES = [
     icon: Zap,
     tint: 'text-lime-400 bg-lime-400/15',
     title: 'Track without typing',
-    body: 'With your permission, Vittova spots payment notifications from supported UPI and bank apps and asks before adding them as expenses. Or add expenses yourself — both work.',
+    body: 'With your permission, Vittova adds payments from supported UPI and bank apps to your expenses automatically, even when the app is closed. Or add expenses yourself — both work.',
   },
   {
     icon: PieChart,
@@ -75,6 +76,7 @@ export default function Onboarding() {
   const {
     isSupported, permissionGranted, openPermissionSettings, openAppSettings, restrictedSettingsLikely, checkPermissionNow,
   } = usePaymentNotifications();
+  const tracking = usePaymentTracking();
   const [showAccessSheet, setShowAccessSheet] = useState(false);
 
   // The permission screen is Android-only; on web the third slide is the last.
@@ -155,8 +157,8 @@ export default function Onboarding() {
                 {[
                   'Only notifications from the supported payment and bank apps listed below are processed. Notifications from WhatsApp, messages, email, social and every other app are ignored.',
                   'From a payment notification Vittova keeps only the amount, payee name, app name and time. The notification text itself is not stored or uploaded.',
-                  'Nothing is added to your account until you tap "Add expense". Then the amount, payee and time are saved to your Vittova account.',
-                  'Vittova does not read SMS, contacts, or anything you type. You can turn this off in Android settings at any time.',
+                  'Clear payments are added to your Vittova expenses automatically, even when the app is closed (they upload the next time Vittova opens while you are signed in). If a notification is unclear, Vittova asks you first.',
+                  'Vittova does not read SMS, contacts, or anything you type. Turn tracking off any time in Profile → Payment tracking, or in Android settings.',
                 ].map(line => (
                   <li key={line} className="flex gap-3 text-sm leading-relaxed text-zinc-300">
                     <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-lime-400" />
@@ -178,6 +180,8 @@ export default function Onboarding() {
                     // Settings, and if Android restarts the app meanwhile they
                     // should land on the dashboard, not here again.
                     markOnboarded();
+                    // The screen above says clear payments are added automatically.
+                    tracking.setMode('auto');
                     setShowAccessSheet(true);
                   }}
                   className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black"

@@ -2,7 +2,7 @@ import { PenLine, LineChart, Signpost } from 'lucide-react';
 import { Reveal, SectionHeading } from './shared';
 
 const STEPS = [
-  { n: '01', icon: PenLine, title: 'Track', body: 'Add an expense in a few taps, scan a receipt, import a bank statement PDF, or confirm payments Vittova spots from your UPI and bank apps.' },
+  { n: '01', icon: PenLine, title: 'Track', body: 'Add an expense in a few taps, scan a receipt, import a bank statement PDF, or let Vittova add payments automatically from your UPI and bank apps.' },
   { n: '02', icon: LineChart, title: 'Understand', body: 'Vittova puts your budget, bills still due, savings target and spending pace together into one picture of your month.' },
   { n: '03', icon: Signpost, title: 'Decide', body: 'Get straight answers: what you can spend today, whether a purchase fits, and how much could go to savings this month.' },
 ];

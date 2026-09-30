@@ -19,9 +19,13 @@ const VALID_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertai
 const VALID_SOURCES = ['manual', 'ai_scan', 'upi_auto', 'pdf_import'];
 
 // How far in the past an automatically detected payment may be dated. The
-// native queue keeps detections for 7 days; a little slack covers clock skew.
-const MAX_UPI_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+// phone keeps a detection for 30 days while it waits to be uploaded (the user
+// may not open the app for a while); a day of slack covers clock skew.
+const MAX_UPI_AGE_MS = 31 * 24 * 60 * 60 * 1000;
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
+
+// The phone's id for a detected payment (PendingPaymentQueue.fromParse).
+const CLIENT_REF_RE = /^[0-9a-f]{32}$/;
 
 const amountSchema = z.coerce.number()
     .positive('Amount must be a positive number')
@@ -36,7 +40,13 @@ const expenseSchema = z.object({
     // `ai_scan` and `pdf_import` are set exclusively by their server routes.
     source: z.enum(['manual', 'upi_auto']).optional().default('manual'),
     occurred_at: z.string().datetime({ offset: true }).optional(),
-}).strict();
+    // Idempotency key for a payment the phone detected: a repeat upload of the
+    // same detection returns the existing expense instead of adding another.
+    client_ref: z.string().regex(CLIENT_REF_RE, 'Invalid payment reference').optional(),
+}).strict().refine((b) => !b.client_ref || b.source === 'upi_auto', {
+    message: 'Only automatically detected payments carry a payment reference',
+    path: ['client_ref'],
+});
 
 // ---------------------------------------------------------------------------
 // Listing and export
@@ -150,13 +160,47 @@ router.get('/export.csv', protect, exportLimiter, async (req, res) => {
     res.send("\uFEFF" + toCsv(rows));
 });
 
+/**
+ * The expense this user already has for a detected payment, or null. A
+ * database without v1_13 (no client_ref column) simply has none.
+ */
+async function existingForClientRef(userId, clientRef) {
+    const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('client_ref', clientRef)
+        .maybeSingle();
+    if (error) return null;
+    return data || null;
+}
+
+function replayResponse(res, expense) {
+    // Nothing new was written: no quota used, no XP or round-up awarded again.
+    return res.status(200).json({ success: true, expense, duplicate: true, roundupChillar: 0, xpEarned: 0 });
+}
+
+/**
+ * A repeated upload of a detected payment (the phone retrying after a lost
+ * response) is answered with the existing expense BEFORE the free-plan quota
+ * is counted, so a retry never uses up a daily expense.
+ */
+async function replayDetectedPayment(req, res, next) {
+    const ref = req.body && req.body.client_ref;
+    if (req.body?.source !== 'upi_auto' || typeof ref !== 'string' || !CLIENT_REF_RE.test(ref)) return next();
+    const existing = await existingForClientRef(req.user.id, ref);
+    return existing ? replayResponse(res, existing) : next();
+}
+
 // ---------------------------------------------------------------------------
-// @route   POST /api/expenses — log an expense (manual or confirmed UPI detection)
+// @route   POST /api/expenses — log an expense (manual, or a payment detected
+//          from a supported payment-app notification: source upi_auto)
 // ---------------------------------------------------------------------------
-router.post('/', protect, proGate('add_expense'), async (req, res) => {
+router.post('/', protect, replayDetectedPayment, proGate('add_expense'), async (req, res) => {
     const parsed = expenseSchema.safeParse(req.body);
     if (!parsed.success) return validationError(res, parsed.error);
     const { amount, category, description, source } = parsed.data;
+    const clientRef = parsed.data.client_ref || null;
 
     const now = Date.now();
     let occurredAt = new Date(now);
@@ -173,19 +217,29 @@ router.post('/', protect, proGate('add_expense'), async (req, res) => {
 
     const roundupChillar = roundupFor(amount);
 
-    const { data: expense, error } = await supabase
-        .from('expenses')
-        .insert({
-            user_id: req.user.id,
-            amount,
-            category,
-            description,
-            roundup_chillar: roundupChillar,
-            source,
-            occurred_at: occurredAt.toISOString(),
-        })
-        .select()
-        .single();
+    const row = {
+        user_id: req.user.id,
+        amount,
+        category,
+        description,
+        roundup_chillar: roundupChillar,
+        source,
+        occurred_at: occurredAt.toISOString(),
+    };
+    const insert = (values) => supabase.from('expenses').insert(values).select().single();
+
+    let { data: expense, error } = await insert(clientRef ? { ...row, client_ref: clientRef } : row);
+
+    if (error && clientRef && error.code === '23505') {
+        // Two uploads of the same detection raced: the other one won.
+        const existing = await existingForClientRef(req.user.id, clientRef);
+        if (existing) return replayResponse(res, existing);
+    }
+    if (error && clientRef && (error.code === 'PGRST204' || error.code === '42703')) {
+        // Database without v1_13: save the expense without the key rather than fail.
+        console.error('expenses.client_ref is missing: apply supabase/v1_13_notification_expenses.sql');
+        ({ data: expense, error } = await insert(row));
+    }
 
     if (error) {
         console.error('Error saving expense:', error.message);

@@ -78,7 +78,13 @@ test('key commitments are word-for-word the same in both copies', () => {
   const phrases = {
     privacy: [
       'Vittova does not request SMS permission and does not read SMS.',
-      'for up to 7 days. The notification text itself is not saved or uploaded.',
+      // Automatic payment tracking: exactly what the code does (PaymentTrackingContext, PendingPaymentQueue).
+      'but it only works after you allow Android Notification Access for Vittova. Android asks you for this; Vittova cannot grant it itself.',
+      'including while Vittova is closed.',
+      'for up to 30 days. The notification text itself is not saved or uploaded.',
+      'Clear payments are added to your expenses automatically: the next time Vittova runs while you are signed in,',
+      'If a notification is unclear, Vittova asks you before adding it.',
+      'If a different account signs in, anything still waiting on the phone is deleted.',
       'We do not sell or rent personal data, and we do not use your financial data for advertising.',
       'Vittova is intended for people aged 18 and over.',
       'If you are under 18, we do not create an account;',
@@ -94,6 +100,7 @@ test('key commitments are word-for-word the same in both copies', () => {
     ],
     'delete-account': [
       'Your account is deleted straight away and you are signed out on every device.',
+      'Payments still waiting on your phone are deleted from the phone when you delete your account in the app.',
       'complete deletion within 30 days, then confirm by email.',
     ],
   };

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiUrl, apiFetch, authHeaders } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { lastNDays, localDateKey, startOfLocalMonth } from '../lib/dates';
+import { EXPENSES_CHANGED_EVENT } from '../lib/paymentTracking';
 
 const API_URL = apiUrl('/expenses');
 
@@ -56,6 +57,13 @@ export function useExpenses() {
 
   useEffect(() => {
     fetchExpenses();
+  }, [fetchExpenses]);
+
+  // Payments detected while the app was closed were just saved: reload.
+  useEffect(() => {
+    const reload = () => { fetchExpenses(); };
+    window.addEventListener(EXPENSES_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(EXPENSES_CHANGED_EVENT, reload);
   }, [fetchExpenses]);
 
   // This month's total, on the device's calendar.

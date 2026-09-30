@@ -10,6 +10,7 @@ import { track } from './lib/telemetry';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProProvider } from './contexts/ProContext';
+import { PaymentTrackingProvider } from './contexts/PaymentTrackingContext';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
@@ -278,6 +279,8 @@ function App() {
       {splash && <StartupSplash onDone={() => setSplash(false)} />}
       <AuthProvider>
         <ProProvider>
+          {/* Uploads payments captured while Vittova was closed, on any screen. */}
+          <PaymentTrackingProvider>
           <Router>
             <DeepLinkHandler onMessage={setAuthMessage} />
             <RecoveryRedirect />
@@ -325,6 +328,7 @@ function App() {
               </Routes>
             </Suspense>
           </Router>
+          </PaymentTrackingProvider>
         </ProProvider>
       </AuthProvider>
     </ThemeProvider>

@@ -24,6 +24,8 @@ export const EVENTS = new Set([
   // v1.1 monetization: names and enum props only, never amounts or merchants
   'subscription_audit_opened', 'debit_reminder_scheduled', 'debit_reminder_opened',
   'pro_paywall_viewed', 'plan_selected', 'purchase_started', 'challenge_viewed',
+  // Payment tracking: counts and switches only, never amounts, payees or notification text
+  'payment_auto_added', 'payment_tracking_switch', 'payment_tracking_mode', 'payment_queue_cleared',
 ]);
 
 const PROP_RULES = {

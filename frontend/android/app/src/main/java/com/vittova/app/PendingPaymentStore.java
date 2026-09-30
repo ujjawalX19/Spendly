@@ -4,104 +4,191 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
- * Persists {@link PendingPaymentQueue} in app-private SharedPreferences, so a
- * payment detected while Vittova is closed is still there when the user opens
- * the app.
- *
- * Private to the app sandbox and excluded from cloud backup and device
+ * Durable on-device storage for payment tracking, in app-private
+ * SharedPreferences. Survives the app being closed or swiped away, the process
+ * being killed and the phone restarting. Excluded from cloud backup and device
  * transfer by res/xml/backup_rules.xml and data_extraction_rules.xml.
+ *
+ * Every write uses commit(), not apply(): the notification listener can be
+ * killed right after it returns, and a detection must be on disk by then.
+ *
+ * Holds:
+ *   queue_v2   detections waiting to be uploaded or reviewed ({@link PendingPaymentQueue})
+ *   done_v2    recently uploaded/dismissed payments, for duplicate checks only
+ *   tracking   "off" when the user turned payment tracking off in Vittova
+ *              (absent = on: tracking is on by default, but only works once
+ *              Android Notification Access is granted)
+ *   owner      the Vittova account the stored detections belong to
+ *   listener_* whether Android currently has the listener connected
  */
 final class PendingPaymentStore {
 
     private static final String TAG = "SpendlyQueue";
     private static final String PREFS = "spendly_pending_payments";
-    private static final String KEY = "queue_v1";
+    private static final String QUEUE = "queue_v2";
+    private static final String DONE = "done_v2";
+    private static final String LEGACY_QUEUE = "queue_v1";
+    private static final String TRACKING = "tracking";
+    private static final String OWNER = "owner";
+    private static final String LISTENER_CONNECTED = "listener_connected";
+    private static final String LISTENER_CHANGED_AT = "listener_changed_at";
     private static final Object LOCK = new Object();
 
     private PendingPaymentStore() { }
 
-    static boolean add(Context context, PendingPaymentQueue.Entry entry) {
+    // ── Detections ──────────────────────────────────────────────────────────
+
+    static PendingPaymentQueue.AddResult add(Context context, PendingPaymentQueue.Payment payment) {
         synchronized (LOCK) {
-            List<PendingPaymentQueue.Entry> entries = read(context);
-            boolean added = PendingPaymentQueue.add(entries, entry, System.currentTimeMillis());
-            write(context, entries);
-            return added;
+            List<PendingPaymentQueue.Payment> queue = readQueue(context);
+            List<PendingPaymentQueue.Payment> done = read(context, DONE);
+            PendingPaymentQueue.AddResult result = PendingPaymentQueue.add(queue, done, payment, System.currentTimeMillis());
+            // A duplicate can still change state (an echo was matched), so always persist.
+            if (!write(context, queue, done)) return PendingPaymentQueue.AddResult.INVALID;
+            return result;
         }
     }
 
-    static List<PendingPaymentQueue.Entry> list(Context context) {
+    static List<PendingPaymentQueue.Payment> list(Context context) {
         synchronized (LOCK) {
-            List<PendingPaymentQueue.Entry> entries = read(context);
-            int before = entries.size();
-            PendingPaymentQueue.prune(entries, System.currentTimeMillis());
-            if (entries.size() != before) write(context, entries);
-            return PendingPaymentQueue.copy(entries);
+            List<PendingPaymentQueue.Payment> queue = readQueue(context);
+            List<PendingPaymentQueue.Payment> done = read(context, DONE);
+            int before = queue.size() + done.size();
+            PendingPaymentQueue.prune(queue, done, System.currentTimeMillis());
+            if (queue.size() + done.size() != before) write(context, queue, done);
+            return PendingPaymentQueue.copy(queue);
         }
     }
 
-    static boolean remove(Context context, String fingerprint) {
+    /** @param outcome "synced", "dismissed" or "rejected" */
+    static boolean resolve(Context context, String id, String outcome) {
         synchronized (LOCK) {
-            List<PendingPaymentQueue.Entry> entries = read(context);
-            boolean removed = PendingPaymentQueue.remove(entries, fingerprint);
-            if (removed) write(context, entries);
-            return removed;
+            List<PendingPaymentQueue.Payment> queue = readQueue(context);
+            List<PendingPaymentQueue.Payment> done = read(context, DONE);
+            boolean changed = PendingPaymentQueue.resolve(queue, done, id, outcome, System.currentTimeMillis());
+            if (changed) write(context, queue, done);
+            return changed;
         }
     }
+
+    static boolean markAttempt(Context context, String id, String errorCode) {
+        synchronized (LOCK) {
+            List<PendingPaymentQueue.Payment> queue = readQueue(context);
+            boolean changed = PendingPaymentQueue.markAttempt(queue, id, errorCode, System.currentTimeMillis());
+            if (changed) write(context, queue, read(context, DONE));
+            return changed;
+        }
+    }
+
+    static boolean markForReview(Context context, String id) {
+        synchronized (LOCK) {
+            List<PendingPaymentQueue.Payment> queue = readQueue(context);
+            boolean changed = PendingPaymentQueue.markForReview(queue, id);
+            if (changed) write(context, queue, read(context, DONE));
+            return changed;
+        }
+    }
+
+    /**
+     * Tie stored detections to the account that is signing in. Detections
+     * captured for a different account are discarded, never uploaded.
+     *
+     * @return "keep", "claim" or "clear"
+     */
+    static String bindOwner(Context context, String userId) {
+        synchronized (LOCK) {
+            SharedPreferences prefs = prefs(context);
+            PendingPaymentQueue.OwnerAction action = PendingPaymentQueue.ownerAction(prefs.getString(OWNER, null), userId);
+            SharedPreferences.Editor e = prefs.edit();
+            if (action == PendingPaymentQueue.OwnerAction.CLEAR) e.remove(QUEUE).remove(DONE).remove(LEGACY_QUEUE);
+            e.putString(OWNER, userId).commit();
+            return action.name().toLowerCase(Locale.ROOT);
+        }
+    }
+
+    /** Account deleted: forget every detection and the owner. Settings are kept. */
+    static void clearAll(Context context) {
+        synchronized (LOCK) {
+            prefs(context).edit().remove(QUEUE).remove(DONE).remove(LEGACY_QUEUE).remove(OWNER).commit();
+        }
+    }
+
+    // ── Settings and listener health ────────────────────────────────────────
+
+    /** Payment tracking is on unless the user turned it off in Vittova. */
+    static boolean trackingEnabled(Context context) {
+        return !"off".equals(prefs(context).getString(TRACKING, "on"));
+    }
+
+    static void setTrackingEnabled(Context context, boolean enabled) {
+        prefs(context).edit().putString(TRACKING, enabled ? "on" : "off").commit();
+    }
+
+    static void setListenerConnected(Context context, boolean connected) {
+        prefs(context).edit()
+            .putBoolean(LISTENER_CONNECTED, connected)
+            .putLong(LISTENER_CHANGED_AT, System.currentTimeMillis())
+            .commit();
+    }
+
+    static boolean listenerConnected(Context context) {
+        return prefs(context).getBoolean(LISTENER_CONNECTED, false);
+    }
+
+    static long listenerChangedAt(Context context) {
+        return prefs(context).getLong(LISTENER_CHANGED_AT, 0L);
+    }
+
+    // ── Serialisation ───────────────────────────────────────────────────────
 
     private static SharedPreferences prefs(Context context) {
         return context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    private static List<PendingPaymentQueue.Entry> read(Context context) {
-        List<PendingPaymentQueue.Entry> entries = new ArrayList<>();
-        String raw = prefs(context).getString(KEY, "[]");
+    private static List<PendingPaymentQueue.Payment> read(Context context, String key) {
         try {
-            JSONArray array = new JSONArray(raw);
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject o = array.getJSONObject(i);
-                entries.add(new PendingPaymentQueue.Entry(
-                    o.getString("fingerprint"),
-                    o.optString("kind", "EXPENSE"),
-                    o.getDouble("amount"),
-                    o.optString("merchant", "Unknown"),
-                    o.optString("app", ""),
-                    o.getLong("timestamp"),
-                    o.optBoolean("needsConfirmation", false)
-                ));
-            }
+            return PaymentJson.read(prefs(context).getString(key, "[]"));
         } catch (Exception e) {
             // Corrupt data is discarded rather than crashing the listener.
-            Log.w(TAG, "Pending payment queue was unreadable and has been reset");
-            entries.clear();
+            Log.w(TAG, "Stored payment list was unreadable and has been reset");
+            return new ArrayList<>();
         }
-        return entries;
     }
 
-    private static void write(Context context, List<PendingPaymentQueue.Entry> entries) {
-        JSONArray array = new JSONArray();
+    /** The queue, first moving anything saved by an older version into it. */
+    private static List<PendingPaymentQueue.Payment> readQueue(Context context) {
+        List<PendingPaymentQueue.Payment> queue = read(context, QUEUE);
+        SharedPreferences prefs = prefs(context);
+        if (!prefs.contains(LEGACY_QUEUE)) return queue;
         try {
-            for (PendingPaymentQueue.Entry e : entries) {
-                JSONObject o = new JSONObject();
-                o.put("fingerprint", e.fingerprint);
-                o.put("kind", e.kind);
-                o.put("amount", e.amount);
-                o.put("merchant", e.merchant);
-                o.put("app", e.app);
-                o.put("timestamp", e.timestamp);
-                o.put("needsConfirmation", e.needsConfirmation);
-                array.put(o);
-            }
+            queue.addAll(PaymentJson.readLegacy(prefs.getString(LEGACY_QUEUE, "[]")));
         } catch (Exception e) {
-            Log.w(TAG, "Could not serialise pending payment queue");
-            return;
+            Log.w(TAG, "Old payment queue was unreadable and has been discarded");
         }
-        prefs(context).edit().putString(KEY, array.toString()).apply();
+        try {
+            // Save the migrated entries and drop the old key in one commit.
+            prefs.edit().putString(QUEUE, PaymentJson.write(queue)).remove(LEGACY_QUEUE).commit();
+        } catch (Exception e) {
+            Log.w(TAG, "Could not migrate the old payment queue");
+        }
+        return queue;
+    }
+
+    private static boolean write(Context context, List<PendingPaymentQueue.Payment> queue,
+                                 List<PendingPaymentQueue.Payment> done) {
+        try {
+            return prefs(context).edit()
+                .putString(QUEUE, PaymentJson.write(queue))
+                .putString(DONE, PaymentJson.write(done))
+                .commit();
+        } catch (Exception e) {
+            Log.w(TAG, "Could not save payment tracking data");
+            return false;
+        }
     }
 }

@@ -105,73 +105,97 @@ public class NotificationPrivacyTest {
 
     // ── Duplicates ──────────────────────────────────────────────────────────
 
+    private static PendingPaymentQueue.Payment detect(String pkg, String text, long t) {
+        Result r = PaymentNotificationParser.parse(pkg, "Payment", text, null, t);
+        assertEquals(text, Kind.EXPENSE, r.kind);
+        PaymentSources.Type type = PaymentSources.typeFor(pkg);
+        return PendingPaymentQueue.fromParse(r, pkg, type.name(), t);
+    }
+
+    private static PendingPaymentQueue.AddResult add(List<PendingPaymentQueue.Payment> q,
+                                                     List<PendingPaymentQueue.Payment> done,
+                                                     PendingPaymentQueue.Payment p) {
+        return PendingPaymentQueue.add(q, done, p, p.timestamp);
+    }
+
     @Test
     public void duplicateNotificationIsNotDuplicated() {
-        DuplicateSuppressor suppressor = new DuplicateSuppressor(200);
-        Result first = PaymentNotificationParser.parse(GPAY, "Payment successful", "You paid ₹250 to Zomato", null, T);
-        Result repost = PaymentNotificationParser.parse(GPAY, "Payment successful", "You paid ₹250 to Zomato", null, T + 5_000);
-
-        assertFalse(suppressor.isDuplicate(first, T));
-        assertTrue(suppressor.isDuplicate(repost, T + 5_000));
-    }
-
-    @Test
-    public void samePaymentFromUpiAppAndBankAppIsRecordedOnce() {
-        DuplicateSuppressor suppressor = new DuplicateSuppressor(200);
-        Result upi = PaymentNotificationParser.parse(GPAY, "Paid", "You paid ₹250 to Zomato", null, T);
-        Result bank = PaymentNotificationParser.parse("com.snapwork.hdfc", "Debit", "Rs 250 paid to Zomato", null, T + 30_000);
-        assertFalse(suppressor.isDuplicate(upi, T));
-        assertTrue(suppressor.isDuplicate(bank, T + 30_000));
-    }
-
-    @Test
-    public void aRealSecondPurchaseLaterIsNotSuppressed() {
-        DuplicateSuppressor suppressor = new DuplicateSuppressor(200);
-        Result a = PaymentNotificationParser.parse(GPAY, "Paid", "You paid ₹40 to Metro", null, T);
-        Result b = PaymentNotificationParser.parse(GPAY, "Paid", "You paid ₹40 to Metro", null, T + 60 * 60 * 1000);
-        assertFalse(suppressor.isDuplicate(a, T));
-        assertFalse(suppressor.isDuplicate(b, T + 60 * 60 * 1000));
-    }
-
-    // ── On-device queue ─────────────────────────────────────────────────────
-
-    private static PendingPaymentQueue.Entry entry(String fp, long ts) {
-        return new PendingPaymentQueue.Entry(fp, "EXPENSE", 100, "Zomato", "GPay", ts, false);
-    }
-
-    @Test
-    public void queueDoesNotStoreTheSameDetectionTwice() {
-        List<PendingPaymentQueue.Entry> q = new ArrayList<>();
-        assertTrue(PendingPaymentQueue.add(q, entry("a", T), T));
-        assertFalse(PendingPaymentQueue.add(q, entry("a", T + 1), T + 1));
+        List<PendingPaymentQueue.Payment> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> done = new ArrayList<>();
+        assertEquals(PendingPaymentQueue.AddResult.ADDED, add(q, done, detect(GPAY, "You paid ₹250 to Zomato", T)));
+        assertEquals(PendingPaymentQueue.AddResult.DUPLICATE, add(q, done, detect(GPAY, "You paid ₹250 to Zomato", T + 5_000)));
         assertEquals(1, q.size());
     }
 
     @Test
-    public void queueExpiresEntriesAfterSevenDays() {
-        List<PendingPaymentQueue.Entry> q = new ArrayList<>();
-        PendingPaymentQueue.add(q, entry("old", T), T);
-        PendingPaymentQueue.prune(q, T + PendingPaymentQueue.TTL_MS + 1);
+    public void samePaymentFromUpiAppAndBankAppIsRecordedOnce() {
+        List<PendingPaymentQueue.Payment> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> done = new ArrayList<>();
+        assertEquals(PendingPaymentQueue.AddResult.ADDED, add(q, done, detect(GPAY, "You paid ₹250 to Zomato", T)));
+        assertEquals(PendingPaymentQueue.AddResult.DUPLICATE,
+            add(q, done, detect("com.snapwork.hdfc", "Rs 250 debited from A/c XX1234 to ZOMATO LTD", T + 30_000)));
+        assertEquals(1, q.size());
+    }
+
+    @Test
+    public void aRealSecondPurchaseLaterIsNotSuppressed() {
+        List<PendingPaymentQueue.Payment> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> done = new ArrayList<>();
+        assertEquals(PendingPaymentQueue.AddResult.ADDED, add(q, done, detect(GPAY, "You paid ₹40 to Metro", T)));
+        assertEquals(PendingPaymentQueue.AddResult.ADDED, add(q, done, detect(GPAY, "You paid ₹40 to Metro", T + 60 * 60 * 1000)));
+        assertEquals(2, q.size());
+    }
+
+    // ── On-device queue ─────────────────────────────────────────────────────
+
+    @Test
+    public void queueDoesNotStoreTheSameDetectionTwice() {
+        List<PendingPaymentQueue.Payment> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> done = new ArrayList<>();
+        PendingPaymentQueue.Payment p = detect(GPAY, "You paid ₹100 to Zomato", T);
+        assertEquals(PendingPaymentQueue.AddResult.ADDED, add(q, done, p));
+        assertEquals(PendingPaymentQueue.AddResult.DUPLICATE, add(q, done, p));
+        assertEquals(1, q.size());
+    }
+
+    @Test
+    public void queueExpiresUnsentDetectionsAfterThirtyDays() {
+        List<PendingPaymentQueue.Payment> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> done = new ArrayList<>();
+        add(q, done, detect(GPAY, "You paid ₹100 to Zomato", T));
+        PendingPaymentQueue.prune(q, done, T + PendingPaymentQueue.TTL_MS - 1);
+        assertEquals(1, q.size());
+        PendingPaymentQueue.prune(q, done, T + PendingPaymentQueue.TTL_MS + 1);
         assertTrue(q.isEmpty());
     }
 
     @Test
     public void queueIsBounded() {
-        List<PendingPaymentQueue.Entry> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> done = new ArrayList<>();
+        PendingPaymentQueue.Payment first = null;
         for (int i = 0; i < PendingPaymentQueue.MAX_ENTRIES + 10; i++) {
-            PendingPaymentQueue.add(q, entry("fp" + i, T + i), T + i);
+            // A different payee each time, so none is a duplicate of another.
+            PendingPaymentQueue.Payment p = detect(GPAY, "You paid ₹100 to Shop" + i, T + i);
+            if (first == null) first = p;
+            PendingPaymentQueue.add(q, done, p, T + i);
         }
         assertEquals(PendingPaymentQueue.MAX_ENTRIES, q.size());
-        assertNotEquals("fp0", q.get(0).fingerprint);
+        assertNotEquals(first.id, q.get(0).id);
     }
 
     @Test
-    public void resolvedDetectionIsRemoved() {
-        List<PendingPaymentQueue.Entry> q = new ArrayList<>();
-        PendingPaymentQueue.add(q, entry("a", T), T);
-        PendingPaymentQueue.add(q, entry("b", T), T);
-        assertTrue(PendingPaymentQueue.remove(q, "a"));
-        assertFalse(PendingPaymentQueue.remove(q, "a"));
+    public void resolvedDetectionLeavesTheQueueButIsRemembered() {
+        List<PendingPaymentQueue.Payment> q = new ArrayList<>();
+        List<PendingPaymentQueue.Payment> done = new ArrayList<>();
+        PendingPaymentQueue.Payment a = detect(GPAY, "You paid ₹100 to Zomato", T);
+        add(q, done, a);
+        add(q, done, detect(GPAY, "You paid ₹60 to Metro", T));
+        assertTrue(PendingPaymentQueue.resolve(q, done, a.id, "synced", T + 1));
+        assertFalse(PendingPaymentQueue.resolve(q, done, a.id, "synced", T + 2));
         assertEquals(1, q.size());
+        assertEquals(1, done.size());
+        // The app reposts the same notification after the upload: still one expense.
+        assertEquals(PendingPaymentQueue.AddResult.DUPLICATE, add(q, done, detect(GPAY, "You paid ₹100 to Zomato", T + 20_000)));
     }
 }

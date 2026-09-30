@@ -79,7 +79,7 @@ export default function NotificationAccessSheet({
         {phase === 'enabled' ? (
           <>
             <p className="text-sm leading-relaxed text-zinc-400">
-              Vittova will ask you before adding a detected payment as an expense.
+              Clear payments are then added to your expenses automatically; Vittova asks you about unclear ones.
             </p>
             <button type="button" onClick={onClose} className="mt-5 min-h-12 w-full rounded-2xl bg-lime-400 text-sm font-black text-black">
               Done
