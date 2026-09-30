@@ -665,6 +665,7 @@ public final class PaymentNotificationParser {
             if (digits >= 6) return "UPI transfer";
             name = cleanName(handle);
             if (name.isEmpty()) return "";
+            name = displayHandle(name);
         }
         int digits = 0;
         for (int i = 0; i < name.length(); i++) if (Character.isDigit(name.charAt(i))) digits++;
@@ -675,6 +676,22 @@ public final class PaymentNotificationParser {
             return "";
         }
         return name;
+    }
+
+    /**
+     * A UPI ID's handle is usually all lowercase ("uber", "swiggy.instamart"):
+     * shown as a name ("Uber", "Swiggy Instamart"). A handle with its own
+     * capitals is left as it is.
+     */
+    static String displayHandle(String handle) {
+        if (!handle.equals(handle.toLowerCase(Locale.ROOT))) return handle;
+        StringBuilder out = new StringBuilder();
+        for (String word : handle.split("[._-]+")) {
+            if (word.isEmpty()) continue;
+            if (out.length() > 0) out.append(' ');
+            out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return out.length() == 0 ? handle : out.toString();
     }
 
     private static String cleanName(String s) {

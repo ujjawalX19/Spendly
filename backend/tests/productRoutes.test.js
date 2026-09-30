@@ -174,7 +174,10 @@ test('paisa score endpoint withholds the score for a new user', async () => {
 
 test('AI spending analysis answers with the user\'s real numbers', async () => {
     const u = t.db.addUser({ monthly_budget: 30000 });
-    for (let i = 0; i < 12; i++) addExpense(u.id, { amount: 500, category: 'Food', occurred_at: daysAgo(i % 5) });
+    // Minutes apart, so all 12 fall in the current month on any date (with
+    // daysAgo(0..4) this failed on the 1st–4th of every month: most expenses
+    // landed in the previous month).
+    for (let i = 0; i < 12; i++) addExpense(u.id, { amount: 500, category: 'Food', occurred_at: new Date(Date.now() - i * 60000).toISOString() });
     const res = await t.request('POST', '/api/ai/invest-advice', { token: u.token, body: { query: 'Give me a monthly summary' } });
     assert.equal(res.status, 200);
     assert.equal(res.body.intent, 'monthly_summary');

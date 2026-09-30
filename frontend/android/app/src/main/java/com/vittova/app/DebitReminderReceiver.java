@@ -25,6 +25,8 @@ public class DebitReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        // Due now: never re-arm this one again (boot or app update), shown or not.
+        DebitRemindersPlugin.markShown(context.getApplicationContext(), intent.getIntExtra(EXTRA_ID, 0));
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return;
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Expected debit reminders", NotificationManager.IMPORTANCE_DEFAULT);

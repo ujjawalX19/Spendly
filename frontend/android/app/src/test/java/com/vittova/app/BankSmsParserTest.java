@@ -96,7 +96,19 @@ public class BankSmsParserTest {
     public void kotakDebitToAUpiIdKeepsOnlyTheHandle() {
         Result r = sms("BZ-KOTAKB", "Sent Rs.250.00 from Kotak Bank AC X1234 to swiggy@icici on 29-09-26.UPI Ref 412345678901. "
             + "Not you, https://kotak.com/KBANKT/Fraud");
-        debit(r, 250, "swiggy");
+        // Only the handle is kept, shown as a name rather than "swiggy".
+        debit(r, 250, "Swiggy");
+    }
+
+    @Test
+    public void aUpiHandleIsShownAsAName() {
+        assertEquals("Uber", PaymentNotificationParser.cleanPayee("uber@okaxis"));
+        assertEquals("Swiggy Instamart", PaymentNotificationParser.cleanPayee("swiggy.instamart@icici"));
+        assertEquals("Blinkit Store", PaymentNotificationParser.cleanPayee("blinkit_store@ybl"));
+        // A handle with its own capitals is left alone.
+        assertEquals("PhonePeMerchant", PaymentNotificationParser.cleanPayee("PhonePeMerchant@ybl"));
+        // A phone-number handle is still never shown.
+        assertEquals("UPI transfer", PaymentNotificationParser.cleanPayee("9876543210@ybl"));
     }
 
     @Test

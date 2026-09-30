@@ -7,7 +7,7 @@ to be entered manually in Play Console. Package: `com.vittova.app`
 | Field | Value | Limit |
 |---|---|---|
 | App name | `Vittova: Expense Tracker` | 30 chars (24) |
-| Short description | `Track spending, know what's safe to spend, and split bills with friends.` | 80 chars (72) |
+| Short description | `Auto-track spending from your bank's debit SMS and know what's safe to spend.` | 80 chars (77) |
 | Category | Finance | |
 | Contact email | `support@vittova.in` — **only after the mailbox is confirmed to receive mail** | |
 | Website | `https://vittova.in` — **only after DNS + HTTPS are live** | |
@@ -20,19 +20,27 @@ to be entered manually in Play Console. Package: `com.vittova.app`
 ## Full description
 
 ```
-Vittova — Your Money's Pulse.
+Vittova — Your Money's Pulse. Your spending, tracked automatically from your
+bank's debit SMS.
 
 Vittova is a personal financial copilot for India. It helps you see where your
 money goes and what you can safely spend, without spreadsheets.
 
-TRACK WITHOUT TYPING
-• Optional: allow SMS access and Vittova turns your bank's debit alerts into
-  expenses automatically. It reads only banks' sender IDs, never messages
-  from people, and skips OTPs and offers. The message text stays on your phone.
-• Optional: add Notification Access to also catch payments that Google Pay,
-  PhonePe, Paytm, BHIM and other supported apps announce.
+AUTOMATIC EXPENSE TRACKING FROM BANK SMS (ANDROID)
+This is what Vittova is built around. When you allow SMS access, Vittova
+reads the debit alerts your bank sends and records each payment (amount,
+payee and time) as an expense in your budget, even when the app is closed.
+• Reads debit alerts from banks' official sender IDs, such as HDFC Bank, SBI,
+  ICICI Bank, Axis Bank and Kotak. Formats differ between banks, so some
+  alerts may not be recognised; anything unclear waits for your OK.
+• Messages from people (phone numbers) are never read. One-time passwords,
+  offers and other messages that are not payments are skipped.
+• The message text stays on your phone. Only the expense is saved.
 • No bank password and no bank-account connection.
-• Prefer manual entry? Add expenses yourself, or scan a receipt.
+• Turn it off in Profile or remove SMS access in Android settings any time.
+• Optional extra: Notification Access also catches payments that supported
+  UPI apps announce.
+• Prefer typing? Add expenses yourself, or scan a receipt.
 
 KNOW WHAT YOU CAN SPEND
 • Safe-to-Spend: what's left this month after your bills and savings target.

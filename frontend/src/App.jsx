@@ -18,6 +18,7 @@ import { onReminderOpened, refreshReminders } from './lib/debitReminders';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 import { releaseLaunchScreen } from './plugins/LaunchScreen';
 import AgeGate from './components/AgeGate';
+import { ScrollToTopOnNavigate, StatusBarScrim } from './components/ScreenChrome';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
 // out user sees, and a lazy chunk there would add a spinner to cold start.
@@ -295,6 +296,8 @@ function App() {
           <Router>
             <DeepLinkHandler onMessage={setAuthMessage} />
             <RecoveryRedirect />
+            <ScrollToTopOnNavigate />
+            <StatusBarScrim />
             {authMessage ? (
               <div role="alert" className="fixed top-0 inset-x-0 z-50 bg-red-500/95 text-white text-sm px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-start gap-3">
                 <span className="flex-1">{authMessage}</span>

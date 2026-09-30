@@ -35,8 +35,9 @@ export async function scheduleReminders(reminders = []) {
 
 /**
  * Re-schedule from the server's current list. Called when the app opens, so
- * reminders come back after a reboot (Android drops alarms) and follow new or
- * changed recurring payments without visiting the audit screen. If the audit is
+ * reminders follow new or changed recurring payments without visiting the
+ * audit screen. (After a reboot the phone re-arms the last list by itself:
+ * DebitReminderBootReceiver.) If the audit is
  * no longer available to this account (Pro ended, feature switched off), the
  * scheduled reminders are cleared; the user's on/off choice is kept.
  */
@@ -68,6 +69,16 @@ export async function turnRemindersOn(reminders) {
 
 export async function turnRemindersOff() {
   setWanted(false);
+  if (remindersSupported()) await DebitReminders.cancelAll().catch(() => {});
+}
+
+/**
+ * On sign-out: remove this account's reminders from the phone (they name its
+ * payments, and would otherwise fire, even after a reboot, for whoever signs in
+ * next). The on/off choice stays; the next sign-in schedules that account's.
+ */
+export async function clearRemindersForSignOut() {
+  refreshedFor = null;
   if (remindersSupported()) await DebitReminders.cancelAll().catch(() => {});
 }
 

@@ -66,16 +66,20 @@ Play Console → App content → Sensitive permissions → **SMS and Call Log**:
 | Video | Release build, ~60 s: Onboarding → SMS disclosure screen → "Allow bank SMS" → Android dialog → a real ₹1 UPI payment → debit SMS arrives → expense appears on Home → Profile → Payment tracking → Bank SMS switch. Upload it unlisted and paste the link. |
 
 Honest risk: Google decides whether SMS tracking is "core" for this app, and
-reviews of this exception are strict. If the declaration is rejected, the
-fallback is a build without `RECEIVE_SMS`/`READ_SMS` (notification-only
-tracking); the app handles no SMS access everywhere already.
+reviews of this exception are strict. Google also requires the core use to be
+prominently documented and promoted in the description: the listing now leads
+with it (store-listing/PLAY_STORE_LISTING.md). SMS tracking is part of V1.1 by
+decision; if the declaration is rejected, the release waits until it is
+resolved (appeal or a changed build). Not submitted, not approved.
 
-Data safety for SMS: the SMS content itself never leaves the phone, and
-on-device-only processing is not "collected" in Play's definition. The
-expense it produces is **Financial info → Other financial info** (already
-declared). If unsure, declaring **Messages → SMS or MMS** as collected
-(optional, app functionality, not shared) is the conservative answer.
-**Verify against Play's current wording before submitting.**
+Data safety for SMS (checked against Google's Data safety definitions,
+answer/10787469, 1 Oct 2026: "User data accessed by your app that is only
+processed locally on the user's device and not sent off device does not need
+to be disclosed"): the SMS text never leaves the phone, so **Messages → SMS or
+MMS is not declared**. The expense it produces is uploaded and is declared as
+**Financial info → Purchase history** ("information about purchases or
+transactions a user has made"). The full answer sheet is in
+release-final/PLAY-STORE-OPTIMIZATION.md.
 
 ## Subscriptions (when billing is switched on)
 

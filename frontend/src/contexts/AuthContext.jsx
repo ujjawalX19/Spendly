@@ -7,6 +7,7 @@ import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/tele
 import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '../plugins/GoogleAuth';
+import { clearRemindersForSignOut } from '../lib/debitReminders';
 import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode } from '../lib/googleSignIn';
 
 const AuthContext = createContext();
@@ -278,6 +279,7 @@ export function AuthProvider({ children }) {
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
       await GoogleAuth.signOut().catch(() => {});
     }
+    await clearRemindersForSignOut();
     clearLocalAppState();
     markPasswordRecovery(false);
     lastUserId.current = null;

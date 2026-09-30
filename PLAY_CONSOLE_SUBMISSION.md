@@ -164,10 +164,11 @@ payment card or bank account numbers, advertising ID.
 
 **Bank SMS and notification data:** debit SMS and supported payment
 notifications are parsed **on the device**; the text never leaves the phone.
-The detected payment is uploaded as an expense (amount, payee, time), which is
-already declared as financial info. On-device-only processing is not
-"collected" under Play's definition; the conservative alternative is to also
-declare Messages → SMS or MMS. **Verify** (see PLAY_DECLARATIONS_V1_1.md).
+The detected payment is uploaded as an expense (amount, payee, time). Under
+Google's definitions (answer/10787469) on-device-only processing is not
+declared, so Messages → SMS or MMS is **not** declared; expenses belong under
+Financial info → **Purchase history**. The V1.1 answer sheet
+(release-final/PLAY-STORE-OPTIMIZATION.md) supersedes the table above.
 
 **Security practices:** data encrypted in transit: Yes. Deletion: Yes.
 Independent security review: No.
