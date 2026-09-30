@@ -16,6 +16,9 @@
         <!-- The launch colour behind the WebView, so there is never a white or
              grey frame between the launch screen and the app's first paint. -->
         <item name="android:windowBackground">@color/splash_background</item>
+        <!-- Vittova is always dark: light status-bar icons, even when the
+             phone uses the light system theme (dark icons were unreadable). -->
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <!--
@@ -28,5 +31,6 @@
         <!-- A vector: sharp at the 288 dp Android draws it at. -->
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>
