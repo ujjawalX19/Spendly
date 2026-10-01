@@ -140,6 +140,11 @@ export function AuthProvider({ children }) {
     });
     if (error) {
       trackAuthFailure('signup_failed', 'email', error);
+      // Supabase's "email rate limit exceeded": the confirmation email could
+      // not be sent right now. Not the user's fault, and Google sign-in works.
+      if (error.status === 429 || /rate limit|too many/i.test(error.message)) {
+        return { success: false, message: "We can't send confirmation emails right now. Please try again in about an hour, or continue with Google." };
+      }
       return { success: false, message: error.message };
     }
     track('signup', { method: 'email' });

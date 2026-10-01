@@ -92,13 +92,26 @@ public class GoogleAuthPlugin extends Plugin {
 
                     @Override
                     public void onError(@NonNull GetCredentialException e) {
-                        if (e instanceof GetCredentialCancellationException) call.reject("Cancelled", "CANCELLED");
+                        if (e instanceof GetCredentialCancellationException) {
+                            // Google reports "this app's package and signing certificate
+                            // have no Android OAuth client" as a cancellation
+                            // ("[16] Account reauth failed"). The user did not cancel:
+                            // say so, and the app uses the browser sign-in instead of
+                            // silently returning to the login screen.
+                            if (isReauthFailure(e.getMessage())) call.reject("Native Google sign-in is not configured for this build", "REAUTH_FAILED");
+                            else call.reject("Cancelled", "CANCELLED");
+                        }
                         else if (e instanceof NoCredentialException) call.reject("No Google account available", "NO_CREDENTIAL");
                         else if (e instanceof GetCredentialInterruptedException) call.reject("Interrupted", "INTERRUPTED");
                         // The message can name the failure type but never contains a token.
                         else call.reject(e.getType(), "FAILED");
                     }
                 });
+    }
+
+    /** "[16] Account reauth failed." is a configuration failure, not the user closing the picker. */
+    static boolean isReauthFailure(String message) {
+        return message != null && message.toLowerCase(java.util.Locale.ROOT).contains("reauth");
     }
 
     @PluginMethod

@@ -23,6 +23,9 @@ test('cancelling stays on the login screen; unavailable native sign-in falls bac
   assert.equal(nativeFailureAction('INTERRUPTED'), 'retry');
   assert.equal(nativeFailureAction('NO_CREDENTIAL'), 'fallback');
   assert.equal(nativeFailureAction('FAILED'), 'fallback');
+  // Google's "[16] Account reauth failed" (OAuth client mismatch) arrives as a
+  // cancellation; the plugin renames it so the user is not left on the login screen.
+  assert.equal(nativeFailureAction('REAUTH_FAILED'), 'fallback');
   assert.equal(nativeFailureAction(undefined), 'fallback');
 });
 
@@ -44,6 +47,7 @@ test('the app signs in with the Google ID token and raw nonce, never with an ema
 test('a native fallback is reported with its reason, never the error message', () => {
   assert.equal(nativeFailureCode('NO_CREDENTIAL'), 'native_no_credential');
   assert.equal(nativeFailureCode('FAILED'), 'native_failed');
+  assert.equal(nativeFailureCode('REAUTH_FAILED'), 'native_oauth_client_mismatch');
   assert.equal(nativeFailureCode(undefined), 'native_unavailable');
-  for (const c of ['native_no_credential', 'native_failed', 'native_unavailable']) assert.match(c, /^[a-z0-9_]{1,40}$/);
+  for (const c of ['native_no_credential', 'native_failed', 'native_unavailable', 'native_oauth_client_mismatch']) assert.match(c, /^[a-z0-9_]{1,40}$/);
 });

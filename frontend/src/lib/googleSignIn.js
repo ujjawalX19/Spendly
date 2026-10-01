@@ -39,6 +39,9 @@ export async function makeNonce(cryptoImpl = globalThis.crypto) {
  */
 export function nativeFailureCode(code) {
   if (code === 'NO_CREDENTIAL') return 'native_no_credential';
+  // Google answered "[16] Account reauth failed": no Android OAuth client
+  // matches this build's package and signing certificate.
+  if (code === 'REAUTH_FAILED') return 'native_oauth_client_mismatch';
   if (code === 'FAILED') return 'native_failed';
   return 'native_unavailable';
 }
