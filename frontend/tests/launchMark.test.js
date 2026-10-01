@@ -99,14 +99,23 @@ test('the web splash centres the mark where Android drew it', () => {
   assert.equal(launchCenterY({ screenHeightDp: -1, webViewTopDp: 0, viewportHeight: 700 }), 350);
 });
 
-test('the splash never scales the mark, and animates only opacity and a stroke offset', () => {
+test('the splash animates only transforms, opacity and a stroke offset, and the mark returns to its exact size', () => {
   const css = readFileSync(join(here, '../src/index.css'), 'utf8');
   const block = css.slice(css.indexOf('Startup splash'), css.indexOf('── Landing'));
   assert.ok(block.length > 100, 'splash styles found');
-  assert.doesNotMatch(block, /scale\(/);
+  // Cheap to animate on any phone: nothing that forces layout or repaint.
   const animated = [...block.matchAll(/@keyframes [\w-]+ \{([\s\S]*?)\}\n/g)].map((m) => m[1]).join(' ');
   const props = new Set([...animated.matchAll(/([a-z-]+):/g)].map((m) => m[1]));
   for (const p of props) assert.ok(['opacity', 'stroke-dashoffset', 'transform'].includes(p), p);
-  // The only transform is the tagline's 6 px rise, never the mark.
+  // The pulse: the mark beats by a few percent at most, and starts and ends at
+  // exactly scale 1, so the hand-off from Android's frame has no jump and the
+  // vector is at its native size whenever it is still.
+  const beat = /@keyframes v-launch-beat \{([\s\S]*?)\}\n/.exec(block)[1];
+  const scales = [...beat.matchAll(/scale\(([\d.]+)\)/g)].map((m) => Number(m[1]));
+  assert.equal(scales[0], 1);
+  assert.equal(scales[scales.length - 1], 1);
+  assert.ok(Math.max(...scales) <= 1.04 && Math.min(...scales) === 1, `beat scales ${scales}`);
+  // Not kept on a pre-rasterised layer, so it is redrawn sharp at each size.
+  assert.doesNotMatch(block, /\.v-launch-mark \{[^}]*will-change/);
   assert.match(block, /@keyframes v-launch-tagline \{ from \{ opacity: 0; transform: translateY\(6px\); \}/);
 });

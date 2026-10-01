@@ -10,7 +10,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, SlidersHorizontal, X, Pencil, Trash2, Loader2,
+  Search, SlidersHorizontal, X, Trash2, Loader2,
   ArrowDownUp, Receipt, Check,
 } from 'lucide-react';
 
@@ -18,6 +18,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTransactionSearch, EMPTY_FILTERS } from '../hooks/useTransactionSearch';
 import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
+import CategoryIcon from '../components/CategoryIcon';
+import { expenseMeta, expenseTitle, groupByDay } from '../lib/expenseDisplay';
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
@@ -27,16 +29,6 @@ const SORTS = [
   { value: 'highest', label: 'Highest' },
   { value: 'lowest', label: 'Lowest' },
 ];
-
-const CATEGORY_TINT = {
-  Food: 'bg-orange-400/15 text-orange-300',
-  Transport: 'bg-sky-400/15 text-sky-300',
-  Shopping: 'bg-fuchsia-400/15 text-fuchsia-300',
-  Recharge: 'bg-cyan-400/15 text-cyan-300',
-  Entertainment: 'bg-violet-400/15 text-violet-300',
-  Rent: 'bg-amber-400/15 text-amber-300',
-  Other: 'bg-zinc-400/15 text-zinc-300',
-};
 
 const rupees = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
@@ -81,20 +73,8 @@ export default function Transactions() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Group rows under date headers so a long list stays readable.
-  const grouped = useMemo(() => {
-    const out = [];
-    let current = null;
-    for (const row of s.rows) {
-      const label = dayLabel(row.occurred_at || row.created_at);
-      if (label !== current) {
-        out.push({ type: 'header', label, key: `h-${label}-${row.id}` });
-        current = label;
-      }
-      out.push({ type: 'row', row, key: row.id });
-    }
-    return out;
-  }, [s.rows]);
+  // One block per day, with the day's total: a long list stays scannable.
+  const days = useMemo(() => groupByDay(s.rows, dayLabel), [s.rows]);
 
   const pageTotal = useMemo(
     () => s.rows.reduce((sum, r) => sum + Number(r.amount || 0), 0),
@@ -126,7 +106,7 @@ export default function Transactions() {
   return (
     <div className="pb-8">
       <header className="mb-5">
-        <h1 className="text-2xl font-black tracking-tight text-white">Transactions</h1>
+        <h1 className="text-2xl font-black tracking-tight text-white">Activity</h1>
         <p className="mt-1 text-sm text-zinc-500">
           {s.loading
             ? 'Loading…'
@@ -306,61 +286,43 @@ export default function Transactions() {
             <>
               <p className="font-bold text-zinc-300">No expenses yet</p>
               <p className="mt-1 text-sm text-zinc-500">
-                Add one from the dashboard, or turn on notification access and Vittova will log your UPI payments for you.
+                Add your first expense from Home, or allow bank SMS in Profile and Vittova will track your payments for you.
               </p>
             </>
           )}
         </div>
       ) : (
         <>
-          <ul className="space-y-2">
-            {grouped.map(item =>
-              item.type === 'header' ? (
-                <li key={item.key} className="px-1 pb-1 pt-4 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                  {item.label}
-                </li>
-              ) : (
-                <li key={item.key}>
-                  <div className="group flex items-center gap-3 rounded-2xl border border-white/[.06] bg-[#141414] p-3.5">
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[10px] font-black ${CATEGORY_TINT[item.row.category] || CATEGORY_TINT.Other}`}>
-                      {(item.row.category || 'Other').slice(0, 3).toUpperCase()}
-                    </span>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-zinc-100">
-                        {item.row.description || item.row.category || 'Expense'}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {item.row.category}
-                        {item.row.source && item.row.source !== 'manual' ? ` · ${item.row.source.replace('_', ' ')}` : ''}
-                      </p>
-                    </div>
-
-                    <span className="shrink-0 text-sm font-black text-white">{rupees(item.row.amount)}</span>
-
-                    <div className="flex shrink-0 gap-1">
+          <div className="space-y-5">
+            {days.map((day) => (
+              <section key={`${day.label}-${day.rows[0].id}`} aria-label={day.label}>
+                <div className="mb-2 flex items-baseline justify-between px-1">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-500">{day.label}</h2>
+                  <span className="font-mono-finance text-xs font-semibold text-zinc-500">{rupees(day.total)}</span>
+                </div>
+                {/* One container per day; a row is one tap target that opens the expense. */}
+                <ul className="divide-y divide-white/[.06] overflow-hidden rounded-2xl border border-white/[.06] bg-[#141414]">
+                  {day.rows.map((row) => (
+                    <li key={row.id}>
                       <button
                         type="button"
-                        onClick={() => setEditing(item.row)}
-                        aria-label={`Edit ${item.row.description || 'expense'}`}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-white/[.06] hover:text-white"
+                        onClick={() => setEditing(row)}
+                        aria-label={`${expenseTitle(row)}, ${rupees(row.amount)}. Edit or delete`}
+                        className="flex min-h-[64px] w-full items-center gap-3 px-3.5 py-3 text-left transition active:bg-white/[.04] hover:bg-white/[.03]"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <CategoryIcon category={row.category} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-semibold text-zinc-100">{expenseTitle(row)}</span>
+                          <span className="mt-0.5 block truncate text-xs text-zinc-500">{expenseMeta(row)}</span>
+                        </span>
+                        <span className="font-mono-finance shrink-0 text-[15px] font-bold text-white">{rupees(row.amount)}</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(item.row)}
-                        aria-label={`Delete ${item.row.description || 'expense'}`}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              )
-            )}
-          </ul>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
 
           {s.hasMore && (
             <button
@@ -381,6 +343,7 @@ export default function Transactions() {
             expense={editing}
             onCancel={() => setEditing(null)}
             onSave={handleSave}
+            onDelete={() => { const row = editing; setEditing(null); setConfirmDelete(row); }}
           />
         )}
         {confirmDelete && (
@@ -412,7 +375,7 @@ export default function Transactions() {
   );
 }
 
-function EditSheet({ expense, onCancel, onSave }) {
+function EditSheet({ expense, onCancel, onSave, onDelete }) {
   const [amount, setAmount] = useState(String(expense.amount ?? ''));
   const [category, setCategory] = useState(expense.category || 'Other');
   const [description, setDescription] = useState(expense.description || '');
@@ -529,6 +492,10 @@ function EditSheet({ expense, onCancel, onSave }) {
             Cancel
           </button>
         </div>
+        <button type="button" onClick={onDelete} disabled={saving}
+          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 disabled:opacity-50">
+          <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete this expense
+        </button>
       </motion.form>
     </motion.div>
   );

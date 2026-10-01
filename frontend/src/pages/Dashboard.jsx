@@ -27,6 +27,7 @@ import MoneyStreakCard from '../components/MoneyStreakCard';
 import { MoneyStatus, MoneyHealth, InsightCard } from '../components/HomeCards';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { prepareReceiptImage } from '../lib/receiptImage';
+import { expenseTitle } from '../lib/expenseDisplay';
 
 // ─── ADD EXPENSE MODAL ────────────────────────────────────────
 // Must match the backend's expense categories (routes/expenses.js). 'Grocery'
@@ -137,7 +138,7 @@ function AddExpenseModal({ onClose, onAdd, loading, onScan, scanLoading }) {
                        disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2">
             {loading
               ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-              : <><Check className="w-4 h-4" /> Add Expense</>}
+              : <><Check className="w-4 h-4" /> Add expense</>}
           </motion.button>
         </form>
       </motion.div>
@@ -240,7 +241,11 @@ function getGreeting() {
 // ═══════════════════════════════════════════════════════════════
 export default function Dashboard() {
   const { user, session } = useAuth();
-  const { expenses, loading, totalSpent, addExpense, addScannedExpense } = useExpenses();
+  const { expenses, loading, error: expensesError, refetch: refetchExpenses, totalSpent, addExpense, addScannedExpense } = useExpenses();
+  // The expenses could not be loaded: figures built from an empty list ("₹0
+  // spent") would be false, so those cards stay as placeholders. The main
+  // card shows the message and the retry.
+  const expensesUnavailable = Boolean(expensesError) && expenses.length === 0;
 
   const [showAddModal, setShowAddModal]     = useState(false);
   const [addLoading, setAddLoading]         = useState(false);
@@ -325,7 +330,7 @@ export default function Dashboard() {
       categories: Object.entries(byCat).map(([category, amount]) => ({ category, amount, share: total ? Math.round((amount / total) * 100) : 0 }))
         .sort((a, b) => b.amount - a.amount),
       foodThisMonth: byCat.Food || 0,
-      lastExpense: expenses[0] ? { description: expenses[0].description, amount: Number(expenses[0].amount) } : null,
+      lastExpense: expenses[0] ? { description: expenseTitle(expenses[0]), amount: Number(expenses[0].amount) } : null,
     };
   }, [expenses]);
 
@@ -515,13 +520,13 @@ export default function Dashboard() {
         />
 
         {/* 1. How much can I spend? */}
-        <MoneyStatus safe={safeToSpend} error={safeError} onRetry={() => setReloadKey((k) => k + 1)} />
+        <MoneyStatus safe={safeToSpend} error={safeError} onRetry={() => { setReloadKey((k) => k + 1); refetchExpenses(); }} />
 
         {/* 2. Can I afford this? — the main action */}
         <AffordItCard />
 
         {/* 3. What needs attention? */}
-        <MoneyHealth loading={loading} totalSpent={totalSpent} monthlyBudget={monthlyBudget}
+        <MoneyHealth loading={loading || expensesUnavailable} totalSpent={totalSpent} monthlyBudget={monthlyBudget}
           safe={safeToSpend} burn={burnRate} categories={categories} lastExpense={lastExpense} />
 
         {/* 4. Habit */}

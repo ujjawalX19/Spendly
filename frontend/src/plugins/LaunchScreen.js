@@ -5,7 +5,8 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
  * (android/app/src/main/java/com/vittova/app/LaunchScreenPlugin.java).
  *
  *   geometry() -> { windowTopDp, screenHeightDp, webViewTopDp, density }
- *   ready()    the web splash has painted the launch frame: fade Android's screen out
+ *   ready()    the web splash has painted the launch frame: fade Android's screen
+ *              out. Resolves when Android's screen has gone (not when asked).
  */
 export const LaunchScreen = registerPlugin('LaunchScreen');
 
@@ -22,13 +23,18 @@ export async function launchGeometry() {
   }
 }
 
-let released = false;
+let released = null;
 
-/** Release Android's launch screen (once). Safe on the web and on older native builds. */
-export async function releaseLaunchScreen() {
-  if (released || !native()) return;
-  released = true;
-  try {
-    await LaunchScreen.ready();
-  } catch { /* an older native build: Android releases it at the first frame */ }
+/**
+ * Ask Android to let its launch screen go, and wait until it has. The web
+ * splash starts its animation after this, so the pulse is seen from its first
+ * frame instead of playing underneath Android's screen. Never waits long: an
+ * older native build answers at once, and a lost answer is given up on.
+ */
+export function releaseLaunchScreen() {
+  if (!native()) return Promise.resolve();
+  if (!released) {
+    released = within(3000, LaunchScreen.ready()).catch(() => null);
+  }
+  return released;
 }

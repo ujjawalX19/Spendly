@@ -404,7 +404,7 @@ function Celebration({ challenge, badges, onClose }) {
       <div className="absolute inset-0 bg-black/75" onClick={onClose} />
       <div className="s2e-done relative z-10 w-full max-w-md rounded-t-3xl border border-white/10 bg-zinc-900 p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center sm:rounded-3xl">
         <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-xl text-zinc-400"><X className="h-5 w-5" /></button>
-        <p className="s2e-pop mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-lime-400/15 text-3xl" aria-hidden="true">🎉</p>
+        <p className="s2e-pop mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-lime-400/15" aria-hidden="true"><Trophy className="h-8 w-8 text-lime-300" /></p>
         <h2 id="done-title" className="mt-4 text-2xl font-black">Challenge complete!</h2>
         <p className="mt-1 text-sm text-zinc-400">{challenge.title}</p>
         {impact != null && (

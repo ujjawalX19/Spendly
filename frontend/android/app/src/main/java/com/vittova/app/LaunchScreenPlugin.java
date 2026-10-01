@@ -32,7 +32,13 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  *   geometry()        -> { screenHeightDp, webViewTopDp, density }
  *                        where the WebView sits on the screen, so the web splash
  *                        can centre its mark where Android centred the icon
- *   ready()           the web splash has painted: release the launch screen
+ *   ready()           the web splash has painted: release the launch screen.
+ *                        The call resolves only when Android's screen has
+ *                        finished fading out and is gone, so the web splash
+ *                        starts its animation where the person can see it. (It
+ *                        used to resolve at once; on a slow start Android took
+ *                        over a second to let go, and the whole animation
+ *                        played underneath, unseen.)
  *
  * If the web app never calls ready() (a load failure), the launch screen is
  * released after MAX_HOLD_MS anyway.
@@ -40,10 +46,15 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "LaunchScreen")
 public class LaunchScreenPlugin extends Plugin {
 
-    static final long MAX_HOLD_MS = 2500L;
+    static final long MAX_HOLD_MS = 6000L;
     private static final long EXIT_FADE_MS = 220L;
 
+    /** ready() is answered by now even if Android never reports the exit. */
+    private static final long GONE_WAIT_MS = 2500L;
+
     private static volatile boolean webReady;
+    private static volatile boolean gone;
+    private static volatile PluginCall waitingForGone;
     private static volatile long startedAt;
     private static volatile Activity activity;
 
@@ -51,6 +62,8 @@ public class LaunchScreenPlugin extends Plugin {
     static void install(Activity host, SplashScreen splash) {
         activity = host;
         webReady = false;
+        gone = false;
+        waitingForGone = null;
         startedAt = SystemClock.uptimeMillis();
 
         splash.setKeepOnScreenCondition(() -> !webReady && SystemClock.uptimeMillis() - startedAt < MAX_HOLD_MS);
@@ -61,7 +74,10 @@ public class LaunchScreenPlugin extends Plugin {
                 .alpha(0f)
                 .setDuration(EXIT_FADE_MS)
                 .setInterpolator(new DecelerateInterpolator())
-                .withEndAction(provider::remove)
+                .withEndAction(() -> {
+                    provider.remove();
+                    launchScreenGone();
+                })
                 .start();
         });
 
@@ -79,11 +95,27 @@ public class LaunchScreenPlugin extends Plugin {
         });
     }
 
+    /** Android's launch screen has finished fading out: answer the waiting ready(). */
+    private static void launchScreenGone() {
+        gone = true;
+        PluginCall call = waitingForGone;
+        waitingForGone = null;
+        if (call != null) call.resolve();
+    }
+
     @PluginMethod
     public void ready(PluginCall call) {
         webReady = true;
         redraw();
-        call.resolve();
+        if (gone) {
+            call.resolve();
+            return;
+        }
+        waitingForGone = call;
+        // Never leave the web splash waiting: if the exit is not reported, go on.
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (waitingForGone == call) launchScreenGone();
+        }, GONE_WAIT_MS);
     }
 
     /**

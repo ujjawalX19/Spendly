@@ -45,32 +45,43 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 22 } },
 };
 
-function SettingRow({ icon: Icon, label, value, color = 'text-lime-400', onClick, danger = false }) {
+/**
+ * A titled group of rows in one container, divided by hairlines: the page reads
+ * as a few sections instead of a stack of separate cards. `note` sits under the
+ * group (a status line).
+ */
+function SettingsGroup({ title, note, children }) {
   return (
-    <motion.button
-      variants={cardVariants}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      type="button"
-      className={`v-press w-full min-h-[56px] flex items-center justify-between px-4 py-3 rounded-2xl transition-colors ${
-        danger
-          ? 'bg-red-500/5 border border-red-500/15 hover:bg-red-500/10'
-          : 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700'
-      }`}
+    <motion.section variants={cardVariants} aria-label={title}>
+      <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-zinc-500">{title}</h2>
+      <div className="divide-y divide-white/[.06] overflow-hidden rounded-2xl border border-white/[.06] bg-zinc-900">
+        {children}
+      </div>
+      {note}
+    </motion.section>
+  );
+}
+
+// `color` is accepted for the few rows that carry a state (an export error);
+// ordinary rows share one neutral icon, so colour keeps its meaning.
+function SettingRow({ icon: Icon, label, value, color, onClick, danger = false }) {
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag
+      {...(onClick ? { type: 'button', onClick } : {})}
+      className={`flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${onClick ? 'hover:bg-white/[.03] active:bg-white/[.05]' : ''}`}
     >
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-          danger ? 'bg-red-500/15' : 'bg-zinc-800'
-        }`}>
-          <Icon className={`w-5 h-5 ${danger ? 'text-red-400' : color}`} />
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${danger ? 'bg-red-500/10' : 'bg-white/[.06]'}`}>
+          <Icon className={`h-5 w-5 ${danger ? 'text-red-400' : color === 'text-red-400' ? color : 'text-zinc-300'}`} strokeWidth={1.9} aria-hidden="true" />
         </div>
-        <div className="text-left">
-          <p className={`text-sm font-bold ${danger ? 'text-red-400' : 'text-white'}`}>{label}</p>
-          {value && <p className="text-xs text-zinc-500 mt-0.5">{value}</p>}
+        <div className="min-w-0">
+          <p className={`text-[15px] font-semibold ${danger ? 'text-red-400' : 'text-white'}`}>{label}</p>
+          {value && <p className="mt-0.5 text-xs leading-snug text-zinc-500">{value}</p>}
         </div>
       </div>
-      {onClick && <ChevronRight className={`w-4 h-4 ${danger ? 'text-red-500' : 'text-zinc-600'}`} aria-hidden="true" />}
-    </motion.button>
+      {onClick && <ChevronRight className={`h-4 w-4 shrink-0 ${danger ? 'text-red-500/70' : 'text-zinc-600'}`} aria-hidden="true" />}
+    </Tag>
   );
 }
 
@@ -113,7 +124,7 @@ function EditBudgetModal({ current, onClose, onSave }) {
           whileTap={{ scale: 0.97 }} onClick={handleSave} disabled={saving}
           className="w-full bg-lime-400 text-black font-black py-3 rounded-2xl text-sm disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Save Budget</>}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Save budget</>}
         </motion.button>
       </motion.div>
     </motion.div>
@@ -177,7 +188,7 @@ function EditInvestmentTargetModal({ current, onClose, onSave }) {
           whileTap={{ scale: 0.97 }} onClick={handleSave} disabled={saving}
           className="w-full bg-sky-400 text-black font-black py-3 rounded-2xl text-sm disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Save Target</>}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Save target</>}
         </motion.button>
       </motion.div>
     </motion.div>
@@ -208,7 +219,7 @@ function DeleteAccountModal({ onClose, onDelete }) {
       >
         <div className="flex items-center gap-3 mb-4">
           <AlertTriangle className="w-6 h-6 text-red-400" />
-          <h2 className="text-lg font-bold text-red-400">Delete Account</h2>
+          <h2 className="text-lg font-bold text-red-400">Delete account</h2>
         </div>
         <p className="text-sm text-zinc-400 mb-2">This will permanently delete:</p>
         <ul className="text-xs text-zinc-500 space-y-1 mb-4 list-disc pl-4">
@@ -248,23 +259,23 @@ function DeleteAccountModal({ onClose, onDelete }) {
 /** A switch row: the state is in the text too, never only in the colour. */
 function ToggleRow({ icon: Icon, label, detail, on, busy, onToggle, disabled }) {
   return (
-    <motion.div variants={cardVariants} className="flex min-h-[56px] items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800"><Icon className="h-5 w-5 text-lime-400" aria-hidden="true" /></div>
+    <div className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[.06]"><Icon className="h-5 w-5 text-zinc-300" strokeWidth={1.9} aria-hidden="true" /></div>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-white">{label}</p>
-          {detail && <p className="mt-0.5 text-xs text-zinc-500">{detail}</p>}
+          <p className="text-[15px] font-semibold text-white">{label}</p>
+          {detail && <p className="mt-0.5 text-xs leading-snug text-zinc-500">{detail}</p>}
         </div>
       </div>
+      {/* The switch alone says on or off; the 44px button around it is the touch target. */}
       <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle} disabled={disabled || busy}
-        className="v-press flex min-h-[44px] shrink-0 items-center gap-2 disabled:opacity-40">
-        <span className="text-xs font-bold text-zinc-400">{on ? 'On' : 'Off'}</span>
+        className="flex min-h-[44px] shrink-0 items-center pl-2 disabled:opacity-40">
         {/* left-0: without it the knob starts at the button's centred text position and sits outside the track. */}
-        <span className={`relative block h-7 w-12 shrink-0 rounded-full transition-colors ${on ? 'bg-lime-400' : 'bg-zinc-700'}`}>
-          <span className={`absolute left-0 top-1 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-150 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
+        <span className={`relative block h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${on ? 'bg-lime-400' : 'bg-zinc-700'}`}>
+          <span className={`absolute left-0 top-1 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
         </span>
       </button>
-    </motion.div>
+    </div>
   );
 }
 
@@ -397,7 +408,7 @@ export default function Settings() {
 
   return (
     <motion.div
-      className="space-y-4 pb-6"
+      className="space-y-6 pb-6"
       initial="hidden" animate="visible"
       variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
     >
@@ -436,7 +447,7 @@ export default function Settings() {
         <div className="flex items-center gap-3">
           <Crown className={`w-6 h-6 ${isPro ? 'text-amber-400' : 'text-zinc-600'}`} />
           <div>
-            <p className="text-sm font-bold text-white">{isPro ? 'Vittova Pro Active' : 'Free Plan'}</p>
+            <p className="text-[15px] font-semibold text-white">{isPro ? 'Vittova Pro is active' : 'Free plan'}</p>
             <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'See what Vittova Pro includes'}</p>
           </div>
           <ChevronRight className="ml-auto h-4 w-4 text-zinc-600" aria-hidden="true" />
@@ -444,24 +455,26 @@ export default function Settings() {
       </motion.button>
 
       {/* Settings */}
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Budget & Goals</p>
+      <SettingsGroup title="Budget and goals">
         <SettingRow
-          icon={Wallet} label="Monthly Budget"
+          icon={Wallet} label="Monthly budget"
           value={`₹${(user?.monthly_budget || 5000).toLocaleString('en-IN')}`}
           onClick={() => setShowBudgetModal(true)}
         />
         <SettingRow
-          icon={Target} label="Investment Target"
+          icon={Target} label="Investment target"
           value={`₹${(user?.investment_target || 0).toLocaleString('en-IN')}/month`}
-          color="text-sky-400"
           onClick={() => setShowTargetModal(true)}
         />
-      </div>
+      </SettingsGroup>
 
       {tracking.supported && (
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Payment tracking</p>
+        <SettingsGroup title="Money tracking" note={(tracking.waiting > 0 || tracking.reviewCount > 0) ? (
+          <p role="status" className="mt-2 px-1 text-xs text-zinc-400">
+            {tracking.waiting > 0 ? `${tracking.waiting} waiting to upload. ` : ''}
+            {tracking.reviewCount > 0 ? `${tracking.reviewCount} waiting for your review on Home.` : ''}
+          </p>
+        ) : null}>
           {/* Vittova's own switch (on by default). It only captures once Android
               Notification Access is granted, and says so. */}
           <ToggleRow icon={Zap} label="Payment tracking" detail={`${tracking.copy.label}. ${tracking.copy.detail}`}
@@ -495,13 +508,7 @@ export default function Settings() {
               detail={tracking.mode === 'auto' ? 'Clear payments are added for you; unclear ones wait on Home.' : 'Every detected payment waits for you on Home.'}
               on={tracking.mode === 'auto'} onToggle={() => tracking.setMode(tracking.mode === 'auto' ? 'review' : 'auto')} />
           )}
-          {(tracking.waiting > 0 || tracking.reviewCount > 0) && (
-            <p role="status" className="px-1 text-xs text-zinc-400">
-              {tracking.waiting > 0 ? `${tracking.waiting} waiting to upload. ` : ''}
-              {tracking.reviewCount > 0 ? `${tracking.reviewCount} waiting for your review on Home.` : ''}
-            </p>
-          )}
-        </div>
+        </SettingsGroup>
       )}
 
       <AnimatePresence>
@@ -516,8 +523,7 @@ export default function Settings() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Notifications</p>
+      <SettingsGroup title="Reminders" note={reminderNote ? <p role="status" className="mt-2 px-1 text-xs text-amber-200">{reminderNote}</p> : null}>
         {!remindersSupported() ? (
           <SettingRow icon={Bell} label="Debit reminders" value="Available in the Vittova Android app" />
         ) : isPro && features.subscriptionAuditEnabled !== false ? (
@@ -526,49 +532,45 @@ export default function Settings() {
         ) : (
           <SettingRow icon={Bell} label="Debit reminders" value="Part of Vittova Pro" onClick={() => navigate('/pro')} />
         )}
-        {reminderNote && <p role="status" className="px-1 text-xs text-amber-200">{reminderNote}</p>}
-      </div>
+      </SettingsGroup>
 
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">More</p>
+      <SettingsGroup title="Tools">
         <SettingRow
-          icon={Trophy} label="Save-to-Earn" value="Money challenges, Victory Pot and badges"
-          color="text-amber-300" onClick={() => navigate('/save-to-earn')}
+          icon={Trophy} label="Save-to-Earn" value="Challenges, Victory Pot and badges"
+          onClick={() => navigate('/save-to-earn')}
         />
         <SettingRow
           icon={Users} label="Group Pool" value="Split bills and settle up"
-          color="text-sky-400" onClick={() => navigate('/pool')}
+          onClick={() => navigate('/pool')}
         />
         <SettingRow
-          icon={Repeat} label="Recurring charges" value="Monthly payments found in your expenses"
-          color="text-fuchsia-400" onClick={() => navigate('/graveyard')}
+          icon={Repeat} label="Recurring charges" value="Repeat payments in your expenses"
+          onClick={() => navigate('/graveyard')}
         />
         <SettingRow
-          icon={FileText} label="Statement Import" value="Import a bank PDF"
-          color="text-amber-400" onClick={() => navigate('/import')}
+          icon={FileText} label="Statement import" value="Import a bank PDF"
+          onClick={() => navigate('/import')}
         />
-      </div>
+      </SettingsGroup>
 
       {(features.subscriptionAuditEnabled || features.sponsoredChallengesEnabled) && (
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Pro</p>
+        <SettingsGroup title="Vittova Pro">
           {features.subscriptionAuditEnabled && (
             <SettingRow
               icon={Radar} label="Subscription audit" value={isPro ? 'Recurring payments, price rises, debit reminders' : 'Part of Vittova Pro'}
-              color="text-lime-400" onClick={() => navigate('/subscription-audit')}
+              onClick={() => navigate('/subscription-audit')}
             />
           )}
           {features.sponsoredChallengesEnabled && (
             <SettingRow
               icon={Gift} label="Money challenges" value="Sponsored · fixed voucher rewards"
-              color="text-amber-400" onClick={() => navigate('/challenges')}
+              onClick={() => navigate('/challenges')}
             />
           )}
-        </div>
+        </SettingsGroup>
       )}
 
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Your Data</p>
+      <SettingsGroup title="Your data">
         <SettingRow
           icon={exportState === 'working' ? Loader2 : Download}
           label={exportState === 'done' ? 'Export ready' : 'Export my expenses'}
@@ -578,22 +580,20 @@ export default function Settings() {
                 : exportState === 'done' ? exportError || 'Your CSV file is ready'
                   : 'Save or share everything as a CSV file'
           }
-          color={exportState === 'error' ? 'text-red-400' : 'text-lime-400'}
+          color={exportState === 'error' ? 'text-red-400' : undefined}
           onClick={exportState === 'working' ? undefined : handleExport}
         />
-      </div>
+      </SettingsGroup>
 
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Legal</p>
-        <SettingRow icon={Shield} label="Privacy Policy" value="How we handle your data" onClick={() => navigate('/privacy')} />
-        <SettingRow icon={FileText} label="Terms of Service" value="Usage agreement" onClick={() => navigate('/terms')} />
-      </div>
+      <SettingsGroup title="Privacy and legal">
+        <SettingRow icon={Shield} label="Privacy policy" value="How we handle your data" onClick={() => navigate('/privacy')} />
+        <SettingRow icon={FileText} label="Terms of service" value="The agreement for using Vittova" onClick={() => navigate('/terms')} />
+      </SettingsGroup>
 
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-1">Account</p>
-        <SettingRow icon={LogOut} label="Log Out" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} />
-        <SettingRow icon={Trash2} label="Delete Account" value="Permanently delete all data" danger onClick={() => setShowDeleteModal(true)} />
-      </div>
+      <SettingsGroup title="Account">
+        <SettingRow icon={LogOut} label="Log out" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} />
+        <SettingRow icon={Trash2} label="Delete account" value="Permanently deletes your account and data" danger onClick={() => setShowDeleteModal(true)} />
+      </SettingsGroup>
 
       {/* Modals */}
       {showBudgetModal && (

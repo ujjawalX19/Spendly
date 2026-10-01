@@ -8,21 +8,31 @@
  * Only then is Android's screen faded out (LaunchScreen.ready), so the logo
  * never blinks, jumps or changes shade.
  *
- * Then, in place — nothing is scaled, so the vector stays sharp throughout:
- *   120–760 ms   a light travels along the pulse line; the glow blooms
- *   220–620 ms   "your money's pulse" fades in beneath
- *   900–1220 ms  the mark and tagline fade first, then the background dissolves
- *                onto the app (already rendered below), so the two never
- *                overlap in a double exposure
+ * Then the pulse — Vittova is "your money's pulse", so the mark beats twice,
+ * like a heartbeat, and each beat sends one soft ripple out from the mark:
+ *     80 ms       first beat: the mark swells 3.5% and settles; ripple one
+ *                 leaves the mark; the glow blooms
+ *   120–760 ms    a light travels along the pulse line
+ *    430 ms       second, softer beat (1.8%) and a fainter ripple
+ *   640–1060 ms   "your money's pulse" rises in beneath
+ *   1350 ms       wait, if needed, until the first screen is ready underneath
+ *                 (lib/appReady; at most READY_WAIT_MS more), so the splash
+ *                 never fades onto a loading spinner
+ *   then 320 ms   the mark and tagline fade first, then the background
+ *                 dissolves onto the app (already rendered below), so the two
+ *                 never overlap in a double exposure
+ * Two beats, then still: nothing loops, and nothing bounces.
  *
- * Opacity and a stroke offset are the only things animated (the glow is a
+ * Only transforms, opacity and a stroke offset are animated (the glow is a
  * pre-blurred layer on its own GPU layer), so it stays smooth on low-end
- * phones. Reduced motion: the mark and tagline, still, then the fade.
+ * phones. The beat starts and ends at scale 1, where Android left the mark.
+ * Reduced motion: the mark and tagline, still, then the fade.
  * Shown once per app session (a cold start), never on navigation.
  */
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { markSplashShown } from '../lib/splash';
+import { whenScreenReady } from '../lib/appReady';
 import {
   GRADIENT, GRADIENT_Y, LAUNCH, LAUNCH_BACKGROUND, STROKE_DOWN, STROKE_UP, STROKE_WIDTH, launchCenterY,
 } from '../lib/brandMark';
@@ -30,8 +40,9 @@ import { launchGeometry, releaseLaunchScreen } from '../plugins/LaunchScreen';
 
 export { shouldShowSplash } from '../lib/splash';
 
-const PLAY_MS = 900;       // from hand-off to the start of the exit
+const PLAY_MS = 1350;      // from hand-off to the start of the exit
 const REDUCED_PLAY_MS = 350;
+const READY_WAIT_MS = 2500; // the longest the still mark waits for the first screen
 const EXIT_MS = 320;       // mark and tagline out (160 ms), then the background (200 ms, from 120 ms)
 const LIGHT_WIDTH = 64;    // the sheen runs inside the 116-wide stroke
 
@@ -107,16 +118,15 @@ export default function StartupSplash({ onDone }) {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Once that frame is on the page, release Android's screen and play.
+  // 2. Once that frame is on the page, release Android's screen, and start the
+  // pulse only when Android's screen has actually gone: started any earlier,
+  // the animation plays underneath it where nobody can see it.
   useEffect(() => {
     if (centerY == null) return undefined;
     let cancelled = false;
-    nextFrames().then(() => {
-      if (cancelled) return;
-      markSplashShown();
-      releaseLaunchScreen();
-      setPhase('play');
-    });
+    nextFrames()
+      .then(() => { markSplashShown(); return releaseLaunchScreen(); })
+      .then(() => { if (!cancelled) setPhase('play'); });
     return () => { cancelled = true; };
   }, [centerY]);
 
@@ -125,8 +135,11 @@ export default function StartupSplash({ onDone }) {
   // overlay on top of the app.
   useEffect(() => {
     if (phase !== 'play') return undefined;
-    const leave = setTimeout(() => setPhase('leave'), reduce ? REDUCED_PLAY_MS : PLAY_MS);
-    return () => clearTimeout(leave);
+    let cancelled = false;
+    const leave = setTimeout(() => {
+      whenScreenReady(READY_WAIT_MS).then(() => { if (!cancelled) setPhase('leave'); });
+    }, reduce ? REDUCED_PLAY_MS : PLAY_MS);
+    return () => { cancelled = true; clearTimeout(leave); };
   }, [phase, reduce]);
 
   useEffect(() => {
@@ -149,7 +162,10 @@ export default function StartupSplash({ onDone }) {
           <div className="v-launch-glow absolute left-1/2" style={{ top, width: LAUNCH.sizeDp, height: LAUNCH.sizeDp, marginLeft: -LAUNCH.sizeDp / 2, marginTop: -LAUNCH.sizeDp / 2 }}>
             <LaunchMark uid={`${uid}g`} glow />
           </div>
-          <div className="absolute left-1/2" style={{ top, width: LAUNCH.sizeDp, height: LAUNCH.sizeDp, marginLeft: -LAUNCH.sizeDp / 2, marginTop: -LAUNCH.sizeDp / 2 }}>
+          {/* The ripples start at the mark's own size and leave it: one per beat. */}
+          <span className="v-launch-ring v-launch-ring-1 absolute left-1/2" style={{ top }} aria-hidden="true" />
+          <span className="v-launch-ring v-launch-ring-2 absolute left-1/2" style={{ top }} aria-hidden="true" />
+          <div className="v-launch-mark absolute left-1/2" style={{ top, width: LAUNCH.sizeDp, height: LAUNCH.sizeDp, marginLeft: -LAUNCH.sizeDp / 2, marginTop: -LAUNCH.sizeDp / 2 }}>
             <LaunchMark uid={uid} />
           </div>
           <p className="v-launch-tagline absolute inset-x-0 text-center text-[15px] font-semibold tracking-[0.08em] text-zinc-300" style={{ top: `calc(${top} + 84px)` }}>

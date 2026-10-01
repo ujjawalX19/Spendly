@@ -151,7 +151,7 @@ export default function ProUpgrade() {
             <p className="mb-2 font-bold text-zinc-200">Your free plan today</p>
             <ul className="space-y-1">
               <li>Receipt scans this month: {limits.receiptScansUsed} of {limits.receiptScansLimit}</li>
-              <li>Coach questions today: {limits.chatMessagesUsed} of {limits.chatMessagesLimit}</li>
+              <li>Ask Vittova questions today: {limits.chatMessagesUsed} of {limits.chatMessagesLimit}</li>
               <li>Expenses today: {limits.expensesToday} of {limits.expensesLimit}</li>
               {limits.moneyChecksLimit != null && <li>Money checks today: {limits.moneyChecksUsed ?? 0} of {limits.moneyChecksLimit}</li>}
             </ul>

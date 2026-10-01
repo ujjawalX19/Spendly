@@ -74,12 +74,12 @@ export default function BottomNav() {
         const Icon = tab.icon;
         const isActive = tab.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
         return (
-          <Link key={tab.id} to={tab.id} className="flex-1" aria-label={tab.label} aria-current={isActive ? 'page' : undefined}>
+          <Link key={tab.id} to={tab.id} className="min-w-0 flex-1" aria-label={tab.label} aria-current={isActive ? 'page' : undefined}>
             <motion.div
               whileTap={{ scale: 0.88 }}
               className="flex flex-col items-center gap-0.5"
             >
-              <div className={`px-4 py-1.5 rounded-full transition-colors duration-150 ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
+              <div className={`px-[14px] py-1.5 rounded-full transition-colors duration-150 ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
                 <Icon
                   className={`w-6 h-6 transition-colors ${isActive ? 'text-black' : 'text-[#71717a]'}`}
                   strokeWidth={isActive ? 2.5 : 2}

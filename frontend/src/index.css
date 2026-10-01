@@ -7,12 +7,16 @@
   --color-cyber-rose: #f43f5e;
   --color-streak-orange: #f97316;
   --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  /* Money figures: the brand typeface with tabular numerals (see .font-mono
+     below), not a code font. A code font gave "₹13 , 192" and slashed zeros. */
+  --font-mono: 'Space Grotesk', system-ui, sans-serif;
 }
 
 :root {
   font-family: 'Space Grotesk', system-ui, Avenir, Helvetica, Arial, sans-serif;
   color-scheme: dark;
+  /* The launch mark (lib/brandMark.js), for the frame shown before the app's code runs. */
+  --v-boot-mark: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1728 1728'><defs><linearGradient id='g' x1='0' y1='320' x2='0' y2='950' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23E6FF4C'/><stop offset='0.48' stop-color='%238FF03A'/><stop offset='1' stop-color='%232BD460'/></linearGradient></defs><g transform='translate(239 235)' fill='none' stroke='url(%23g)' stroke-width='116' stroke-linecap='round' stroke-linejoin='round'><path d='M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998'/><path d='M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636'/></g></svg>");
 }
 
 body {
@@ -67,11 +71,14 @@ body {
   transition: background 0.3s, border-color 0.3s;
 }
 
-/* ── Monospace Finance Numbers ── */
-.font-mono-finance {
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+/* ── Money figures ──
+   Same typeface as the rest of the app; digits share one width so amounts
+   line up in lists and do not shift as they change. */
+.font-mono, .font-mono-finance {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  font-feature-settings: 'tnum' 1, 'zero' 0;
+  letter-spacing: -0.01em;
 }
 
 /* ── Neon Glow Utilities ── */
@@ -181,23 +188,58 @@ body {
 
 /* The glow is blurred once, on its own layer; only its opacity changes. */
 .v-launch-glow { opacity: 0; will-change: opacity; }
-@keyframes v-launch-bloom { 0% { opacity: 0; } 45% { opacity: 0.55; } 100% { opacity: 0.32; } }
-.v-splash-play .v-launch-glow { animation: v-launch-bloom 780ms cubic-bezier(0.33, 0, 0.2, 1) 120ms both; }
+@keyframes v-launch-bloom { 0% { opacity: 0; } 30% { opacity: 0.55; } 55% { opacity: 0.4; } 72% { opacity: 0.5; } 100% { opacity: 0.32; } }
+.v-splash-play .v-launch-glow { animation: v-launch-bloom 1100ms cubic-bezier(0.33, 0, 0.2, 1) 80ms both; }
+
+/* The pulse: two beats of the mark, like a heartbeat (the second softer), then
+   still. It starts and ends at scale 1, where Android's launch screen left it. */
+@keyframes v-launch-beat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.035); }
+  36% { transform: scale(1); }
+  50% { transform: scale(1.018); }
+  74%, 100% { transform: scale(1); }
+}
+.v-splash-play .v-launch-mark { animation: v-launch-beat 760ms cubic-bezier(0.3, 0, 0.2, 1) 80ms both; }
+
+/* One ripple per beat. It starts at the mark's own size, so it is seen to leave
+   the mark rather than to appear behind it, and thins out as it goes. */
+.v-launch-ring {
+  width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 9999px;
+  border: 1.5px solid rgba(163, 230, 53, 0.9);
+  opacity: 0; transform: scale(0.9); will-change: transform, opacity; pointer-events: none;
+}
+@keyframes v-launch-ripple {
+  0% { opacity: 0; transform: scale(0.9); }
+  12% { opacity: var(--ring-peak, 0.34); }
+  100% { opacity: 0; transform: scale(2.7); }
+}
+.v-splash-play .v-launch-ring-1 { animation: v-launch-ripple 900ms cubic-bezier(0.16, 0.7, 0.3, 1) 120ms both; }
+.v-splash-play .v-launch-ring-2 { --ring-peak: 0.18; animation: v-launch-ripple 950ms cubic-bezier(0.16, 0.7, 0.3, 1) 470ms both; }
 
 .v-launch-tagline { opacity: 0; will-change: opacity, transform; }
 @keyframes v-launch-tagline { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.v-splash-play .v-launch-tagline { animation: v-launch-tagline 400ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both; }
+.v-splash-play .v-launch-tagline { animation: v-launch-tagline 420ms cubic-bezier(0.16, 1, 0.3, 1) 640ms both; }
 
-/* Reduced motion: no light, no bloom; the tagline is simply there. */
-.v-splash-static .v-launch-light { display: none; }
-.v-splash-static .v-launch-glow, .v-splash-static .v-launch-tagline { animation: none; }
+/* Reduced motion: no light, no beat, no ripple; the tagline is simply there. */
+.v-splash-static .v-launch-light, .v-splash-static .v-launch-ring { display: none; }
+.v-splash-static .v-launch-glow, .v-splash-static .v-launch-tagline, .v-splash-static .v-launch-mark { animation: none; }
 .v-splash-static.v-splash-play .v-launch-tagline { opacity: 1; }
+
+/* Before the app's code has run there is nothing in #root. On a slow start
+   Android's launch screen can be released over that moment, so the page itself
+   shows the launch frame (same colour, same mark, centred like Android's)
+   instead of an empty black page. It is gone the instant React mounts. */
+#root:empty {
+  position: fixed; inset: 0; z-index: 999;
+  background: #0B1220 var(--v-boot-mark) center / 288px 288px no-repeat;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .v-press, .v-press:active { transition: none; transform: none; }
   .v-enter, .v-page, .v-celebrate { animation: none; }
-  .v-launch-light { display: none; }
-  .v-splash-play .v-launch-glow, .v-splash-play .v-launch-tagline { animation: none; }
+  .v-launch-light, .v-launch-ring { display: none; }
+  .v-splash-play .v-launch-glow, .v-splash-play .v-launch-tagline, .v-splash-play .v-launch-mark { animation: none; }
   .v-splash-play .v-launch-tagline { opacity: 1; }
 }
 

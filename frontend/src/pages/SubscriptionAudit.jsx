@@ -143,9 +143,10 @@ export default function SubscriptionAudit() {
           <Sparkles className="h-6 w-6 text-amber-300" />
           <h1 className="mt-2 text-xl font-black">Subscription leak audit</h1>
           <p className="mt-1 text-sm text-zinc-300">Find recurring payments, see price rises, and get a reminder the day before an expected debit. Part of Vittova Pro.</p>
-          <div className="mt-4 flex gap-2">
-            <Link to="/pro" className="rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-black text-black">See Vittova Pro</Link>
-            <Link to="/graveyard" className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-bold text-zinc-200">Free recurring charges</Link>
+          {/* Stacked: side by side, both labels wrapped onto two lines on a phone. */}
+          <div className="mt-4 flex flex-col gap-2">
+            <Link to="/pro" className="flex min-h-[44px] items-center justify-center rounded-xl bg-amber-400 px-4 text-sm font-black text-black">See what Pro includes</Link>
+            <Link to="/graveyard" className="flex min-h-[44px] items-center justify-center rounded-xl border border-zinc-700 px-4 text-sm font-bold text-zinc-200">View recurring charges (free)</Link>
           </div>
         </div>
       </div>

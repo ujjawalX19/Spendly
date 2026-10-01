@@ -18,6 +18,7 @@ import { hasOnboarded } from './pages/Onboarding';
 import { onReminderOpened, refreshReminders } from './lib/debitReminders';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 import { releaseLaunchScreen } from './plugins/LaunchScreen';
+import { loaderShown } from './lib/appReady';
 import AgeGate from './components/AgeGate';
 import { ScrollToTopOnNavigate, StatusBarScrim } from './components/ScreenChrome';
 
@@ -49,6 +50,8 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 
 function FullScreenLoader({ label = 'Loading...' }) {
+  // The startup splash stays up while this is on screen (lib/appReady).
+  useEffect(() => loaderShown(), []);
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)]" role="status" aria-live="polite">
       <div className="text-center">

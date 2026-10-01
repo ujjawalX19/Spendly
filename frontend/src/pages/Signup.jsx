@@ -167,12 +167,12 @@ export default function Signup() {
                     <legend className="mb-2 block text-sm font-semibold text-zinc-300">Month and year of birth</legend>
                     <div className="grid grid-cols-2 gap-3">
                         <select aria-label="Birth month" value={birthMonth} onChange={(e) => { setBirthMonth(e.target.value); setUnderAge(false); }} required
-                            className="h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white focus:border-lime-400 focus:outline-none">
+                            className={`h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm focus:border-lime-400 focus:outline-none ${birthMonth ? 'text-white' : 'text-zinc-500'}`}>
                             <option value="" disabled>Month</option>
                             {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                         </select>
                         <select aria-label="Birth year" value={birthYear} onChange={(e) => { setBirthYear(e.target.value); setUnderAge(false); }} required
-                            className="h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white focus:border-lime-400 focus:outline-none">
+                            className={`h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm focus:border-lime-400 focus:outline-none ${birthYear ? 'text-white' : 'text-zinc-500'}`}>
                             <option value="" disabled>Year</option>
                             {yearOptions().map((y) => <option key={y} value={y}>{y}</option>)}
                         </select>

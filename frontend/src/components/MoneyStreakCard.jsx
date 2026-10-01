@@ -1,5 +1,5 @@
 /**
- * Money Streak 🔥 — the dashboard tile and its detail sheet.
+ * Money Streak — the dashboard tile and its detail sheet.
  *
  * Everything shown comes from GET /api/money-streak; the client never
  * computes a streak or XP (backend/lib/moneyStreak.js does, and only the
@@ -66,7 +66,7 @@ export function StreakSheet({ streak, onClose, onChanged }) {
         <div className="mb-4 flex items-start justify-between">
           <div>
             <p className="text-[11px] font-black uppercase tracking-widest text-[#f97316]">Money Streak</p>
-            <h2 id="streak-title" className="text-2xl font-black text-white">{streak.current} day{streak.current === 1 ? '' : 's'} 🔥</h2>
+            <h2 id="streak-title" className="flex items-center gap-2 text-2xl font-black text-white">{streak.current} day{streak.current === 1 ? '' : 's'} <Flame className="h-6 w-6 text-orange-400" aria-hidden="true" /></h2>
             {streak.longest > streak.current && <p className="text-xs text-zinc-500">Best: {streak.longest} days</p>}
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl bg-zinc-800 p-2 text-zinc-400"><X className="h-4 w-4" /></button>
@@ -187,7 +187,7 @@ export default function MoneyStreakCard({ streak, onChanged }) {
         {streak && (
           <button type="button" onClick={() => setOpen(true)} className="mt-3 block w-full text-left" aria-label="Today's mission and this week">
             <WeekDots week={streak.week} size="md" />
-            <span className="mt-2 flex items-center gap-1.5 text-xs text-zinc-400">🎯 {streak.today.mission.title}</span>
+            <span className="mt-2 flex items-center gap-1.5 text-xs text-zinc-400"><Target className="h-3.5 w-3.5 shrink-0 text-lime-400" aria-hidden="true" /> {streak.today.mission.title}</span>
           </button>
         )}
       </section>
