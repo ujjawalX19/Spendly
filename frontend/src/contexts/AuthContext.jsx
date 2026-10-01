@@ -8,7 +8,9 @@ import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '../plugins/GoogleAuth';
 import { clearRemindersForSignOut } from '../lib/debitReminders';
-import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode } from '../lib/googleSignIn';
+import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, singleFlight } from '../lib/googleSignIn';
+import { authErrorKind, authErrorMessage } from '../lib/authMessages';
+import { authLog } from '../lib/authLog';
 
 const AuthContext = createContext();
 
@@ -109,7 +111,9 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'PASSWORD_RECOVERY') markPasswordRecovery(true);
       // Counted once per real sign-in (email or Google), not per page load.
-      if (event === 'SIGNED_IN') trackLogin(nextSession?.user);
+      if (event === 'SIGNED_IN') { trackLogin(nextSession?.user); authLog('SUPABASE_SESSION_CREATED'); }
+      if (event === 'INITIAL_SESSION' && nextSession) authLog('SESSION_RESTORED');
+      if (event === 'SIGNED_OUT') authLog('SIGNED_OUT');
       applySession(nextSession);
     });
 
@@ -120,11 +124,14 @@ export function AuthProvider({ children }) {
   }, [loadProfile, markPasswordRecovery]);
 
   const login = async (email, password) => {
+    authLog('AUTH_START');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       trackAuthFailure('login_failed', 'email', error);
-      return { success: false, message: error.message };
+      authLog(authErrorKind(error) === 'rate_limited' ? 'EMAIL_RATE_LIMITED' : 'EMAIL_LOGIN_FAILED');
+      return { success: false, message: authErrorMessage('login', error) };
     }
+    authLog('AUTH_COMPLETE');
     return { success: true };
   };
 
@@ -140,12 +147,10 @@ export function AuthProvider({ children }) {
     });
     if (error) {
       trackAuthFailure('signup_failed', 'email', error);
-      // Supabase's "email rate limit exceeded": the confirmation email could
-      // not be sent right now. Not the user's fault, and Google sign-in works.
-      if (error.status === 429 || /rate limit|too many/i.test(error.message)) {
-        return { success: false, message: "We can't send confirmation emails right now. Please try again in about an hour, or continue with Google." };
-      }
-      return { success: false, message: error.message };
+      // Supabase's own texts ("email rate limit exceeded": the confirmation
+      // email could not be sent right now) are never shown as they are.
+      authLog(authErrorKind(error) === 'rate_limited' ? 'EMAIL_RATE_LIMITED' : 'EMAIL_SIGNUP_FAILED');
+      return { success: false, message: authErrorMessage('signup', error) };
     }
     track('signup', { method: 'email' });
 
@@ -170,14 +175,17 @@ export function AuthProvider({ children }) {
     });
     if (error) {
       trackAuthFailure('login_failed', 'google', error);
-      return { success: false, message: error.message };
+      authLog('BROWSER_FALLBACK_FAILED');
+      return { success: false, message: authErrorMessage('google', error) };
     }
 
     if (isNative()) {
       if (!data?.url) {
         track('login_failed', { method: 'google', code: 'no_provider_url' });
+        authLog('BROWSER_FALLBACK_FAILED');
         return { success: false, message: 'Could not start Google sign-in. Please try again.' };
       }
+      authLog('BROWSER_FALLBACK_STARTED');
       // Lets the callback word its messages for Google rather than for an
       // email link (the same spendly://login-callback finishes both).
       try { window.localStorage.setItem(GOOGLE_PENDING_KEY, String(Date.now())); } catch { /* storage unavailable */ }
@@ -201,25 +209,34 @@ export function AuthProvider({ children }) {
     } catch (err) {
       const action = nativeFailureAction(err?.code);
       if (action === 'cancelled') {
+        // The user closed the picker on purpose: no error, and no browser.
         track('login_failed', { method: 'google', code: 'cancelled' });
         return { success: false, cancelled: true };
       }
-      if (action === 'retry') return { success: false, message: 'Google sign-in was interrupted. Please try again.' };
       track('login_failed', { method: 'google', code: nativeFailureCode(err?.code) });
+      if (action === 'retry') return { success: false, message: 'Google sign-in was interrupted. Please try again.' };
+      if (action === 'network') return { success: false, message: "We couldn't reach Google. Check your internet connection and try again." };
+      // Native sign-in cannot work on this build or phone; the browser flow can.
       return null;
     }
     const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: nonce.raw });
     if (error) {
       trackAuthFailure('login_failed', 'google', error);
-      return { success: false, message: 'Google sign-in could not be verified. Please try again.' };
+      authLog('SUPABASE_AUTH_FAILED');
+      return { success: false, message: authErrorKind(error) === 'network'
+        ? authErrorMessage('google', error)
+        : 'Google sign-in could not be verified. Please try again.' };
     }
     // onAuthStateChange now holds the session and routes to the app.
+    authLog('AUTH_COMPLETE');
     return { success: true, native: true };
   };
 
-  const loginWithGoogle = async () => {
+  const startGoogleSignIn = async () => {
     track('google_sign_in_started', { method: 'google' });
+    authLog('AUTH_START');
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      authLog('AUTH_OFFLINE');
       return { success: false, message: "You appear to be offline. Connect to the internet and try again." };
     }
     try {
@@ -227,11 +244,18 @@ export function AuthProvider({ children }) {
         const native = await nativeGoogleSignIn();
         if (native) return native;
       }
+      // At most once per attempt: the native result above is final, so the
+      // browser is opened only here and never re-enters the native flow.
       return await browserGoogleSignIn();
     } catch {
       return { success: false, message: 'Google sign-in could not be started. Please try again.' };
     }
   };
+
+  // One attempt at a time: a second tap never opens a second picker or tab.
+  // (The sign-in functions above use nothing from this component's state, so
+  // the first render's copy is the one kept.)
+  const [loginWithGoogle] = useState(() => singleFlight(startGoogleSignIn, () => authLog('AUTH_ALREADY_RUNNING')));
 
   /**
    * Send a password-reset email. The response is deliberately the same
@@ -246,11 +270,10 @@ export function AuthProvider({ children }) {
     if (error) trackAuthFailure('password_reset_failed', 'email', error);
     else track('password_reset_requested', { method: 'email' });
     if (error) {
-      if (error.status === 429 || /rate limit|too many/i.test(error.message)) {
-        return { success: false, message: 'Too many reset requests. Please wait a few minutes and try again.' };
-      }
-      if (/valid email|invalid email|email address/i.test(error.message)) {
-        return { success: false, message: 'Please enter a valid email address.' };
+      const kind = authErrorKind(error);
+      if (kind === 'rate_limited') authLog('EMAIL_RATE_LIMITED');
+      if (kind === 'rate_limited' || kind === 'invalid_email' || kind === 'network') {
+        return { success: false, message: authErrorMessage('reset', error) };
       }
       // Anything else (including "user not found" on some configurations) is not revealed.
     }
@@ -260,7 +283,7 @@ export function AuthProvider({ children }) {
   /** Set a new password for the signed-in (recovery) session. */
   const updatePassword = async (password) => {
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) return { success: false, message: error.message };
+    if (error) return { success: false, message: authErrorMessage('update_password', error) };
     track('password_updated');
     markPasswordRecovery(false);
     return { success: true };

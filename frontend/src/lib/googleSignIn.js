@@ -26,11 +26,18 @@ export async function makeNonce(cryptoImpl = globalThis.crypto) {
 }
 
 /**
- * What to do when the native picker fails.
- *   cancelled — the user closed it: stay on the login screen, no error
- *   fallback  — native sign-in is unavailable here (no Google account, or the
- *               Android OAuth client is not configured): use the browser flow
- *   retry     — transient: show a retry message
+ * What to do when the native picker fails. The codes come from
+ * GoogleAuthErrors.java (the older CANCELLED / FAILED / REAUTH_FAILED names are
+ * still understood).
+ *   cancelled — USER_CANCELLED: the user closed it. Stay on the login screen,
+ *               no error, and never open a browser.
+ *   retry     — INTERRUPTED: transient, show a retry message
+ *   network   — NETWORK_ERROR: Google could not be reached; a browser would
+ *               fail the same way, so ask for the connection instead
+ *   fallback  — native sign-in cannot work here but the browser flow can:
+ *               OAUTH_CONFIGURATION_ERROR (no Android OAuth client for this
+ *               build's package and signing certificate), NO_CREDENTIAL (no
+ *               Google account on the phone), UNSUPPORTED, GOOGLE_AUTH_FAILED
  */
 /**
  * Telemetry code for a native failure that falls back to the browser, so a
@@ -39,15 +46,38 @@ export async function makeNonce(cryptoImpl = globalThis.crypto) {
  */
 export function nativeFailureCode(code) {
   if (code === 'NO_CREDENTIAL') return 'native_no_credential';
-  // Google answered "[16] Account reauth failed": no Android OAuth client
-  // matches this build's package and signing certificate.
-  if (code === 'REAUTH_FAILED') return 'native_oauth_client_mismatch';
-  if (code === 'FAILED') return 'native_failed';
+  // Google answered "[16] Account reauth failed" / UNREGISTERED_ON_API_CONSOLE:
+  // no Android OAuth client matches this build's package and signing certificate.
+  if (code === 'OAUTH_CONFIGURATION_ERROR' || code === 'REAUTH_FAILED') return 'native_oauth_client_mismatch';
+  if (code === 'UNSUPPORTED') return 'native_unsupported';
+  if (code === 'NETWORK_ERROR') return 'native_network';
+  if (code === 'GOOGLE_AUTH_FAILED' || code === 'FAILED') return 'native_failed';
   return 'native_unavailable';
 }
 
 export function nativeFailureAction(code) {
-  if (code === 'CANCELLED') return 'cancelled';
+  if (code === 'USER_CANCELLED' || code === 'CANCELLED') return 'cancelled';
   if (code === 'INTERRUPTED') return 'retry';
+  if (code === 'NETWORK_ERROR') return 'network';
   return 'fallback';
+}
+
+/**
+ * One Google sign-in at a time. A second tap while the picker or the browser
+ * hand-off is still starting gets the first attempt's result instead of opening
+ * a second picker or a second browser tab. `onBusy` runs for the ignored call.
+ *
+ * @param {() => Promise<any>} run
+ * @param {() => void} [onBusy]
+ */
+export function singleFlight(run, onBusy) {
+  let current = null;
+  return () => {
+    if (current) {
+      onBusy?.();
+      return current;
+    }
+    current = Promise.resolve().then(run).finally(() => { current = null; });
+    return current;
+  };
 }

@@ -7,6 +7,7 @@ import { supabase } from './lib/supabaseClient';
 import { NATIVE_SCHEME, NATIVE_HOSTS, authErrorFromUrl, isMissingVerifierError } from './lib/authRedirects';
 import { GOOGLE_PENDING_KEY, isGoogleSignInPending, loginCallbackFailure } from './lib/authCallbackOutcome';
 import { track } from './lib/telemetry';
+import { authLog } from './lib/authLog';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProProvider } from './contexts/ProContext';
@@ -148,7 +149,10 @@ function DeepLinkHandler({ onMessage }) {
     let cancelled = false;
 
     const handleUrl = async (url) => {
-      if (!url || handledDeepLinks.has(url)) return;
+      if (!url) return;
+      // The same link delivered twice (launch URL + event, or a remount): the
+      // one-time code was already used, so the second copy is dropped quietly.
+      if (handledDeepLinks.has(url)) { authLog('BROWSER_CALLBACK_DUPLICATE'); return; }
 
       let parsed;
       try {
@@ -159,6 +163,7 @@ function DeepLinkHandler({ onMessage }) {
       const host = parsed.hostname;
       if (parsed.protocol !== `${NATIVE_SCHEME}:` || !Object.values(NATIVE_HOSTS).includes(host)) return;
       handledDeepLinks.add(url);
+      authLog('BROWSER_CALLBACK_RECEIVED');
 
       // Android does not close the Custom Tab for us.
       try { await Browser.close(); } catch { /* not open, or unsupported */ }
@@ -184,6 +189,7 @@ function DeepLinkHandler({ onMessage }) {
 
       const providerError = authErrorFromUrl(url);
       if (providerError) {
+        authLog('BROWSER_CALLBACK_PROVIDER_ERROR');
         if (isReset) {
           track('auth_callback_failed', { code: 'reset_provider_error' });
           onMessage(providerError);
@@ -196,6 +202,7 @@ function DeepLinkHandler({ onMessage }) {
 
       const code = parsed.searchParams.get('code');
       if (!code || !/^[A-Za-z0-9._~-]{8,512}$/.test(code)) {
+        authLog('BROWSER_CALLBACK_INVALID');
         if (isReset) {
           track('auth_callback_failed', { code: 'invalid_link' });
           onMessage('That link is not valid. Please try again.');
@@ -209,6 +216,7 @@ function DeepLinkHandler({ onMessage }) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (cancelled) return;
       if (error) {
+        authLog('CODE_EXCHANGE_FAILED');
         if (isReset) {
           track('auth_callback_failed', { code: isMissingVerifierError(error) ? 'missing_verifier' : 'code_exchange_failed' });
           onMessage(isMissingVerifierError(error)
@@ -225,6 +233,7 @@ function DeepLinkHandler({ onMessage }) {
         markPasswordRecovery(true);
         navigate('/reset-password', { replace: true });
       } else {
+        authLog('AUTH_COMPLETE');
         navigate('/dash', { replace: true });
       }
     };

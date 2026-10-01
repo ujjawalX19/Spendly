@@ -6,7 +6,9 @@ import { registerPlugin } from '@capacitor/core';
  *
  *   signIn({ serverClientId, nonce }) -> { idToken }   (nonce = SHA-256 hex of the raw nonce)
  *   signOut()                                           clears Credential Manager state
+ *   logEvent({ code })                                  one fixed code to logcat (see lib/authLog.js)
  *
- * Rejection codes: CANCELLED, NO_CREDENTIAL, INTERRUPTED, FAILED.
+ * Rejection codes (GoogleAuthErrors.java): USER_CANCELLED, OAUTH_CONFIGURATION_ERROR,
+ * NO_CREDENTIAL, NETWORK_ERROR, INTERRUPTED, UNSUPPORTED, GOOGLE_AUTH_FAILED.
  */
 export const GoogleAuth = registerPlugin('GoogleAuth');

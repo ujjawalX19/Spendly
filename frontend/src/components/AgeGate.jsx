@@ -12,6 +12,7 @@
  * `birth_year_month === undefined` and are not asked.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { authLog } from '../lib/authLog';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
@@ -42,9 +43,11 @@ function AgeQuestion({ onDone }) {
     setError('');
     try {
       const d = await apiJson('/account/age', { session, method: 'POST', body: { birthYearMonth: value } });
+      authLog('AGE_SAVED');
       onDone(d.age);
     } catch (err) {
       if (err?.data?.code === 'AGE_ALREADY_SET') { onDone(null); return; }
+      authLog('AGE_SAVE_FAILED');
       setError(friendlyError(err, "We couldn't save that. Please try again."));
     } finally {
       setBusy(false);
@@ -53,6 +56,7 @@ function AgeQuestion({ onDone }) {
 
   // An answer given at sign-up on this device is used once, automatically.
   useEffect(() => {
+    authLog('AGE_REQUIRED');
     const pending = takePendingAge();
     if (pending) submit(pending);
   }, [submit]);

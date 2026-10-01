@@ -1,6 +1,7 @@
 package com.vittova.app;
 
 import android.os.CancellationSignal;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -15,6 +16,8 @@ import androidx.credentials.exceptions.ClearCredentialException;
 import androidx.credentials.exceptions.GetCredentialCancellationException;
 import androidx.credentials.exceptions.GetCredentialException;
 import androidx.credentials.exceptions.GetCredentialInterruptedException;
+import androidx.credentials.exceptions.GetCredentialProviderConfigurationException;
+import androidx.credentials.exceptions.GetCredentialUnsupportedException;
 import androidx.credentials.exceptions.NoCredentialException;
 
 import com.getcapacitor.JSObject;
@@ -24,6 +27,10 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * GoogleAuthPlugin — native "Sign in with Google" through Android Credential
@@ -39,23 +46,56 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
  *   signOut() -> {}
  *       Clears Credential Manager state so a later sign-in asks again.
  *
- * Error codes for the web layer:
- *   CANCELLED     the user closed the picker (stay on the login screen)
- *   NO_CREDENTIAL no Google account available / not set up for this app
- *   INTERRUPTED   transient, retry
- *   FAILED        anything else (e.g. the Android OAuth client is missing)
+ *   logEvent({ code }) -> {}
+ *       Writes one of the fixed AUTH_EVENTS codes to logcat (tag VittovaAuth),
+ *       in release builds too, so a sign-in problem on a real phone can be
+ *       diagnosed. Only those exact codes are accepted: never a token, an
+ *       authorization code, an email address or any other text.
+ *
+ * Rejection codes for the web layer: see GoogleAuthErrors.
  */
 @CapacitorPlugin(name = "GoogleAuth")
 public class GoogleAuthPlugin extends Plugin {
+
+    static final String TAG = "VittovaAuth";
+
+    /** The only texts logEvent will write. */
+    static final Set<String> AUTH_EVENTS = new HashSet<>(Arrays.asList(
+            "AUTH_START", "GOOGLE_NATIVE_START", "GOOGLE_NATIVE_SUCCESS", "GOOGLE_NATIVE_FAILURE",
+            "BROWSER_FALLBACK_STARTED", "BROWSER_FALLBACK_FAILED", "BROWSER_CLOSED",
+            "BROWSER_CALLBACK_RECEIVED", "BROWSER_CALLBACK_DUPLICATE", "BROWSER_CALLBACK_INVALID",
+            "BROWSER_CALLBACK_PROVIDER_ERROR", "CODE_EXCHANGE_FAILED",
+            "SUPABASE_SESSION_CREATED", "SUPABASE_AUTH_FAILED", "AUTH_COMPLETE", "AUTH_CANCELLED",
+            "AUTH_OFFLINE", "AUTH_ALREADY_RUNNING", "EMAIL_LOGIN_FAILED", "EMAIL_SIGNUP_FAILED",
+            "EMAIL_RATE_LIMITED", "SIGNED_OUT", "SESSION_RESTORED",
+            "AGE_REQUIRED", "AGE_SAVED", "AGE_SAVE_FAILED"));
+
+    @PluginMethod
+    public void logEvent(PluginCall call) {
+        String code = call.getString("code");
+        if (code != null && AUTH_EVENTS.contains(code)) trail(code);
+        call.resolve();
+    }
+
+    /**
+     * One line of the auth trail. Some phones (vivo, for one) discard every app
+     * log line below ERROR; there the line is written as an error so the trail
+     * can still be read with `adb logcat -s VittovaAuth`. Fixed codes only.
+     */
+    static void trail(String line) {
+        int level = Log.isLoggable(TAG, Log.INFO) ? Log.INFO : Log.ERROR;
+        Log.println(level, TAG, line);
+    }
 
     @PluginMethod
     public void signIn(PluginCall call) {
         String serverClientId = call.getString("serverClientId");
         String nonce = call.getString("nonce");
         if (serverClientId == null || serverClientId.isEmpty() || nonce == null || nonce.length() < 32) {
-            call.reject("serverClientId and a hashed nonce are required", "FAILED");
+            fail(call, GoogleAuthErrors.GOOGLE_AUTH_FAILED);
             return;
         }
+        trail("GOOGLE_NATIVE_START");
 
         GetSignInWithGoogleOption option = new GetSignInWithGoogleOption.Builder(serverClientId)
                 .setNonce(nonce)
@@ -81,37 +121,37 @@ public class GoogleAuthPlugin extends Plugin {
                                 JSObject result = new JSObject();
                                 // Only the token: Supabase derives the user from it.
                                 result.put("idToken", google.getIdToken());
+                                trail("GOOGLE_NATIVE_SUCCESS");
                                 call.resolve(result);
                             } catch (Exception e) {
-                                call.reject("Unreadable Google credential", "FAILED");
+                                fail(call, GoogleAuthErrors.GOOGLE_AUTH_FAILED);
                             }
                         } else {
-                            call.reject("Unexpected credential type", "FAILED");
+                            fail(call, GoogleAuthErrors.GOOGLE_AUTH_FAILED);
                         }
                     }
 
                     @Override
                     public void onError(@NonNull GetCredentialException e) {
-                        if (e instanceof GetCredentialCancellationException) {
-                            // Google reports "this app's package and signing certificate
-                            // have no Android OAuth client" as a cancellation
-                            // ("[16] Account reauth failed"). The user did not cancel:
-                            // say so, and the app uses the browser sign-in instead of
-                            // silently returning to the login screen.
-                            if (isReauthFailure(e.getMessage())) call.reject("Native Google sign-in is not configured for this build", "REAUTH_FAILED");
-                            else call.reject("Cancelled", "CANCELLED");
-                        }
-                        else if (e instanceof NoCredentialException) call.reject("No Google account available", "NO_CREDENTIAL");
-                        else if (e instanceof GetCredentialInterruptedException) call.reject("Interrupted", "INTERRUPTED");
-                        // The message can name the failure type but never contains a token.
-                        else call.reject(e.getType(), "FAILED");
+                        GoogleAuthErrors.Kind kind;
+                        if (e instanceof GetCredentialCancellationException) kind = GoogleAuthErrors.Kind.CANCELLATION;
+                        else if (e instanceof NoCredentialException) kind = GoogleAuthErrors.Kind.NO_CREDENTIAL;
+                        else if (e instanceof GetCredentialInterruptedException) kind = GoogleAuthErrors.Kind.INTERRUPTED;
+                        else if (e instanceof GetCredentialProviderConfigurationException) kind = GoogleAuthErrors.Kind.PROVIDER_CONFIGURATION;
+                        else if (e instanceof GetCredentialUnsupportedException) kind = GoogleAuthErrors.Kind.UNSUPPORTED;
+                        else kind = GoogleAuthErrors.Kind.OTHER;
+                        // The message decides between "the user cancelled" and "this
+                        // build has no Android OAuth client"; it never holds a token
+                        // and is not passed on or logged, only its classification.
+                        fail(call, GoogleAuthErrors.classify(kind, e.getMessage()));
                     }
                 });
     }
 
-    /** "[16] Account reauth failed." is a configuration failure, not the user closing the picker. */
-    static boolean isReauthFailure(String message) {
-        return message != null && message.toLowerCase(java.util.Locale.ROOT).contains("reauth");
+    /** Reject with a GoogleAuthErrors code; the code is also the (safe) log line. */
+    private static void fail(PluginCall call, String code) {
+        trail(GoogleAuthErrors.USER_CANCELLED.equals(code) ? "AUTH_CANCELLED" : "GOOGLE_NATIVE_FAILURE " + code);
+        call.reject(code, code);
     }
 
     @PluginMethod

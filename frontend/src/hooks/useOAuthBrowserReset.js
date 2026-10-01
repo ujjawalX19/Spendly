@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { authLog } from '../lib/authLog';
 
 /**
  * On Android, Google sign-in runs in a Chrome Custom Tab. If the user closes
@@ -15,7 +16,7 @@ export function useOAuthBrowserReset(onClosed) {
     if (!Capacitor.isNativePlatform()) return undefined;
     let handle;
     let cancelled = false;
-    Browser.addListener('browserFinished', () => callback.current?.())
+    Browser.addListener('browserFinished', () => { authLog('BROWSER_CLOSED'); callback.current?.(); })
       .then((h) => { if (cancelled) h.remove(); else handle = h; })
       .catch(() => { /* plugin unavailable */ });
     return () => {
