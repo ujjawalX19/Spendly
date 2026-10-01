@@ -133,7 +133,7 @@ test('email login: one Supabase call, session from Supabase, plain errors', () =
 
 test('sign-up: account created, then either signed in or told to confirm the email', () => {
   const ctx = src('contexts/AuthContext.jsx');
-  const signup = ctx.slice(ctx.indexOf('const signup = async'), ctx.indexOf('Google sign-in: the one path'));
+  const signup = ctx.slice(ctx.indexOf('const signup = async'), ctx.indexOf('const browserGoogleSignIn'));
   assert.match(signup, /supabase\.auth\.signUp\(/);
   assert.match(signup, /emailRedirectTo: loginRedirectUrl\(\)/);
   assert.match(signup, /needsConfirmation: true/);

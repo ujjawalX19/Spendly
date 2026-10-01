@@ -62,19 +62,32 @@ Google OAuth client's redirect URI) or native Google sign-in on Android
 tied to the signing key's SHA-1). A verified OAuth consent screen shows the
 Vittova name and logo but still names the redirect domain.
 
-**Why there is no native Google sign-in (tried in V1.1, removed 1 Oct 2026).**
-A native Credential Manager sign-in was put in front of this browser flow. It
-needs an Android OAuth client for every signing certificate (debug, upload
-key, Play app signing). On a vivo running the upload-key APK with no matching
-client, Google answered `UNREGISTERED_ON_API_CONSOLE` / "[16] Account reauth
-failed", and Credential Manager delivered that to the app as an ordinary
-cancellation with the generic text, so the app could not tell it from the user
-closing the picker: "Continue with Google" silently did nothing, and a fallback
-could not be triggered without also opening a browser on every real cancel. The
-browser flow below uses the Web client held by Supabase, needs no Android OAuth
-client, and behaves the same on every build, so it is the only path. Android
-OAuth clients in Google Cloud are harmless but unused. Do not re-add a native
-path without proving it on a device for each signing certificate.
+**Google sign-in on Android is in-app (versionCode 17).** Google's account
+sheet opens over Vittova (`GoogleAuthPlugin`, Google Identity
+`getSignInIntent`), returns a Google ID token for the Web client, and
+`supabase.auth.signInWithIdToken` creates the session. No browser.
+
+It needs an **Android OAuth client in Google Cloud for every certificate that
+signs a build people run**, with package `com.vittova.app`:
+
+| Build | Signing certificate (SHA-1) |
+|---|---|
+| Installed from Google Play | the Play **app signing** key (Play Console → App integrity) |
+| Sideloaded release APK / AAB test | the **upload** key `3B:AE:EA:F4:06:E1:17:8C:2A:8B:81:C5:8B:75:39:8A:39:7F:8D:46` |
+| Debug build | that computer's debug keystore |
+
+Without the matching client Google refuses the build
+(`UNREGISTERED_ON_API_CONSOLE`). The result still arrives as status 16
+(CANCELED), the same as the user closing the sheet, but with the message
+"Account reauth failed". The first V1.1 implementation used androidx Credential
+Manager, whose Play-services bridge throws that message away, so a refused
+build looked like a cancellation and the button silently did nothing. The
+plugin now reads Google's own status and message from the result;
+`GoogleAuthErrors` turns it into `OAUTH_CONFIGURATION_ERROR`, and the app says
+"Google sign-in isn't available in this version of the app yet" instead.
+
+The browser flow described below is how the **website** signs in. The Android
+app uses it only on a phone with no Google Play services (`UNSUPPORTED`).
 
 ## Android handling (`frontend/src/App.jsx` → `DeepLinkHandler`)
 

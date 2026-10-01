@@ -6,6 +6,9 @@ import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
 import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 import { clearRemindersForSignOut } from '../lib/debitReminders';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '../plugins/GoogleAuth';
+import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, nativeFailureMessage } from '../lib/googleSignIn';
 import { singleFlight } from '../lib/singleFlight';
 import { authErrorKind, authErrorMessage } from '../lib/authMessages';
 import { authLog } from '../lib/authLog';
@@ -162,21 +165,79 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Google sign-in: the one path, the same on every build (as in v1.0).
-   *
-   * Web: an ordinary redirect. Android: Supabase's Google URL opens in a Chrome
-   * Custom Tab (never the WebView: Google blocks OAuth in embedded WebViews).
-   * Google returns to https://vittova.in/auth/app-callback, which hands a
-   * one-time PKCE code to spendly://login-callback (DeepLinkHandler in
-   * App.jsx), and Supabase turns it into the session.
-   *
-   * It uses the Web OAuth client held by Supabase, so it does not depend on
-   * the Android signing certificate (debug, upload-key and Play-signed builds
-   * behave the same). V1.1 briefly put a native Credential Manager sign-in in
-   * front of this; on a build whose certificate had no Android OAuth client,
-   * Google's refusal reached the app looking exactly like the user closing the
-   * picker, so nothing could recover from it. See AUTH_DEEP_LINKS.md.
+   * Google sign-in in a browser. This is how the WEBSITE signs in (an ordinary
+   * redirect). The Android app uses it only on a phone with no Google Play
+   * services, where Google's in-app sheet cannot exist: the provider URL opens
+   * in a Chrome Custom Tab and returns through vittova.in/auth/app-callback to
+   * spendly://login-callback (DeepLinkHandler in App.jsx).
    */
+  const browserGoogleSignIn = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: loginRedirectUrl(),
+        skipBrowserRedirect: isNative(),
+      },
+    });
+    if (error) {
+      trackAuthFailure('login_failed', 'google', error);
+      authLog('GOOGLE_START_FAILED');
+      return { success: false, message: authErrorMessage('google', error) };
+    }
+
+    if (isNative()) {
+      if (!data?.url) {
+        track('login_failed', { method: 'google', code: 'no_provider_url' });
+        authLog('GOOGLE_START_FAILED');
+        return { success: false, message: 'Could not start Google sign-in. Please try again.' };
+      }
+      // Lets the callback word its messages for Google rather than for an
+      // email link (the same spendly://login-callback finishes both).
+      try { window.localStorage.setItem(GOOGLE_PENDING_KEY, String(Date.now())); } catch { /* storage unavailable */ }
+      authLog('GOOGLE_BROWSER_OPENED');
+      await Browser.open({ url: data.url, presentationStyle: 'popover' });
+    }
+    return { success: true };
+  };
+
+  /**
+   * Google sign-in inside the Android app. Google's own account sheet opens
+   * over Vittova (GoogleAuthPlugin); the ID token it returns is exchanged with
+   * Supabase, which checks Google's signature, the audience and the nonce. The
+   * user never leaves the app.
+   *
+   * Returns null only when this phone cannot show Google's sheet at all (no
+   * Google Play services), so the caller uses the browser there. Every other
+   * failure is reported as what it is: a cancellation stays silent, anything
+   * else gets a plain message. In particular, a build Google does not
+   * recognise (no Android OAuth client for its package and signing
+   * certificate) says so instead of doing nothing.
+   */
+  const nativeGoogleSignIn = async () => {
+    const nonce = await makeNonce();
+    let idToken;
+    try {
+      ({ idToken } = await GoogleAuth.signIn({ serverClientId: GOOGLE_WEB_CLIENT_ID, nonce: nonce.hashed }));
+    } catch (err) {
+      const action = nativeFailureAction(err?.code);
+      track('login_failed', { method: 'google', code: nativeFailureCode(err?.code) });
+      if (action === 'cancelled') return { success: false, cancelled: true };
+      if (action === 'browser') return null;
+      return { success: false, message: nativeFailureMessage(err?.code) };
+    }
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: nonce.raw });
+    if (error) {
+      trackAuthFailure('login_failed', 'google', error);
+      authLog('SUPABASE_AUTH_FAILED');
+      return { success: false, message: authErrorKind(error) === 'network'
+        ? authErrorMessage('google', error)
+        : 'Google sign-in could not be verified. Please try again.' };
+    }
+    // onAuthStateChange now holds the session and routes to the app.
+    authLog('AUTH_COMPLETE');
+    return { success: true, native: true };
+  };
+
   const startGoogleSignIn = async () => {
     track('google_sign_in_started', { method: 'google' });
     authLog('AUTH_START');
@@ -185,40 +246,19 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'You appear to be offline. Connect to the internet and try again.' };
     }
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: loginRedirectUrl(),
-          skipBrowserRedirect: isNative(),
-        },
-      });
-      if (error) {
-        trackAuthFailure('login_failed', 'google', error);
-        authLog('GOOGLE_START_FAILED');
-        return { success: false, message: authErrorMessage('google', error) };
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+        const native = await nativeGoogleSignIn();
+        if (native) return native;
       }
-
-      if (isNative()) {
-        if (!data?.url) {
-          track('login_failed', { method: 'google', code: 'no_provider_url' });
-          authLog('GOOGLE_START_FAILED');
-          return { success: false, message: 'Could not start Google sign-in. Please try again.' };
-        }
-        // Lets the callback word its messages for Google rather than for an
-        // email link (the same spendly://login-callback finishes both).
-        try { window.localStorage.setItem(GOOGLE_PENDING_KEY, String(Date.now())); } catch { /* storage unavailable */ }
-        authLog('GOOGLE_BROWSER_OPENED');
-        await Browser.open({ url: data.url, presentationStyle: 'popover' });
-      }
-      return { success: true };
+      return await browserGoogleSignIn();
     } catch {
       authLog('GOOGLE_START_FAILED');
       return { success: false, message: 'Google sign-in could not be started. Please try again.' };
     }
   };
 
-  // One attempt at a time: a second tap never opens a second browser tab.
-  // (startGoogleSignIn uses nothing from this component's state, so the first
+  // One attempt at a time: a second tap never opens a second sheet or tab.
+  // (These functions use nothing from this component's state, so the first
   // render's copy is the one kept.)
   const [loginWithGoogle] = useState(() => singleFlight(startGoogleSignIn, () => authLog('AUTH_ALREADY_RUNNING')));
 
@@ -266,6 +306,10 @@ export function AuthProvider({ children }) {
       await supabase.auth.signOut({ scope });
     } catch {
       // The session may already be invalid (e.g. the account was deleted).
+    }
+    // Forget the Google account choice too, so the next sign-in asks again.
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+      await GoogleAuth.signOut().catch(() => {});
     }
     await clearRemindersForSignOut();
     clearLocalAppState();

@@ -20,8 +20,7 @@ import java.util.Set;
  *
  * Only the exact codes in AUTH_EVENTS are written: never a token, an
  * authorization code, a password, an email address or any other text.
- * Sign-in itself is entirely in the web layer (Supabase); this plugin takes no
- * part in it.
+ * This plugin takes no part in signing in.
  */
 @CapacitorPlugin(name = "AuthLog")
 public class AuthLogPlugin extends Plugin {
@@ -34,7 +33,7 @@ public class AuthLogPlugin extends Plugin {
             "GOOGLE_BROWSER_OPENED", "GOOGLE_START_FAILED", "BROWSER_CLOSED",
             "BROWSER_CALLBACK_RECEIVED", "BROWSER_CALLBACK_DUPLICATE", "BROWSER_CALLBACK_INVALID",
             "BROWSER_CALLBACK_PROVIDER_ERROR", "CODE_EXCHANGE_FAILED",
-            "SUPABASE_SESSION_CREATED", "SESSION_RESTORED", "SIGNED_OUT",
+            "SUPABASE_SESSION_CREATED", "SUPABASE_AUTH_FAILED", "SESSION_RESTORED", "SIGNED_OUT",
             "EMAIL_LOGIN_FAILED", "EMAIL_SIGNUP_FAILED", "EMAIL_RATE_LIMITED",
             "PROFILE_LOADED", "PROFILE_LOAD_FAILED",
             "AGE_REQUIRED", "AGE_SAVED", "AGE_SAVE_FAILED"));
@@ -42,12 +41,18 @@ public class AuthLogPlugin extends Plugin {
     @PluginMethod
     public void logEvent(PluginCall call) {
         String code = call.getString("code");
-        if (code != null && AUTH_EVENTS.contains(code)) {
-            // Some phones (vivo, for one) discard every app log line below
-            // ERROR; there the line is written as an error so it can be read.
-            int level = Log.isLoggable(TAG, Log.INFO) ? Log.INFO : Log.ERROR;
-            Log.println(level, TAG, code);
-        }
+        if (code != null && AUTH_EVENTS.contains(code)) trail(code);
         call.resolve();
+    }
+
+    /**
+     * One line of the trail, for this app's own native code (GoogleAuthPlugin):
+     * a fixed step name, at most with a code and Google's numeric status.
+     * Some phones (vivo, for one) discard every app log line below ERROR; there
+     * the line is written as an error so it can be read.
+     */
+    static void trail(String line) {
+        int level = Log.isLoggable(TAG, Log.INFO) ? Log.INFO : Log.ERROR;
+        Log.println(level, TAG, line);
     }
 }

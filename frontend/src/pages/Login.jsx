@@ -46,13 +46,17 @@ export default function Login() {
         setError('');
         setGoogleLoading(true);
         const res = await loginWithGoogle();
+        if (res.cancelled) {
+            // The user closed Google's sheet: stay here, no error.
+            setGoogleLoading(false);
+            return;
+        }
         if (!res.success) {
             setError(res.message || 'Google login failed');
             setGoogleLoading(false);
         }
-        // On success the sign-in continues in the browser tab; the button
-        // stops spinning when the app signs in or the tab is closed
-        // (useOAuthBrowserReset).
+        // Signed in inside the app: the session change routes to Home.
+        if (res.native) setGoogleLoading(false);
     };
 
     return (

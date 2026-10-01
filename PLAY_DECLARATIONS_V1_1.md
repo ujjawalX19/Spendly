@@ -87,10 +87,12 @@ release-final/PLAY-STORE-OPTIMIZATION.md.
 - Student plans (`student-monthly` ₹29, `student-yearly` ₹249): **do not create** until a real student-verification process exists. The server refuses and never acknowledges student-plan purchases.
 - Store listing / paywall copy must match: no guaranteed savings, no fake urgency.
 
-## Google sign-in (browser flow, as in v1.0)
+## Google sign-in (in-app, versionCode 17)
 
-- The app signs in through Supabase's Google provider in a browser tab (see AUTH_DEEP_LINKS.md). **No Android OAuth client is needed**; the native Credential Manager sign-in was removed on 1 Oct 2026. Existing Android clients in Google Cloud can stay; they are unused.
-- Supabase → Authentication → Providers → Google: keep the Web client id (`721097065853-laesaqu6…`) and its secret (in Supabase only).
-- Supabase → Authentication → URL Configuration → Redirect URLs must include `https://vittova.in/auth/app-callback`, `https://vittova.in/auth/callback`, `https://vittova.in/reset-password` and `spendly://reset-password`.
-- Google Cloud → the **Web** client → Authorised redirect URIs must include `https://fqzqfwjjiruntrulmdnd.supabase.co/auth/v1/callback`.
+- Google Cloud → Google Auth Platform → Clients, project `spendly-505616`: one **Android** client per signing certificate, each with package `com.vittova.app`:
+  - the Play **app signing** key (Play Console → Test and release → App integrity → App signing key certificate). Client "Android client 1" holds `B0:18:FC:18:2E:A6:FA:73:F0:9E:8F:C3:B5:ED:2E:E0:73:3D:99:BD`: **confirm it equals the SHA-1 Play Console shows**;
+  - the **upload** key `3B:AE:EA:F4:06:E1:17:8C:2A:8B:81:C5:8B:75:39:8A:39:7F:8D:46`, for sideloaded release APKs. **Missing as of 1 Oct 2026**: until it exists, the sideloaded APK shows "Google sign-in isn't available in this version of the app yet".
+- Supabase → Authentication → Providers → Google: keep the Web client id (`721097065853-laesaqu6…`); "Skip nonce check" must stay **off**.
 - OAuth consent screen: no new scopes (still `email`, `profile`, `openid`).
+- **Before production:** install from a Play testing track and sign in with Google once. That is the only test of the Play-signed certificate.
+- The website keeps the browser flow; its Redirect URLs in Supabase stay as they are.
