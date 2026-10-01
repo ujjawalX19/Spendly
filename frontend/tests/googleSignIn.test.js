@@ -75,15 +75,15 @@ test('a real cancellation never opens a browser, and other failures say why', ()
   }
 });
 
-test('a refusal is remembered for a day, so the account is not asked for twice; then the sheet is tried again', () => {
+test('a refusal is remembered for ten minutes, so a retry does not ask for the account twice; then the sheet is tried again', () => {
   const now = 1_790_000_000_000;
   assert.equal(shouldSkipNative(String(now - 60_000), now), true);
   assert.equal(shouldSkipNative(String(now - NATIVE_RETRY_AFTER_MS + 1), now), true);
-  // After a day: try the in-app sheet again (a build Google now recognises switches over by itself).
+  // After ten minutes: try the in-app sheet again (a build Google now recognises switches over at once).
   assert.equal(shouldSkipNative(String(now - NATIVE_RETRY_AFTER_MS), now), false);
   // Never refused, cleared, garbage, or a clock set back: use the in-app sheet.
   for (const v of [null, undefined, '', 'abc', '0', String(now + 5000)]) assert.equal(shouldSkipNative(v, now), false, String(v));
-  assert.equal(NATIVE_RETRY_AFTER_MS, 24 * 60 * 60 * 1000);
+  assert.equal(NATIVE_RETRY_AFTER_MS, 10 * 60 * 1000);
   // Only a configuration refusal is remembered, and a successful in-app sign-in forgets it.
   assert.match(native, /if \(err\?\.code === 'OAUTH_CONFIGURATION_ERROR'\) \{\s*try \{ window\.localStorage\.setItem\(NATIVE_REFUSED_KEY/);
   assert.match(native, /localStorage\.removeItem\(NATIVE_REFUSED_KEY\)/);

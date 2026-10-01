@@ -52,12 +52,13 @@ export function nativeFailureAction(code) {
 
 /**
  * After Google refuses the in-app sheet, the app goes straight to the browser
- * for the next sign-ins instead of showing a sheet that cannot work (and
- * asking for the account twice). It tries the in-app sheet again after a day,
- * so a build Google starts recognising switches over by itself.
+ * for a retry made in the next few minutes instead of showing a sheet that
+ * just failed (and asking for the account twice). After ten minutes it tries
+ * the in-app sheet again, so a build Google starts recognising (an Android
+ * OAuth client added in Google Cloud) switches to in-app sign-in at once.
  */
 export const NATIVE_REFUSED_KEY = 'vittova.googleNativeRefusedAt';
-export const NATIVE_RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
+export const NATIVE_RETRY_AFTER_MS = 10 * 60 * 1000;
 
 /** @param {string|number|null} refusedAt  ms timestamp stored under NATIVE_REFUSED_KEY */
 export function shouldSkipNative(refusedAt, now = Date.now()) {
