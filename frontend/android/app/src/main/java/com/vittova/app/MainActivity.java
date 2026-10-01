@@ -17,7 +17,7 @@ public class MainActivity extends BridgeActivity {
         // Register plugins BEFORE super.onCreate()
         registerPlugin(UpiNotificationPlugin.class);
         registerPlugin(PlayBillingPlugin.class);
-        registerPlugin(GoogleAuthPlugin.class);
+        registerPlugin(AuthLogPlugin.class);
         registerPlugin(DebitRemindersPlugin.class);
         registerPlugin(LaunchScreenPlugin.class);
         super.onCreate(savedInstanceState);

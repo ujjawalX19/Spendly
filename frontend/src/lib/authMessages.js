@@ -22,8 +22,9 @@ export function authErrorKind(error) {
   if (code === 'email_not_confirmed' || /email not confirmed/.test(message)) return 'email_not_confirmed';
   if (code === 'invalid_credentials' || /invalid login credentials/.test(message)) return 'invalid_credentials';
   if (code === 'user_already_exists' || /already registered|already exists/.test(message)) return 'already_registered';
-  if (code === 'weak_password' || /password should|weak password|at least \d+ characters/.test(message)) return 'weak_password';
+  // Before weak_password: "New password should be different from the old password."
   if (code === 'same_password' || /different from the old password/.test(message)) return 'same_password';
+  if (code === 'weak_password' || /password should|weak password|at least \d+ characters/.test(message)) return 'weak_password';
   if (code === 'email_address_invalid' || /invalid email|valid email|email address .* invalid/.test(message)) return 'invalid_email';
   if (code === 'signup_disabled' || /signups? (are )?not allowed|signup is disabled/.test(message)) return 'signup_disabled';
   if (/session (is )?missing|jwt|not authenticated|session_not_found/.test(`${message} ${code}`)) return 'session_expired';

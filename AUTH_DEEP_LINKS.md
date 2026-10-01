@@ -62,6 +62,20 @@ Google OAuth client's redirect URI) or native Google sign-in on Android
 tied to the signing key's SHA-1). A verified OAuth consent screen shows the
 Vittova name and logo but still names the redirect domain.
 
+**Why there is no native Google sign-in (tried in V1.1, removed 1 Oct 2026).**
+A native Credential Manager sign-in was put in front of this browser flow. It
+needs an Android OAuth client for every signing certificate (debug, upload
+key, Play app signing). On a vivo running the upload-key APK with no matching
+client, Google answered `UNREGISTERED_ON_API_CONSOLE` / "[16] Account reauth
+failed", and Credential Manager delivered that to the app as an ordinary
+cancellation with the generic text, so the app could not tell it from the user
+closing the picker: "Continue with Google" silently did nothing, and a fallback
+could not be triggered without also opening a browser on every real cancel. The
+browser flow below uses the Web client held by Supabase, needs no Android OAuth
+client, and behaves the same on every build, so it is the only path. Android
+OAuth clients in Google Cloud are harmless but unused. Do not re-add a native
+path without proving it on a device for each signing certificate.
+
 ## Android handling (`frontend/src/App.jsx` → `DeepLinkHandler`)
 
 - Only `spendly://login-callback` and `spendly://reset-password` are accepted

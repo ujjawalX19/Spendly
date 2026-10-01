@@ -20,7 +20,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Bump versionCode for every upload to Play. versionName is what
         // users see.
-        versionCode 15
+        versionCode 16
         versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -78,9 +78,6 @@ dependencies {
     // passes the token to the backend, which verifies it with Google.
     implementation "com.android.billingclient:billing:$playBillingVersion"
     // Native "Sign in with Google" (Credential Manager) — no browser hand-off.
-    implementation "androidx.credentials:credentials:$credentialsVersion"
-    implementation "androidx.credentials:credentials-play-services-auth:$credentialsVersion"
-    implementation "com.google.android.libraries.identity.googleid:googleid:$googleIdVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     // A real org.json for the JVM unit tests (android.jar only has stubs), so

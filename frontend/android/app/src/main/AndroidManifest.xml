@@ -139,8 +139,4 @@
     <!-- Normal permission (no prompt): only to re-arm those reminders after a
          reboot (DebitReminderBootReceiver). No exact-alarm permission. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Merged in by androidx.credentials for passkey prompts. Vittova only uses
-         Sign in with Google, which needs neither. -->
-    <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
-    <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
 </manifest>

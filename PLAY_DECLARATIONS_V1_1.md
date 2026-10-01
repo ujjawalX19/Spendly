@@ -87,9 +87,10 @@ release-final/PLAY-STORE-OPTIMIZATION.md.
 - Student plans (`student-monthly` ₹29, `student-yearly` ₹249): **do not create** until a real student-verification process exists. The server refuses and never acknowledges student-plan purchases.
 - Store listing / paywall copy must match: no guaranteed savings, no fake urgency.
 
-## Google sign-in (native)
+## Google sign-in (browser flow, as in v1.0)
 
-- Google Cloud → Credentials → create an **Android** OAuth client for package `com.vittova.app` with the SHA-1 of (a) the Play **app signing** key (Play Console → Test and release → App integrity) and (b) the **upload** key (for side-loaded test builds). Same project as the Web client `721097065853-laesaqu6…`.
-- Supabase → Authentication → Providers → Google: keep the Web client id; "Skip nonce check" must stay **off**.
+- The app signs in through Supabase's Google provider in a browser tab (see AUTH_DEEP_LINKS.md). **No Android OAuth client is needed**; the native Credential Manager sign-in was removed on 1 Oct 2026. Existing Android clients in Google Cloud can stay; they are unused.
+- Supabase → Authentication → Providers → Google: keep the Web client id (`721097065853-laesaqu6…`) and its secret (in Supabase only).
+- Supabase → Authentication → URL Configuration → Redirect URLs must include `https://vittova.in/auth/app-callback`, `https://vittova.in/auth/callback`, `https://vittova.in/reset-password` and `spendly://reset-password`.
+- Google Cloud → the **Web** client → Authorised redirect URIs must include `https://fqzqfwjjiruntrulmdnd.supabase.co/auth/v1/callback`.
 - OAuth consent screen: no new scopes (still `email`, `profile`, `openid`).
-- Until the Android client exists, the app falls back to the existing browser sign-in automatically.
