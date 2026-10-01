@@ -47,10 +47,21 @@ export function nativeFailureAction(code) {
   return 'message';
 }
 
+/**
+ * Whether the person is offered the browser sign-in as their own choice, with
+ * a button under the message. Only when Google does not recognise this build:
+ * the in-app sheet can never work there, but the browser sign-in can, and
+ * without the offer a Google-only user could not get in at all. The app never
+ * opens the browser by itself for this.
+ */
+export function offersBrowserSignIn(code) {
+  return code === 'OAUTH_CONFIGURATION_ERROR';
+}
+
 /** The message for a 'message' result. Never Google's own text. */
 export function nativeFailureMessage(code) {
   if (code === 'OAUTH_CONFIGURATION_ERROR') {
-    return "Google sign-in isn't available in this version of the app yet. Please log in with your email and password, or update Vittova and try again.";
+    return "Google sign-in inside the app isn't available in this version yet. You can sign in with Google in your browser instead, or use your email and password.";
   }
   if (code === 'NETWORK_ERROR') return "We couldn't reach Google. Check your internet connection and try again.";
   return "Google sign-in couldn't be completed. Please try again.";

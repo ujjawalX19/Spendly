@@ -8,7 +8,7 @@ import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 import { clearRemindersForSignOut } from '../lib/debitReminders';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '../plugins/GoogleAuth';
-import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, nativeFailureMessage } from '../lib/googleSignIn';
+import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, nativeFailureMessage, offersBrowserSignIn } from '../lib/googleSignIn';
 import { singleFlight } from '../lib/singleFlight';
 import { authErrorKind, authErrorMessage } from '../lib/authMessages';
 import { authLog } from '../lib/authLog';
@@ -223,7 +223,8 @@ export function AuthProvider({ children }) {
       track('login_failed', { method: 'google', code: nativeFailureCode(err?.code) });
       if (action === 'cancelled') return { success: false, cancelled: true };
       if (action === 'browser') return null;
-      return { success: false, message: nativeFailureMessage(err?.code) };
+      // browserOption: the page shows a "sign in with your browser" button.
+      return { success: false, message: nativeFailureMessage(err?.code), browserOption: offersBrowserSignIn(err?.code) };
     }
     const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: nonce.raw });
     if (error) {
@@ -261,6 +262,19 @@ export function AuthProvider({ children }) {
   // (These functions use nothing from this component's state, so the first
   // render's copy is the one kept.)
   const [loginWithGoogle] = useState(() => singleFlight(startGoogleSignIn, () => authLog('AUTH_ALREADY_RUNNING')));
+
+  // The person's own choice, from the button shown when Google does not
+  // recognise this build (see offersBrowserSignIn). Never called automatically.
+  const [loginWithGoogleInBrowser] = useState(() => singleFlight(async () => {
+    track('google_sign_in_started', { method: 'google_browser' });
+    authLog('AUTH_START');
+    try {
+      return await browserGoogleSignIn();
+    } catch {
+      authLog('GOOGLE_START_FAILED');
+      return { success: false, message: 'Google sign-in could not be started. Please try again.' };
+    }
+  }, () => authLog('AUTH_ALREADY_RUNNING')));
 
   /**
    * Send a password-reset email. The response is deliberately the same
@@ -345,6 +359,7 @@ export function AuthProvider({ children }) {
         login,
         signup,
         loginWithGoogle,
+        loginWithGoogleInBrowser,
         requestPasswordReset,
         updatePassword,
         logout,

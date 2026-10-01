@@ -10,7 +10,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  makeNonce, nativeFailureAction, nativeFailureMessage, nativeFailureCode, GOOGLE_WEB_CLIENT_ID,
+  makeNonce, nativeFailureAction, nativeFailureMessage, nativeFailureCode, offersBrowserSignIn, GOOGLE_WEB_CLIENT_ID,
 } from '../src/lib/googleSignIn.js';
 import { singleFlight } from '../src/lib/singleFlight.js';
 import { APP_CALLBACK_PATH, WEB_ORIGIN, NATIVE_SCHEME, NATIVE_HOSTS } from '../src/lib/authRedirects.js';
@@ -67,6 +67,25 @@ test('a real cancellation is silent; a refused build says so', () => {
   assert.match(nativeFailureMessage('NETWORK_ERROR'), /internet connection/);
   assert.match(nativeFailureMessage('GOOGLE_AUTH_FAILED'), /couldn't be completed/);
   assert.match(nativeFailureMessage(undefined), /couldn't be completed/);
+});
+
+test('a refused build offers the browser as a button; it is never opened automatically', () => {
+  assert.equal(offersBrowserSignIn('OAUTH_CONFIGURATION_ERROR'), true);
+  for (const code of ['USER_CANCELLED', 'NETWORK_ERROR', 'GOOGLE_AUTH_FAILED', 'UNSUPPORTED', undefined]) {
+    assert.equal(offersBrowserSignIn(code), false, String(code));
+  }
+  // The native flow only reports the option; it does not start the browser.
+  assert.match(native, /browserOption: offersBrowserSignIn\(err\?\.code\)/);
+  assert.doesNotMatch(native, /browserGoogleSignIn\(\)|loginWithGoogleInBrowser/);
+  // The browser sign-in the button uses is started from a tap handler only.
+  for (const page of ['pages/Login.jsx', 'pages/Signup.jsx']) {
+    const code = src(page);
+    assert.match(code, /\{browserOption && \(\s*<button type="button" onClick=\{handleGoogleBrowser\}/, page);
+    assert.equal(code.match(/loginWithGoogleInBrowser\(\)/g).length, 1, page);
+    assert.match(code, /setBrowserOption\(Boolean\(res\.browserOption\)\)/, page);
+    assert.doesNotMatch(code, /useEffect\([^)]*loginWithGoogleInBrowser/, page);
+  }
+  assert.match(nativeFailureMessage('OAUTH_CONFIGURATION_ERROR'), /in your browser instead/);
 });
 
 test('the native plugin reads Google\'s real status, so "refused" and "cancelled" differ', () => {

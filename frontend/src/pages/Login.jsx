@@ -11,8 +11,9 @@ export default function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [browserOption, setBrowserOption] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const { login, loginWithGoogle, session } = useAuth();
+    const { login, loginWithGoogle, loginWithGoogleInBrowser, session } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const accountDeleted = Boolean(location.state?.accountDeleted);
@@ -44,6 +45,7 @@ export default function Login() {
 
     const handleGoogleLogin = async () => {
         setError('');
+        setBrowserOption(false);
         setGoogleLoading(true);
         const res = await loginWithGoogle();
         if (res.cancelled) {
@@ -53,10 +55,23 @@ export default function Login() {
         }
         if (!res.success) {
             setError(res.message || 'Google login failed');
+            setBrowserOption(Boolean(res.browserOption));
             setGoogleLoading(false);
         }
         // Signed in inside the app: the session change routes to Home.
         if (res.native) setGoogleLoading(false);
+    };
+
+    const handleGoogleBrowser = async () => {
+        setError('');
+        setBrowserOption(false);
+        setGoogleLoading(true);
+        const res = await loginWithGoogleInBrowser();
+        if (!res.success) {
+            setError(res.message || 'Google login failed');
+            setGoogleLoading(false);
+        }
+        // Continues in the browser tab; closing it stops the spinner (useOAuthBrowserReset).
     };
 
     return (
@@ -76,6 +91,14 @@ export default function Login() {
                     <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-center text-sm text-rose-200" role="alert">
                         {error}
                     </div>
+                )}
+
+                {/* Offered only when Google does not recognise this build; never automatic. */}
+                {browserOption && (
+                    <button type="button" onClick={handleGoogleBrowser} disabled={googleLoading}
+                        className="v-press -mt-2 inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-white/15 bg-white/[.04] px-4 text-sm font-bold text-white hover:bg-white/[.08] disabled:opacity-50">
+                        Sign in with Google in your browser
+                    </button>
                 )}
 
                 {/* Email form */}
