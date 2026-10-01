@@ -12,6 +12,7 @@ const appTime = require('../lib/appTime');
 const { toCsv } = require('../lib/csv');
 const { validationError } = require('../lib/validation');
 const telemetry = require('../lib/opsTelemetry');
+const { receiptFromReply } = require('../lib/receiptParse');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -294,17 +295,21 @@ router.post('/scan', protect, receiptScanLimiter, async (req, res, next) => {
     }
 
     const prompt = `You are a receipt parser. Extract only the merchant name, the purchased items with prices, and the total amount in INR from this receipt image.
-Never include card numbers, account numbers, UPI IDs, phone numbers or other identifiers.
+"scannedTotal" is the final amount paid (grand total, after tax and discounts), as a plain number with no currency symbol or commas.
+List at most 30 items. Never include card numbers, account numbers, UPI IDs, phone numbers or other identifiers.
 Return ONLY raw JSON, no markdown:
 {"merchantName": "Store", "items": [{"itemName": "Item", "price": 10.5}], "scannedTotal": 10.5}`;
 
-    let receiptData;
+    let receipt;
     try {
+        // Room for a long bill: a reply cut off mid-JSON cannot be read at all.
         const replyText = await gemini.generateText(
             [prompt, { inlineData: { data: base64Data, mimeType } }],
-            { maxOutputTokens: 1024, temperature: 0 }
+            { maxOutputTokens: 4096, temperature: 0 }
         );
-        receiptData = JSON.parse(replyText.replace(/```json/g, '').replace(/```/g, '').trim());
+        // Tolerant of fences, text around the JSON and amounts written as
+        // text ("₹1,234.50"); see lib/receiptParse.
+        receipt = receiptFromReply(replyText);
     } catch (error) {
         // Receipt output may contain personal data; log only the failure type.
         console.error('Receipt scan failed:', error.code || error.name);
@@ -312,18 +317,11 @@ Return ONLY raw JSON, no markdown:
         return res.status(502).json({ success: false, message: "We couldn't read that receipt. Try a clearer photo, or add it manually." });
     }
 
-    const totalAmount = Number(receiptData?.scannedTotal);
-    if (!Number.isFinite(totalAmount) || totalAmount <= 0 || totalAmount > 10_000_000) {
-        return res.status(422).json({ success: false, message: 'The receipt did not contain a valid total.' });
+    if (!receipt) {
+        telemetry.recordEvent('receipt_scan_failed', { route: 'POST /api/expenses/scan', code: 'NO_TOTAL' });
+        return res.status(422).json({ success: false, message: "We couldn't find the total on that receipt. Try a photo with the total clearly visible, or add it manually." });
     }
-    const amount = Number(totalAmount.toFixed(2));
-    const merchant = String(receiptData.merchantName || 'Unknown').slice(0, 100);
-    const items = Array.isArray(receiptData.items)
-        ? receiptData.items.slice(0, 50).map((i) => ({
-            itemName: String(i?.itemName || '').slice(0, 100),
-            price: Number(i?.price) || 0,
-        }))
-        : [];
+    const { amount, merchant, items } = receipt;
 
     const roundupChillar = roundupFor(amount);
     const { data: expense, error } = await supabase

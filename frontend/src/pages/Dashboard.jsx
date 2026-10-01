@@ -26,6 +26,7 @@ import AffordItCard from '../components/AffordItCard';
 import MoneyStreakCard from '../components/MoneyStreakCard';
 import { MoneyStatus, MoneyHealth, InsightCard } from '../components/HomeCards';
 import { API_URL, apiFetch } from '../lib/apiConfig';
+import { prepareReceiptImage } from '../lib/receiptImage';
 
 // ─── ADD EXPENSE MODAL ────────────────────────────────────────
 // Must match the backend's expense categories (routes/expenses.js). 'Grocery'
@@ -335,36 +336,43 @@ export default function Dashboard() {
     finally { setAddLoading(false); }
   };
 
-  // Auto-dismiss scan toast after 3 seconds
+  // The toast goes away by itself; an error stays long enough to be read.
   useEffect(() => {
     if (!scanToast) return;
-    const t = setTimeout(() => setScanToast(null), 3000);
+    const t = setTimeout(() => setScanToast(null), scanToast.type === 'error' ? 8000 : 5000);
     return () => clearTimeout(t);
   }, [scanToast]);
 
-  const handleScanFile = useCallback((e) => {
+  const handleScanFile = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setScanLoading(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      try {
-        const result = await addScannedExpense({ scannedTotal: 0, merchantName: 'Receipt Scan', imageBase64: reader.result });
-        if (result?.success) {
-          setShowAddModal(false);
-          setScanToast({ type: 'success', message: 'Receipt scanned and added.' });
-        } else {
-          setScanToast({ type: 'error', message: result?.message || 'Failed to scan bill.' });
-        }
-      } catch (err) {
-        console.error('Scan failed:', err);
-        setScanToast({ type: 'error', message: 'Scan failed. Please try again.' });
-      } finally {
-        setScanLoading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+    try {
+      // Shrunk first: a full-size camera photo is larger than the server accepts.
+      const imageBase64 = await prepareReceiptImage(file);
+      const result = await addScannedExpense({ imageBase64 });
+      if (result?.success) {
+        setShowAddModal(false);
+        // Says what was saved, so a wrong amount is noticed (it can be edited in Activity).
+        const amount = Number(result.expense?.amount);
+        const from = String(result.expense?.description || '').replace(/^Receipt from /, '');
+        setScanToast({
+          type: 'success',
+          message: Number.isFinite(amount)
+            ? `Added \u20b9${amount.toLocaleString('en-IN')}${from && from !== 'Unknown' ? ` from ${from}` : ''}. Edit it in Activity if it's wrong.`
+            : 'Receipt scanned and added.',
+        });
+      } else {
+        setScanToast({ type: 'error', message: result?.message || "We couldn't read that receipt. Try a clearer photo, or add it manually." });
       }
-    };
+    } catch (err) {
+      // prepareReceiptImage's own messages are written for people; anything else is generic.
+      const known = err?.code === 'IMAGE_TOO_LARGE' || err?.code === 'IMAGE_UNREADABLE';
+      setScanToast({ type: 'error', message: known ? err.message : "We couldn't scan that. Please try again." });
+    } finally {
+      setScanLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   }, [addScannedExpense]);
 
   const handleLogUpiPayment = async (confirmedAmount) => {
