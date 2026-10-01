@@ -8,7 +8,10 @@ import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 import { clearRemindersForSignOut } from '../lib/debitReminders';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '../plugins/GoogleAuth';
-import { GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, nativeFailureMessage, offersBrowserSignIn } from '../lib/googleSignIn';
+import {
+  GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, nativeFailureMessage,
+  NATIVE_REFUSED_KEY, shouldSkipNative,
+} from '../lib/googleSignIn';
 import { singleFlight } from '../lib/singleFlight';
 import { authErrorKind, authErrorMessage } from '../lib/authMessages';
 import { authLog } from '../lib/authLog';
@@ -222,9 +225,15 @@ export function AuthProvider({ children }) {
       const action = nativeFailureAction(err?.code);
       track('login_failed', { method: 'google', code: nativeFailureCode(err?.code) });
       if (action === 'cancelled') return { success: false, cancelled: true };
-      if (action === 'browser') return null;
-      // browserOption: the page shows a "sign in with your browser" button.
-      return { success: false, message: nativeFailureMessage(err?.code), browserOption: offersBrowserSignIn(err?.code) };
+      if (action === 'browser') {
+        // Remembered, so the next sign-ins go straight to the browser instead
+        // of a sheet that cannot work here (retried after a day).
+        if (err?.code === 'OAUTH_CONFIGURATION_ERROR') {
+          try { window.localStorage.setItem(NATIVE_REFUSED_KEY, String(Date.now())); } catch { /* storage unavailable */ }
+        }
+        return null;
+      }
+      return { success: false, message: nativeFailureMessage(err?.code) };
     }
     const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: nonce.raw });
     if (error) {
@@ -235,6 +244,7 @@ export function AuthProvider({ children }) {
         : 'Google sign-in could not be verified. Please try again.' };
     }
     // onAuthStateChange now holds the session and routes to the app.
+    try { window.localStorage.removeItem(NATIVE_REFUSED_KEY); } catch { /* storage unavailable */ }
     authLog('AUTH_COMPLETE');
     return { success: true, native: true };
   };
@@ -248,9 +258,15 @@ export function AuthProvider({ children }) {
     }
     try {
       if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
-        const native = await nativeGoogleSignIn();
-        if (native) return native;
+        let refusedAt = null;
+        try { refusedAt = window.localStorage.getItem(NATIVE_REFUSED_KEY); } catch { /* storage unavailable */ }
+        if (!shouldSkipNative(refusedAt)) {
+          const native = await nativeGoogleSignIn();
+          if (native) return native;
+        }
       }
+      // The website; a phone without Google Play services; or a build Google
+      // does not recognise. One tap still signs the person in.
       return await browserGoogleSignIn();
     } catch {
       authLog('GOOGLE_START_FAILED');
@@ -262,19 +278,6 @@ export function AuthProvider({ children }) {
   // (These functions use nothing from this component's state, so the first
   // render's copy is the one kept.)
   const [loginWithGoogle] = useState(() => singleFlight(startGoogleSignIn, () => authLog('AUTH_ALREADY_RUNNING')));
-
-  // The person's own choice, from the button shown when Google does not
-  // recognise this build (see offersBrowserSignIn). Never called automatically.
-  const [loginWithGoogleInBrowser] = useState(() => singleFlight(async () => {
-    track('google_sign_in_started', { method: 'google_browser' });
-    authLog('AUTH_START');
-    try {
-      return await browserGoogleSignIn();
-    } catch {
-      authLog('GOOGLE_START_FAILED');
-      return { success: false, message: 'Google sign-in could not be started. Please try again.' };
-    }
-  }, () => authLog('AUTH_ALREADY_RUNNING')));
 
   /**
    * Send a password-reset email. The response is deliberately the same
@@ -359,7 +362,6 @@ export function AuthProvider({ children }) {
         login,
         signup,
         loginWithGoogle,
-        loginWithGoogleInBrowser,
         requestPasswordReset,
         updatePassword,
         logout,

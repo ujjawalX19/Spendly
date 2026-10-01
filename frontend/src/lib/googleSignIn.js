@@ -31,38 +31,42 @@ export async function makeNonce(cryptoImpl = globalThis.crypto) {
  * (GoogleAuthErrors.java).
  *
  *   cancelled — USER_CANCELLED: the user closed Google's sheet. Stay on the
- *               login screen, no error.
+ *               login screen, no error, and never open a browser.
  *   message   — the sign-in cannot finish; say why, in plain words:
- *                 OAUTH_CONFIGURATION_ERROR  Google does not recognise this build
  *                 NETWORK_ERROR              no connection to Google
  *                 GOOGLE_AUTH_FAILED         anything else
- *   browser   — UNSUPPORTED: this phone has no (usable) Google Play services,
- *               so the in-app sheet cannot exist. The browser sign-in is the
- *               only way to use a Google account there. This is the one case
- *               in which Android ever opens a browser.
+ *   browser   — the in-app sheet cannot sign this person in, but the browser
+ *               sign-in can, so "Continue with Google" carries straight on
+ *               there and one tap still signs them in:
+ *                 OAUTH_CONFIGURATION_ERROR  Google does not recognise this
+ *                                            build (no Android OAuth client for
+ *                                            its package + signing certificate)
+ *                 UNSUPPORTED                no usable Google Play services
+ *               A build Google recognises never reaches this.
  */
 export function nativeFailureAction(code) {
   if (code === 'USER_CANCELLED') return 'cancelled';
-  if (code === 'UNSUPPORTED') return 'browser';
+  if (code === 'OAUTH_CONFIGURATION_ERROR' || code === 'UNSUPPORTED') return 'browser';
   return 'message';
 }
 
 /**
- * Whether the person is offered the browser sign-in as their own choice, with
- * a button under the message. Only when Google does not recognise this build:
- * the in-app sheet can never work there, but the browser sign-in can, and
- * without the offer a Google-only user could not get in at all. The app never
- * opens the browser by itself for this.
+ * After Google refuses the in-app sheet, the app goes straight to the browser
+ * for the next sign-ins instead of showing a sheet that cannot work (and
+ * asking for the account twice). It tries the in-app sheet again after a day,
+ * so a build Google starts recognising switches over by itself.
  */
-export function offersBrowserSignIn(code) {
-  return code === 'OAUTH_CONFIGURATION_ERROR';
+export const NATIVE_REFUSED_KEY = 'vittova.googleNativeRefusedAt';
+export const NATIVE_RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
+
+/** @param {string|number|null} refusedAt  ms timestamp stored under NATIVE_REFUSED_KEY */
+export function shouldSkipNative(refusedAt, now = Date.now()) {
+  const t = Number(refusedAt);
+  return Number.isFinite(t) && t > 0 && now - t >= 0 && now - t < NATIVE_RETRY_AFTER_MS;
 }
 
 /** The message for a 'message' result. Never Google's own text. */
 export function nativeFailureMessage(code) {
-  if (code === 'OAUTH_CONFIGURATION_ERROR') {
-    return "Google sign-in inside the app isn't available in this version yet. You can sign in with Google in your browser instead, or use your email and password.";
-  }
   if (code === 'NETWORK_ERROR') return "We couldn't reach Google. Check your internet connection and try again.";
   return "Google sign-in couldn't be completed. Please try again.";
 }

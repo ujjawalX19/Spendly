@@ -259,8 +259,9 @@ function ToggleRow({ icon: Icon, label, detail, on, busy, onToggle, disabled }) 
       <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle} disabled={disabled || busy}
         className="v-press flex min-h-[44px] shrink-0 items-center gap-2 disabled:opacity-40">
         <span className="text-xs font-bold text-zinc-400">{on ? 'On' : 'Off'}</span>
-        <span className={`relative h-7 w-12 rounded-full transition-colors ${on ? 'bg-lime-400' : 'bg-zinc-700'}`}>
-          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform duration-150 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
+        {/* left-0: without it the knob starts at the button's centred text position and sits outside the track. */}
+        <span className={`relative block h-7 w-12 shrink-0 rounded-full transition-colors ${on ? 'bg-lime-400' : 'bg-zinc-700'}`}>
+          <span className={`absolute left-0 top-1 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-150 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
         </span>
       </button>
     </motion.div>
