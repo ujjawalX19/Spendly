@@ -20,6 +20,7 @@ import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 import { releaseLaunchScreen } from './plugins/LaunchScreen';
 import { loaderShown } from './lib/appReady';
 import AgeGate from './components/AgeGate';
+import UpdateGate from './components/UpdateGate';
 import { ScrollToTopOnNavigate, StatusBarScrim } from './components/ScreenChrome';
 
 // Login and Signup stay eagerly imported: they are the first screen a signed
@@ -301,6 +302,8 @@ function App() {
   return (
     <ThemeProvider>
       {splash && <StartupSplash onDone={() => setSplash(false)} />}
+      {/* A build the server no longer supports must update (Google Play). */}
+      <UpdateGate />
       <AuthProvider>
         <ProProvider>
           {/* Uploads payments captured while Vittova was closed, on any screen. */}

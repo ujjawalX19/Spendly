@@ -1,9 +1,9 @@
 // Google sign-in on Android happens inside the app: Google's account sheet →
-// Google ID token → supabase.auth.signInWithIdToken. One tap on "Continue with
-// Google" always ends in a sign-in: when the in-app sheet cannot work (Google
-// does not recognise the build, or the phone has no Play services) the same tap
-// carries on to the browser sign-in. A build Google refuses is never mistaken
-// for the user cancelling (that mistake made the button silently do nothing).
+// Google ID token → supabase.auth.signInWithIdToken. The app never opens a
+// browser to sign in. When the in-app sheet cannot work (Google does not
+// recognise the build, or the phone has no Play services) the login screen
+// says so and points to email sign-in. A build Google refuses is never
+// mistaken for the user cancelling (that made the button silently do nothing).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -11,8 +11,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  makeNonce, nativeFailureAction, nativeFailureMessage, nativeFailureCode, shouldSkipNative,
-  NATIVE_REFUSED_KEY, NATIVE_RETRY_AFTER_MS, GOOGLE_WEB_CLIENT_ID,
+  makeNonce, nativeFailureAction, nativeFailureMessage, nativeFailureCode, GOOGLE_WEB_CLIENT_ID,
 } from '../src/lib/googleSignIn.js';
 import { singleFlight } from '../src/lib/singleFlight.js';
 import { APP_CALLBACK_PATH, WEB_ORIGIN, NATIVE_SCHEME, NATIVE_HOSTS } from '../src/lib/authRedirects.js';
@@ -37,58 +36,40 @@ test('the nonce sent to Google is the SHA-256 of the raw nonce Supabase receives
 test('Android signs in inside the app: ID token and raw nonce to Supabase, nothing else trusted', () => {
   assert.match(native, /GoogleAuth\.signIn\(\{ serverClientId: GOOGLE_WEB_CLIENT_ID, nonce: nonce\.hashed \}\)/);
   assert.match(native, /signInWithIdToken\(\{ provider: 'google', token: idToken, nonce: nonce\.raw \}\)/);
-  // The native flow itself never opens a browser.
   assert.doesNotMatch(native, /Browser\.open|signInWithOAuth/);
-  // Android tries the in-app sheet first.
-  assert.ok(start.indexOf('nativeGoogleSignIn()') < start.indexOf('browserGoogleSignIn()'));
-  assert.match(start, /Capacitor\.getPlatform\(\) === 'android'/);
+  // In the app, the native result is final: the website's redirect is not reached.
+  assert.match(start, /if \(Capacitor\.isNativePlatform\(\)\) return await nativeGoogleSignIn\(\);\s*return await browserGoogleSignIn\(\);/);
 });
 
-test('one tap always signs in: a refused build or a phone without Play services goes on to the browser', () => {
-  assert.equal(nativeFailureAction('OAUTH_CONFIGURATION_ERROR'), 'browser');
-  assert.equal(nativeFailureAction('UNSUPPORTED'), 'browser');
-  // In the code: the native result is final unless it is exactly "browser".
-  assert.match(native, /if \(action === 'browser'\) \{/);
-  assert.match(native, /return null;/);
-  assert.match(start, /return await browserGoogleSignIn\(\);/);
-  assert.equal(auth.match(/Browser\.open\(/g).length, 1, 'the browser tab is opened in exactly one place');
-  // No dead end: there is no extra button or message to find.
+test('the app never opens a browser to sign in', () => {
+  // No Custom Tab anywhere in sign-in, and nothing remembered to route around the sheet.
+  assert.doesNotMatch(auth, /Browser\.open|@capacitor\/browser|skipBrowserRedirect|googleNativeRefusedAt/);
+  // No result of the in-app sheet asks for a browser.
+  for (const c of ['OAUTH_CONFIGURATION_ERROR', 'UNSUPPORTED', 'NETWORK_ERROR', 'GOOGLE_AUTH_FAILED', undefined]) {
+    assert.equal(nativeFailureAction(c), 'message', String(c));
+  }
+  // A build Google does not recognise, or a phone without Play services: a
+  // plain message that points to email sign-in.
+  assert.match(nativeFailureMessage('OAUTH_CONFIGURATION_ERROR'), /isn't available in this version .* email and password/);
+  assert.match(nativeFailureMessage('UNSUPPORTED'), /Google Play services.* email and password/);
+  // The only OAuth redirect is the website's.
+  assert.equal(auth.match(/signInWithOAuth\(/g).length, 1);
+  const web = auth.slice(auth.indexOf('const browserGoogleSignIn'), auth.indexOf('const nativeGoogleSignIn'));
+  assert.match(web, /signInWithOAuth\(/);
   for (const page of ['pages/Login.jsx', 'pages/Signup.jsx']) {
-    assert.doesNotMatch(src(page), /browserOption|loginWithGoogleInBrowser/, page);
+    assert.doesNotMatch(src(page), /Browser\.open|browserOption|loginWithGoogleInBrowser/, page);
   }
 });
 
-test('a real cancellation never opens a browser, and other failures say why', () => {
+test('a real cancellation is silent, and other failures say why', () => {
   assert.equal(nativeFailureAction('USER_CANCELLED'), 'cancelled');
-  // Handled, and returned, before the browser case is reached.
-  assert.ok(native.indexOf("if (action === 'cancelled') return { success: false, cancelled: true };") > 0);
-  assert.ok(native.indexOf("action === 'cancelled'") < native.indexOf("action === 'browser'"));
-
-  assert.equal(nativeFailureAction('NETWORK_ERROR'), 'message');
-  assert.equal(nativeFailureAction('GOOGLE_AUTH_FAILED'), 'message');
-  assert.equal(nativeFailureAction(undefined), 'message');
+  assert.match(native, /if \(nativeFailureAction\(err\?\.code\) === 'cancelled'\) return \{ success: false, cancelled: true \};/);
   assert.match(nativeFailureMessage('NETWORK_ERROR'), /internet connection/);
   assert.match(nativeFailureMessage('GOOGLE_AUTH_FAILED'), /couldn't be completed/);
   // Never Google's or the console's wording.
-  for (const c of ['NETWORK_ERROR', 'GOOGLE_AUTH_FAILED', 'OAUTH_CONFIGURATION_ERROR', undefined]) {
-    assert.doesNotMatch(nativeFailureMessage(c), /SHA|OAuth|console|UNREGISTERED|reauth/i);
+  for (const c of ['NETWORK_ERROR', 'GOOGLE_AUTH_FAILED', 'OAUTH_CONFIGURATION_ERROR', 'UNSUPPORTED', undefined]) {
+    assert.doesNotMatch(nativeFailureMessage(c), /SHA|OAuth|console|UNREGISTERED|reauth|supabase/i);
   }
-});
-
-test('a refusal is remembered for ten minutes, so a retry does not ask for the account twice; then the sheet is tried again', () => {
-  const now = 1_790_000_000_000;
-  assert.equal(shouldSkipNative(String(now - 60_000), now), true);
-  assert.equal(shouldSkipNative(String(now - NATIVE_RETRY_AFTER_MS + 1), now), true);
-  // After ten minutes: try the in-app sheet again (a build Google now recognises switches over at once).
-  assert.equal(shouldSkipNative(String(now - NATIVE_RETRY_AFTER_MS), now), false);
-  // Never refused, cleared, garbage, or a clock set back: use the in-app sheet.
-  for (const v of [null, undefined, '', 'abc', '0', String(now + 5000)]) assert.equal(shouldSkipNative(v, now), false, String(v));
-  assert.equal(NATIVE_RETRY_AFTER_MS, 10 * 60 * 1000);
-  // Only a configuration refusal is remembered, and a successful in-app sign-in forgets it.
-  assert.match(native, /if \(err\?\.code === 'OAUTH_CONFIGURATION_ERROR'\) \{\s*try \{ window\.localStorage\.setItem\(NATIVE_REFUSED_KEY/);
-  assert.match(native, /localStorage\.removeItem\(NATIVE_REFUSED_KEY\)/);
-  assert.match(start, /if \(!shouldSkipNative\(refusedAt\)\)/);
-  assert.equal(NATIVE_REFUSED_KEY, 'vittova.googleNativeRefusedAt');
 });
 
 test('the native plugin reads Google\'s real status, so "refused" and "cancelled" differ', () => {
@@ -136,7 +117,7 @@ test('there is one Supabase client and one session', () => {
   assert.doesNotMatch(java('GoogleAuthPlugin.java'), /SharedPreferences|getSharedPreferences/);
 });
 
-test('the browser return path (website, and phones without Play services) is unchanged', () => {
+test('the return path for email links (confirmation, password reset) is unchanged', () => {
   assert.equal(`${WEB_ORIGIN}${APP_CALLBACK_PATH}`, 'https://vittova.in/auth/app-callback');
   assert.equal(APP_LOGIN_URL, `${NATIVE_SCHEME}://${NATIVE_HOSTS.login}`);
   assert.equal(APP_PACKAGE, 'com.vittova.app');

@@ -86,8 +86,15 @@ plugin now reads Google's own status and message from the result;
 `GoogleAuthErrors` turns it into `OAUTH_CONFIGURATION_ERROR`, and the app says
 "Google sign-in isn't available in this version of the app yet" instead.
 
-The browser flow described below is how the **website** signs in. The Android
-app uses it only on a phone with no Google Play services (`UNSUPPORTED`).
+The browser flow described below is how the **website** signs in. **The
+Android app never opens a browser to sign in (versionCode 26).** Builds 16 to 25
+fell back to a Chrome Custom Tab when Google refused the build or the phone had
+no Play services, which left people looking at a `supabase.co` page. Now every
+result of Google's sheet ends inside Vittova: a refused build or a phone
+without Play services gets a message that points to email sign-in.
+
+The deep links below remain for the two flows that start from an email: the
+sign-up confirmation link and the password-reset link.
 
 ## Android handling (`frontend/src/App.jsx` → `DeepLinkHandler`)
 
@@ -102,8 +109,8 @@ app uses it only on a phone with no Google Play services (`UNSUPPORTED`).
   "This link has expired or has already been used" / "Sign-in was cancelled".
 - A missing verifier (link opened on another device) shows "Open the link on
   the same device where you requested it."
-- Google sign-in opens in a Chrome Custom Tab (`@capacitor/browser`), never in
-  the WebView. Closing the tab resets the button (`useOAuthBrowserReset`).
+- Google sign-in does not come through here in the app; it is Google's in-app
+  sheet (above).
 
 ## Password reset
 

@@ -1,16 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabaseClient';
-import { isNative, isRecoveryReturn, loginRedirectUrl, passwordResetRedirectUrl, RESET_REQUEST_KEY } from '../lib/authRedirects';
+import { isRecoveryReturn, loginRedirectUrl, passwordResetRedirectUrl, RESET_REQUEST_KEY } from '../lib/authRedirects';
 import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
-import { GOOGLE_PENDING_KEY } from '../lib/authCallbackOutcome';
 import { clearRemindersForSignOut } from '../lib/debitReminders';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '../plugins/GoogleAuth';
 import {
   GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, nativeFailureMessage,
-  NATIVE_REFUSED_KEY, shouldSkipNative,
 } from '../lib/googleSignIn';
 import { singleFlight } from '../lib/singleFlight';
 import { authErrorKind, authErrorMessage } from '../lib/authMessages';
@@ -168,37 +165,18 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Google sign-in in a browser. This is how the WEBSITE signs in (an ordinary
-   * redirect). The Android app uses it only on a phone with no Google Play
-   * services, where Google's in-app sheet cannot exist: the provider URL opens
-   * in a Chrome Custom Tab and returns through vittova.in/auth/app-callback to
-   * spendly://login-callback (DeepLinkHandler in App.jsx).
+   * Google sign-in on the WEBSITE: an ordinary redirect to Google and back.
+   * The Android app never uses this; it signs in with Google's own sheet
+   * (nativeGoogleSignIn) and opens no browser.
    */
   const browserGoogleSignIn = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: loginRedirectUrl(),
-        skipBrowserRedirect: isNative(),
-      },
+      options: { redirectTo: loginRedirectUrl() },
     });
     if (error) {
       trackAuthFailure('login_failed', 'google', error);
-      authLog('GOOGLE_START_FAILED');
       return { success: false, message: authErrorMessage('google', error) };
-    }
-
-    if (isNative()) {
-      if (!data?.url) {
-        track('login_failed', { method: 'google', code: 'no_provider_url' });
-        authLog('GOOGLE_START_FAILED');
-        return { success: false, message: 'Could not start Google sign-in. Please try again.' };
-      }
-      // Lets the callback word its messages for Google rather than for an
-      // email link (the same spendly://login-callback finishes both).
-      try { window.localStorage.setItem(GOOGLE_PENDING_KEY, String(Date.now())); } catch { /* storage unavailable */ }
-      authLog('GOOGLE_BROWSER_OPENED');
-      await Browser.open({ url: data.url, presentationStyle: 'popover' });
     }
     return { success: true };
   };
@@ -207,14 +185,11 @@ export function AuthProvider({ children }) {
    * Google sign-in inside the Android app. Google's own account sheet opens
    * over Vittova (GoogleAuthPlugin); the ID token it returns is exchanged with
    * Supabase, which checks Google's signature, the audience and the nonce. The
-   * user never leaves the app.
-   *
-   * Returns null only when this phone cannot show Google's sheet at all (no
-   * Google Play services), so the caller uses the browser there. Every other
-   * failure is reported as what it is: a cancellation stays silent, anything
-   * else gets a plain message. In particular, a build Google does not
-   * recognise (no Android OAuth client for its package and signing
-   * certificate) says so instead of doing nothing.
+   * user never leaves the app, whatever the result: a cancellation stays
+   * silent, and every failure gets a plain message on the login screen. A
+   * build Google does not recognise (no Android OAuth client for its package
+   * and signing certificate) says that Google sign-in is not available and
+   * points to email sign-in; it does not open a browser.
    */
   const nativeGoogleSignIn = async () => {
     const nonce = await makeNonce();
@@ -222,17 +197,8 @@ export function AuthProvider({ children }) {
     try {
       ({ idToken } = await GoogleAuth.signIn({ serverClientId: GOOGLE_WEB_CLIENT_ID, nonce: nonce.hashed }));
     } catch (err) {
-      const action = nativeFailureAction(err?.code);
       track('login_failed', { method: 'google', code: nativeFailureCode(err?.code) });
-      if (action === 'cancelled') return { success: false, cancelled: true };
-      if (action === 'browser') {
-        // Remembered, so the next sign-ins go straight to the browser instead
-        // of a sheet that cannot work here (retried after a day).
-        if (err?.code === 'OAUTH_CONFIGURATION_ERROR') {
-          try { window.localStorage.setItem(NATIVE_REFUSED_KEY, String(Date.now())); } catch { /* storage unavailable */ }
-        }
-        return null;
-      }
+      if (nativeFailureAction(err?.code) === 'cancelled') return { success: false, cancelled: true };
       return { success: false, message: nativeFailureMessage(err?.code) };
     }
     const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: nonce.raw });
@@ -244,7 +210,6 @@ export function AuthProvider({ children }) {
         : 'Google sign-in could not be verified. Please try again.' };
     }
     // onAuthStateChange now holds the session and routes to the app.
-    try { window.localStorage.removeItem(NATIVE_REFUSED_KEY); } catch { /* storage unavailable */ }
     authLog('AUTH_COMPLETE');
     return { success: true, native: true };
   };
@@ -257,16 +222,8 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'You appear to be offline. Connect to the internet and try again.' };
     }
     try {
-      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
-        let refusedAt = null;
-        try { refusedAt = window.localStorage.getItem(NATIVE_REFUSED_KEY); } catch { /* storage unavailable */ }
-        if (!shouldSkipNative(refusedAt)) {
-          const native = await nativeGoogleSignIn();
-          if (native) return native;
-        }
-      }
-      // The website; a phone without Google Play services; or a build Google
-      // does not recognise. One tap still signs the person in.
+      // The app: Google's sheet, inside Vittova. The website: a redirect.
+      if (Capacitor.isNativePlatform()) return await nativeGoogleSignIn();
       return await browserGoogleSignIn();
     } catch {
       authLog('GOOGLE_START_FAILED');

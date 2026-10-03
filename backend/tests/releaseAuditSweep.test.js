@@ -39,6 +39,7 @@ function discoverRoutes() {
 // Routes that are intentionally reachable without a user session, and why.
 const PUBLIC = [
     [/^GET \/api\/health$/, 'health check'],
+    [/^GET \/api\/app-config$/, 'oldest supported app build: read before sign-in, one number'],
     [/^POST \/api\/telemetry/, 'anonymous crash/usage events (allowlisted names, no user data)'],
     [/^POST \/api\/pro\/rtdn$/, 'Google Play push: authenticated by Google-signed OIDC token instead'],
 ];
@@ -78,8 +79,11 @@ test('every non-public route refuses a request with no token, a malformed token 
 test('public routes are the documented few and leak nothing personal', async () => {
     const pub = discoverRoutes().filter(isPublic).map((r) => `${r.method} ${r.path}`);
     for (const p of pub) assert.ok(PUBLIC.some(([re]) => re.test(p)), p);
-    // /api/health is declared in app.js itself, so discovery lists only these two.
-    assert.deepEqual(pub.sort(), ['POST /api/pro/rtdn', 'POST /api/telemetry/events']);
+    // /api/health is declared in app.js itself, so discovery lists only these.
+    assert.deepEqual(pub.sort(), ['GET /api/app-config', 'POST /api/pro/rtdn', 'POST /api/telemetry/events']);
+    const config = await t.request('GET', '/api/app-config');
+    assert.deepEqual(Object.keys(config.body).sort(), ['android', 'success']);
+    assert.deepEqual(Object.keys(config.body.android), ['minSupportedVersionCode']);
     const health = await t.request('GET', '/api/health');
     assert.equal(health.status, 200);
     assert.doesNotMatch(health.text, /@|user_id|email|key/i);

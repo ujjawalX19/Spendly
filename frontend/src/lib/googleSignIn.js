@@ -28,47 +28,28 @@ export async function makeNonce(cryptoImpl = globalThis.crypto) {
 
 /**
  * What the app does for each result code from GoogleAuthPlugin
- * (GoogleAuthErrors.java).
+ * (GoogleAuthErrors.java). The Android app never opens a browser to sign in:
+ * every result ends inside Vittova.
  *
  *   cancelled — USER_CANCELLED: the user closed Google's sheet. Stay on the
- *               login screen, no error, and never open a browser.
+ *               login screen, no error.
  *   message   — the sign-in cannot finish; say why, in plain words:
  *                 NETWORK_ERROR              no connection to Google
- *                 GOOGLE_AUTH_FAILED         anything else
- *   browser   — the in-app sheet cannot sign this person in, but the browser
- *               sign-in can, so "Continue with Google" carries straight on
- *               there and one tap still signs them in:
  *                 OAUTH_CONFIGURATION_ERROR  Google does not recognise this
  *                                            build (no Android OAuth client for
  *                                            its package + signing certificate)
  *                 UNSUPPORTED                no usable Google Play services
- *               A build Google recognises never reaches this.
+ *                 GOOGLE_AUTH_FAILED         anything else
  */
 export function nativeFailureAction(code) {
-  if (code === 'USER_CANCELLED') return 'cancelled';
-  if (code === 'OAUTH_CONFIGURATION_ERROR' || code === 'UNSUPPORTED') return 'browser';
-  return 'message';
-}
-
-/**
- * After Google refuses the in-app sheet, the app goes straight to the browser
- * for a retry made in the next few minutes instead of showing a sheet that
- * just failed (and asking for the account twice). After ten minutes it tries
- * the in-app sheet again, so a build Google starts recognising (an Android
- * OAuth client added in Google Cloud) switches to in-app sign-in at once.
- */
-export const NATIVE_REFUSED_KEY = 'vittova.googleNativeRefusedAt';
-export const NATIVE_RETRY_AFTER_MS = 10 * 60 * 1000;
-
-/** @param {string|number|null} refusedAt  ms timestamp stored under NATIVE_REFUSED_KEY */
-export function shouldSkipNative(refusedAt, now = Date.now()) {
-  const t = Number(refusedAt);
-  return Number.isFinite(t) && t > 0 && now - t >= 0 && now - t < NATIVE_RETRY_AFTER_MS;
+  return code === 'USER_CANCELLED' ? 'cancelled' : 'message';
 }
 
 /** The message for a 'message' result. Never Google's own text. */
 export function nativeFailureMessage(code) {
   if (code === 'NETWORK_ERROR') return "We couldn't reach Google. Check your internet connection and try again.";
+  if (code === 'OAUTH_CONFIGURATION_ERROR') return "Google sign-in isn't available in this version of Vittova yet. Please sign in with your email and password.";
+  if (code === 'UNSUPPORTED') return "Google sign-in needs Google Play services, which this phone doesn't have. Please sign in with your email and password.";
   return "Google sign-in couldn't be completed. Please try again.";
 }
 

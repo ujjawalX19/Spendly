@@ -87,6 +87,7 @@ function createApp() {
     app.use('/api/money-streak', require('./routes/moneyStreak'));
     app.use('/api/subscription-audit', require('./routes/subscriptionAudit'));
     app.use('/api/features', require('./routes/features'));
+    app.use('/api/app-config', require('./routes/appConfig'));
     app.use('/api/challenges', require('./routes/challenges'));
     app.use('/api/save-to-earn', require('./routes/saveToEarn'));
     app.use('/api/partner', require('./routes/partner'));

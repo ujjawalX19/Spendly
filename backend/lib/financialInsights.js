@@ -551,7 +551,7 @@ function composeAnswer(intent, f, question) {
             return answer({
                 direct: "Vittova doesn't track loans or card balances yet, so I can't see your debts, but the order that usually works is clear.",
                 numbers: [room ? `Budget room beyond your usual pace this month: ${inr(room)}` : `Safe to spend remaining: ${inr(f.safeToSpendRemaining)}`, f.savingsTarget ? `Monthly savings target: ${inr(f.savingsTarget)}` : null],
-                reasoning: 'Credit card and personal loan interest is usually far higher than what savings earn, so paying it down is often the best guaranteed return.',
+                reasoning: 'Credit card and personal loan interest is usually far higher than what savings earn, so paying it down usually saves more than the same money would earn elsewhere.',
                 action: '1. Pay at least the minimum on every debt, on time.\n2. Put extra money on the highest-interest debt first.\n3. Keep a small emergency fund so a surprise does not add new card debt.\n4. Stop adding to card balances you cannot clear in full.',
                 next: room ? `If this month ends as expected, put ${inr(room)} towards your highest-interest debt.` : 'List each debt with its interest rate and minimum payment, highest rate first.',
                 note: 'General guidance, not advice on a specific loan. For serious debt stress, speak to your lender about restructuring early.',

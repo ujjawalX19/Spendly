@@ -20,7 +20,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Bump versionCode for every upload to Play. versionName is what
         // users see.
-        versionCode 25
+        versionCode 26
         versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -80,6 +80,9 @@ dependencies {
     // In-app "Sign in with Google" (GoogleAuthPlugin): Google's sign-in sheet,
     // with Google's real status on failure. No browser hand-off.
     implementation "com.google.android.gms:play-services-auth:$playServicesAuthVersion"
+    // Google Play in-app updates (AppUpdatePlugin): an immediate update for a
+    // build the server no longer supports. Google Play does the download.
+    implementation "com.google.android.play:app-update:$playAppUpdateVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     // A real org.json for the JVM unit tests (android.jar only has stubs), so

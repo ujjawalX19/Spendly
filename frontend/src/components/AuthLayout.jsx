@@ -109,7 +109,7 @@ export function OrDivider() {
   );
 }
 
-/** Continue with Google: native Credential Manager on Android, the browser elsewhere (see AuthContext). */
+/** Continue with Google: Google's in-app sheet on Android, a redirect on the website (see AuthContext). */
 export function GoogleButton({ onClick, loading, disabled }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled || loading}
