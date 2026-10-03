@@ -1,20 +1,23 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, MailCheck, Loader2, ArrowLeft } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import { useAuth } from '../contexts/AuthContext';
+import EmailCodeForm from '../components/EmailCodeForm';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Forgot password → Supabase sends a reset email → the link opens
- * /reset-password (web) or spendly://reset-password (Android).
+ * Forgot password → Supabase sends a reset email → the code in it is typed
+ * here (no browser), or its link opens /reset-password (web) or
+ * spendly://reset-password (Android). Either way the set-password form is next.
  *
  * The confirmation is identical whether or not the address has an account,
  * so this screen cannot be used to find out who uses Vittova.
  */
 export default function ForgotPassword() {
-    const { requestPasswordReset } = useAuth();
+    const { requestPasswordReset, confirmEmailCode } = useAuth();
+    const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const [sent, setSent] = useState(false);
@@ -45,16 +48,25 @@ export default function ForgotPassword() {
                     <div>
                         <h1 className="text-3xl font-extrabold tracking-tight">Check your inbox</h1>
                         <p className="mt-3 text-sm leading-6 text-zinc-400">
-                            If an account exists for <strong className="text-zinc-100">{email.trim()}</strong>, we've sent a link to reset your password.
-                            Open it on this device. The link expires after a short time and can be used once.
+                            If an account exists for <strong className="text-zinc-100">{email.trim()}</strong>, we've sent an email to reset your password.
+                            Enter the code from it. It expires after a short time and can be used once.
                         </p>
                     </div>
-                    <Link to="/login" className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-lime-400 text-sm font-extrabold text-black">
+                    <EmailCodeForm
+                        submitLabel="Continue"
+                        onVerify={async (code) => {
+                            const res = await confirmEmailCode(email.trim(), code, 'recovery');
+                            if (res.success) navigate('/reset-password', { replace: true });
+                            return res;
+                        }}
+                        onResend={() => requestPasswordReset(email.trim())}
+                    />
+                    <p className="text-xs leading-5 text-zinc-500">
+                        No code in the email? Open the link in it on this device instead.
+                    </p>
+                    <Link to="/login" className="inline-flex min-h-[44px] items-center text-sm text-zinc-400 underline">
                         Back to sign in
                     </Link>
-                    <button type="button" onClick={() => setSent(false)} className="text-xs text-zinc-500 underline">
-                        Didn't get it? Try again
-                    </button>
                 </div>
             </AuthLayout>
         );
@@ -65,7 +77,7 @@ export default function ForgotPassword() {
             <div className="flex flex-col gap-6">
                 <div>
                     <h1 className="text-3xl font-extrabold tracking-tight">Forgot your password?</h1>
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">Enter the email you signed up with and we'll send you a reset link.</p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">Enter the email you signed up with and we'll send you a reset code.</p>
                 </div>
 
                 {error && (
@@ -94,7 +106,7 @@ export default function ForgotPassword() {
                         disabled={loading}
                         className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-lime-400 text-sm font-extrabold text-black disabled:opacity-50"
                     >
-                        {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : 'Send reset link'}
+                        {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : 'Send reset code'}
                     </button>
                 </form>
 

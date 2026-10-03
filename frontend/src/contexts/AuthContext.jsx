@@ -259,6 +259,31 @@ export function AuthProvider({ children }) {
     return { success: true };
   };
 
+  /**
+   * Finish an email step with the code typed from the email, inside the app
+   * (no link, no browser). Supabase checks the code and returns the session.
+   *   'signup'    confirms the address: the person is signed in.
+   *   'recovery'  opens a recovery session: the set-password form is next.
+   * The link in the same email does the same thing through the deep link.
+   */
+  const confirmEmailCode = async (email, code, type) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token: code, type });
+    if (error) {
+      trackAuthFailure(type === 'signup' ? 'signup_failed' : 'password_reset_failed', 'email', error);
+      return { success: false, message: authErrorMessage('verify_code', error) };
+    }
+    if (type === 'recovery') markPasswordRecovery(true);
+    else authLog('AUTH_COMPLETE');
+    return { success: true };
+  };
+
+  /** Send the sign-up confirmation email again. */
+  const resendSignupEmail = async (email) => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: loginRedirectUrl() } });
+    if (error) return { success: false, message: authErrorMessage('resend', error) };
+    return { success: true };
+  };
+
   /** Set a new password for the signed-in (recovery) session. */
   const updatePassword = async (password) => {
     const { error } = await supabase.auth.updateUser({ password });
@@ -320,6 +345,8 @@ export function AuthProvider({ children }) {
         signup,
         loginWithGoogle,
         requestPasswordReset,
+        confirmEmailCode,
+        resendSignupEmail,
         updatePassword,
         logout,
         applyServerProfile,

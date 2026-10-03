@@ -5,6 +5,7 @@ import { Eye, EyeOff, LockKeyhole, Mail, MailCheck, UserRound, Loader2 } from 'l
 import AuthLayout, { GoogleButton, OrDivider } from '../components/AuthLayout';
 import { MONTHS, yearOptions, toBirthYearMonth, ageFrom, ADULT_AGE, rememberPendingAge } from '../lib/age';
 import { useOAuthBrowserReset } from '../hooks/useOAuthBrowserReset';
+import EmailCodeForm from '../components/EmailCodeForm';
 
 export default function Signup() {
     const [name, setName] = useState('');
@@ -18,7 +19,7 @@ export default function Signup() {
     const [birthMonth, setBirthMonth] = useState('');
     const [birthYear, setBirthYear] = useState('');
     const [underAge, setUnderAge] = useState(false);
-    const { signup, loginWithGoogle, session } = useAuth();
+    const { signup, loginWithGoogle, session, confirmEmailCode, resendSignupEmail } = useAuth();
     const navigate = useNavigate();
     useOAuthBrowserReset(() => setGoogleLoading(false));
 
@@ -74,19 +75,22 @@ export default function Signup() {
                         <p className="text-xs font-bold tracking-wider uppercase text-lime-300">ONE MORE STEP</p>
                         <h2 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight">Check your inbox.</h2>
                         <p className="mt-3 text-sm leading-6 text-zinc-400">
-                            We sent a confirmation link to <strong className="text-zinc-100">{email}</strong>.
-                            Open the link on this device to activate your account.
+                            We sent an email to <strong className="text-zinc-100">{email}</strong>.
+                            Enter the code from it to activate your account.
                         </p>
                     </div>
-                    <Link
-                        to="/login"
-                        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-lime-400 text-sm font-extrabold text-black transition hover:bg-lime-300"
-                    >
-                        Go to Login
-                    </Link>
+                    {/* A confirmed code signs the person in; the effect above then opens the app. */}
+                    <EmailCodeForm
+                        submitLabel="Activate account"
+                        onVerify={(code) => confirmEmailCode(email.trim(), code, 'signup')}
+                        onResend={() => resendSignupEmail(email.trim())}
+                    />
                     <p className="text-xs leading-5 text-zinc-500">
-                        Didn't get it? Check your spam folder or try signing up again.
+                        No code in the email? Open the link in it on this device instead. Not there at all? Check your spam folder.
                     </p>
+                    <Link to="/login" className="inline-flex min-h-[44px] items-center text-sm text-zinc-400 underline">
+                        Back to sign in
+                    </Link>
                 </div>
             </AuthLayout>
         );

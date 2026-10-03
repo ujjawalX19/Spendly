@@ -10,7 +10,7 @@
 /**
  * @param {{ message?: string, status?: number, code?: string, name?: string }|null|undefined} error
  * @returns {'rate_limited'|'network'|'invalid_credentials'|'email_not_confirmed'|'already_registered'
- *          |'weak_password'|'invalid_email'|'signup_disabled'|'same_password'|'session_expired'|'unknown'}
+ *          |'weak_password'|'invalid_email'|'signup_disabled'|'same_password'|'session_expired'|'code_invalid'|'unknown'}
  */
 export function authErrorKind(error) {
   const message = String(error?.message || '').toLowerCase();
@@ -19,6 +19,8 @@ export function authErrorKind(error) {
 
   if (status === 429 || /rate limit|too many|over_email_send_rate_limit|over_request_rate_limit/.test(`${message} ${code}`)) return 'rate_limited';
   if (error?.name === 'AuthRetryableFetchError' || /failed to fetch|network|load failed|timed? ?out/.test(message)) return 'network';
+  // A typed email code (or an email link) that is wrong, used or too old.
+  if (code === 'otp_expired' || code === 'otp_disabled' || /token has expired or is invalid|otp/.test(message)) return 'code_invalid';
   if (code === 'email_not_confirmed' || /email not confirmed/.test(message)) return 'email_not_confirmed';
   if (code === 'invalid_credentials' || /invalid login credentials/.test(message)) return 'invalid_credentials';
   if (code === 'user_already_exists' || /already registered|already exists/.test(message)) return 'already_registered';
@@ -40,8 +42,8 @@ const COMMON = {
 const BY_CONTEXT = {
   login: {
     rate_limited: 'Too many attempts. Please wait a few minutes and try again.',
-    invalid_credentials: 'Invalid login credentials. If you just signed up, check your email for a confirmation link first.',
-    email_not_confirmed: 'Please confirm your email first: open the link we sent you, then log in.',
+    invalid_credentials: 'Invalid login credentials. If you just signed up, confirm your email first with the code or link we sent.',
+    email_not_confirmed: 'Please confirm your email first, with the code or link we sent you, then log in.',
     unknown: "We couldn't log you in. Please try again.",
   },
   signup: {
@@ -59,6 +61,15 @@ const BY_CONTEXT = {
     rate_limited: 'Too many reset requests. Please wait a few minutes and try again.',
     unknown: "We couldn't send the reset email. Please try again.",
   },
+  verify_code: {
+    rate_limited: 'Too many attempts. Please wait a few minutes and try again.',
+    code_invalid: "That code isn't right or has expired. Check the newest email, or send a new one.",
+    unknown: "We couldn't check that code. Please try again.",
+  },
+  resend: {
+    rate_limited: 'Please wait a minute before asking for another email.',
+    unknown: "We couldn't send the email. Please try again.",
+  },
   update_password: {
     rate_limited: 'Too many attempts. Please wait a few minutes and try again.',
     same_password: 'Choose a password you have not used for this account before.',
@@ -68,7 +79,7 @@ const BY_CONTEXT = {
 };
 
 /**
- * @param {'login'|'signup'|'google'|'reset'|'update_password'} context
+ * @param {'login'|'signup'|'google'|'reset'|'update_password'|'verify_code'|'resend'} context
  * @param {object|null|undefined} error  a Supabase auth error
  * @returns {string} never the raw error text
  */

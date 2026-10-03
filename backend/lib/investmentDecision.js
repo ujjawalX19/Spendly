@@ -57,7 +57,7 @@ function horizonPlan(years) {
         return {
             label: `${Math.round(years * 10) / 10}-year`,
             approaches: [
-                'A balanced mix, commonly around 60% in deposits or debt funds and 40% in a diversified equity or index fund.',
+                'A balanced mix: deposits or debt funds for the stable part, with some in a diversified equity or index fund.',
                 'All in deposits or debt funds if a temporary fall would worry you.',
             ],
             tradeoffs: 'There is some time to recover from a fall, but not enough for full equity risk. More equity widens the range of outcomes in both directions.',
@@ -66,7 +66,7 @@ function horizonPlan(years) {
     return {
         label: `${Math.round(years * 10) / 10}-year`,
         approaches: [
-            'For growth: mostly equity through a low-cost diversified index fund, commonly around 70% equity and 30% debt, moving safer as the goal nears.',
+            'For growth: mostly equity through a low-cost diversified index fund, with a stable part in debt, moving safer as the goal nears.',
             'A fixed amount invested every month rather than one lump sum, so the purchase price averages out.',
             'PPF or debt funds for the stable part, especially if the money must be there on a fixed date.',
         ],

@@ -58,14 +58,14 @@ function horizonPlan(years) {
     if (years < 5) {
         return {
             label: yr(years),
-            mix: 'a balanced mix, commonly around 60% lower-risk and 40% equity',
+            mix: 'a balanced mix of lower-risk options and some equity',
             options: 'FDs or debt funds for the stable part, and a diversified equity or index fund for growth',
             why: 'there is some time to recover from a fall, but not enough to take full equity risk',
         };
     }
     return {
         label: yr(years),
-        mix: 'mostly equity for growth, commonly around 70% equity and 30% debt, shifting safer as the goal nears',
+        mix: 'mostly equity for growth alongside a stable part, shifting safer as the goal nears',
         options: 'low-cost diversified index funds through a monthly SIP, with PPF or debt funds for stability',
         why: 'over long periods equity has historically grown faster than inflation, though with large ups and downs along the way',
     };
