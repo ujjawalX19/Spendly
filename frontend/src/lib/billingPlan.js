@@ -92,3 +92,26 @@ export function planCards(products = [], plans = []) {
   return cards;
 }
 
+/**
+ * Why the plans could not be loaded, as a short code for the screen and for
+ * telemetry: Google Play's own billing response code ('play_3'), our server
+ * ('server_503'), or 'unknown'. Never the error text.
+ */
+export function plansFailureCode(err) {
+  const status = Number(err?.status);
+  if (Number.isInteger(status) && status >= 400 && status <= 599) return `server_${status}`;
+  const code = String(err?.code ?? '');
+  if (/^-?\d{1,2}$/.test(code)) return `play_${code.replace('-', 'm')}`;
+  // The billing part of the app did not start (PlayBillingPlugin.load).
+  if (code === 'UNIMPLEMENTED' || code === 'UNAVAILABLE' || code === 'SETUP_FAILED') return 'no_bridge';
+  return 'unknown';
+}
+
+/** What the person is told. Plain words; the code is shown beside it for support. */
+export function plansFailureMessage(code) {
+  if (code === 'timeout') return "Google Play didn't answer. Check your connection and try again.";
+  if (code === 'play_3') return 'Google Play purchases are not available on this phone or Google account. Check that you are signed in to the Play Store.';
+  if (code === 'play_2' || code === 'play_m1' || code === 'play_12') return "We couldn't reach Google Play. Check your connection and try again.";
+  if (code.startsWith('server_')) return "We couldn't reach Vittova to load the plans. Please try again.";
+  return "We couldn't load the plans from Google Play. Please try again.";
+}

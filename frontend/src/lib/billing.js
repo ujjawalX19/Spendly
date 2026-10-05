@@ -12,7 +12,7 @@ import { apiJson } from './apiConfig';
 import { PlayBilling } from '../plugins/PlayBilling';
 import { planCards, tokensToVerify } from './billingPlan';
 
-export { periodLabel, pickPlan, planCards, describeOffer, tokensToVerify } from './billingPlan';
+export { periodLabel, pickPlan, planCards, describeOffer, tokensToVerify, plansFailureCode, plansFailureMessage } from './billingPlan';
 
 export const MANAGE_SUBSCRIPTIONS_URL = 'https://play.google.com/store/account/subscriptions?package=com.vittova.app';
 

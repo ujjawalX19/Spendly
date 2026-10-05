@@ -20,7 +20,9 @@ import { usePro } from '../contexts/ProContext';
 import { useAuth } from '../contexts/AuthContext';
 import { friendlyError } from '../lib/errors';
 import { track } from '../lib/telemetry';
-import { isAndroidApp, loadPlans, subscribe, restorePurchases, MANAGE_SUBSCRIPTIONS_URL } from '../lib/billing';
+import { isAndroidApp, loadPlans, subscribe, restorePurchases, MANAGE_SUBSCRIPTIONS_URL, plansFailureCode, plansFailureMessage } from '../lib/billing';
+
+const PLANS_TIMEOUT_MS = 15000;
 
 // Pro is built around decisions. Money Streak, Month Shape and Safe-to-Invest
 // stay free for everyone. Kept to seven lines so the list can be read at a glance.
@@ -43,19 +45,32 @@ export default function ProUpgrade() {
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
+  // Loading the plans from Google Play: 'loading' | 'ready' | { failed: code }.
+  // A failure used to be swallowed, which left the screen with no plans, no
+  // button and no explanation.
+  const [plans, setPlans] = useState('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => { track('pro_paywall_viewed'); }, []);
 
   useEffect(() => {
     let cancelled = false;
     if (!purchasesAvailable || isPro || !isAndroidApp()) return undefined;
+    setPlans('loading');
+    // Google Play normally answers in a second or two; never wait for ever.
+    const timer = setTimeout(() => { if (!cancelled) setPlans((s) => (s === 'loading' ? { failed: 'timeout' } : s)); }, PLANS_TIMEOUT_MS);
     loadPlans(session).then((p) => {
-      if (cancelled || !p) return;
+      if (cancelled) return;
+      if (!p) { setPlans({ failed: 'off' }); return; }
       setOffer(p);
       setSelected(p.cards.find((c) => c.key === 'yearly')?.key || p.cards[0]?.key || null);
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [purchasesAvailable, isPro, session]);
+      setPlans('ready');
+    }).catch((err) => {
+      if (cancelled) return;
+      setPlans({ failed: plansFailureCode(err) });
+    }).finally(() => clearTimeout(timer));
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [purchasesAvailable, isPro, session, attempt]);
 
   const card = offer?.cards.find((c) => c.key === selected) || null;
 
@@ -101,8 +116,20 @@ export default function ProUpgrade() {
           )}
         </div>
 
+        {/* Plans are on their way, or could not be loaded: always say which. */}
+        {purchasesAvailable && !isPro && isAndroidApp() && plans === 'loading' && (
+          <p role="status" className="mb-6 text-center text-sm text-zinc-400">Loading plans from Google Play…</p>
+        )}
+        {purchasesAvailable && !isPro && isAndroidApp() && plans?.failed && (
+          <div role="alert" className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-center">
+            <p className="text-sm text-zinc-300">{plansFailureMessage(plans.failed)}</p>
+            <p className="mt-1 text-[11px] text-zinc-500">Code: {plans.failed}</p>
+            <button type="button" onClick={() => setAttempt((n) => n + 1)} className="v-press mt-3 min-h-[44px] rounded-xl border border-zinc-700 px-4 text-sm font-bold text-zinc-200">Try again</button>
+          </div>
+        )}
+
         {/* Plans: only real, currently available Google Play plans. */}
-        {purchasesAvailable && !isPro && isAndroidApp() && offer && (
+        {purchasesAvailable && !isPro && isAndroidApp() && offer && plans === 'ready' && (
           <section className="mb-6" aria-label="Plans">
             {offer.cards.length === 0 && <p className="text-center text-sm text-zinc-400">Plans are not available on this device right now.</p>}
             <div className="space-y-2" role="radiogroup">

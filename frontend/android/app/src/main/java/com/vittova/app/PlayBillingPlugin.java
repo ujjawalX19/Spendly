@@ -80,14 +80,32 @@ public class PlayBillingPlugin extends Plugin {
         }
     };
 
+    /**
+     * The pending-purchase settings Google Play requires. Play Billing refuses
+     * to build a client unless pending purchases for one-time products are
+     * enabled ("Pending purchases for one-time products must be supported"),
+     * even for an app that only sells subscriptions. Without it the plugin
+     * failed to load and the Pro screen showed no plans and no button.
+     */
+    static PendingPurchasesParams pendingPurchases() {
+        return PendingPurchasesParams.newBuilder().enableOneTimeProducts().enablePrepaidPlans().build();
+    }
+
     @Override
     public void load() {
         super.load();
-        client = BillingClient.newBuilder(getContext())
-                .setListener(purchasesUpdated)
-                .enablePendingPurchases(PendingPurchasesParams.newBuilder().enablePrepaidPlans().build())
-                .enableAutoServiceReconnection()
-                .build();
+        try {
+            client = BillingClient.newBuilder(getContext())
+                    .setListener(purchasesUpdated)
+                    .enablePendingPurchases(pendingPurchases())
+                    .enableAutoServiceReconnection()
+                    .build();
+        } catch (RuntimeException e) {
+            // Never let a billing set-up problem take the whole plugin down:
+            // calls then fail with a clear code the Pro screen can show.
+            client = null;
+            Log.e(TAG, "Play Billing could not be set up: " + e.getClass().getSimpleName());
+        }
     }
 
     @Override
@@ -99,6 +117,10 @@ public class PlayBillingPlugin extends Plugin {
     private interface Ready { void run(); }
 
     private void whenReady(PluginCall call, Ready ready) {
+        if (client == null) {
+            call.reject("Google Play Billing could not be set up on this device.", "SETUP_FAILED");
+            return;
+        }
         if (client.isReady()) {
             ready.run();
             return;
