@@ -10,16 +10,16 @@
  *
  * Then the pulse draws itself, the way a heartbeat is traced on a monitor,
  * and beats (Vittova is "your money's pulse"):
- *     0–200 ms    the still mark dims to a faint track
- *   120–860 ms    the line is drawn over the track, left to right: the rising
+ *     0–180 ms    the still mark dims to a faint track
+ *   100–760 ms    the line is drawn over the track, left to right: the rising
  *                 stroke, then the falling one, with a warm light at its tip;
  *                 the glow blooms behind it as it completes
- *    900 ms       first beat: the mark swells 3.5% and settles; ripple one
+ *    780 ms       first beat: the mark swells 3.5% and settles; ripple one
  *                 leaves the mark
- *   1000–1420 ms  "Vittova" rises in beneath
- *   1180–1600 ms  "your money's pulse" rises in under the name
- *   1250 ms       second, softer beat (1.8%) and a fainter ripple
- *   1750 ms       wait, if needed, until the first screen is ready underneath
+ *    860–1240 ms  "Vittova" rises in beneath
+ *   1020–1400 ms  "your money's pulse" rises in under the name
+ *   1130 ms       second, softer beat (1.8%) and a fainter ripple
+ *   1500 ms       wait, if needed, until the first screen is ready underneath
  *                 (lib/appReady; at most READY_WAIT_MS more), so the splash
  *                 never fades onto a loading spinner
  *   then 320 ms   the mark and words fade first, then the background
@@ -44,7 +44,7 @@ import { launchGeometry, releaseLaunchScreen } from '../plugins/LaunchScreen';
 
 export { shouldShowSplash } from '../lib/splash';
 
-const PLAY_MS = 1750;      // from hand-off to the start of the exit
+const PLAY_MS = 1500;      // from hand-off to the start of the exit
 const REDUCED_PLAY_MS = 350;
 const READY_WAIT_MS = 2500; // the longest the still mark waits for the first screen
 const EXIT_MS = 320;       // mark and tagline out (160 ms), then the background (200 ms, from 120 ms)

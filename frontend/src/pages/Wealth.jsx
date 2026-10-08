@@ -75,7 +75,7 @@ function BudgetGauge({ percent }) {
 }
 
 const RANGES = [['7d', '7D'], ['1m', '1M'], ['6m', '6M']];
-const RANGE_TITLE = { '7d': 'Weekly spend', '1m': 'This month', '6m': 'Last 6 months' };
+const RANGE_TITLE = { '7d': 'Last 7 days', '1m': 'This month', '6m': 'Last 6 months' };
 
 /**
  * Spending for a range as stacked bars: one bar per day (7D) or per week of
@@ -370,7 +370,7 @@ export default function Wealth() {
 
       <div className="v-seg flex w-full [&>button]:min-h-10 [&>button]:flex-1" role="tablist" aria-label="Wealth">
         <button type="button" role="tab" aria-selected={tab === 'plan'} aria-pressed={tab === 'plan'} onClick={() => setTab('plan')}>Plan</button>
-        <button type="button" role="tab" aria-selected={tab === 'spending'} aria-pressed={tab === 'spending'} onClick={() => setTab('spending')}>Expenses</button>
+        <button type="button" role="tab" aria-selected={tab === 'spending'} aria-pressed={tab === 'spending'} onClick={() => setTab('spending')}>Spending</button>
       </div>
 
       {error && <p role="alert" className="v-error">{error}</p>}
@@ -431,7 +431,7 @@ export default function Wealth() {
           {!noBudget && (
             <section aria-labelledby="allocation-title">
               <div className="flex items-center justify-between">
-                <h2 id="allocation-title" className="v-h">Allocation</h2>
+                <h2 id="allocation-title" className="v-h">This month's budget</h2>
                 <Link to="/settings" className="v-press v-h-link">Edit budget</Link>
               </div>
               <ul className="space-y-2">
@@ -466,7 +466,7 @@ export default function Wealth() {
         <>
           {/* Spending for the chosen range, split by category */}
           <section className="v-block p-4" aria-labelledby="total-title">
-            <h2 id="total-title" className="text-[15px] font-semibold text-ink">Total expenses</h2>
+            <h2 id="total-title" className="text-[15px] font-semibold text-ink">Where it went</h2>
             <p className="mt-4 text-xs text-ink-2">{RANGE_TITLE[range]}</p>
             <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
               <span className="text-[26px] font-semibold leading-none tabular-nums">{inr(rangeTotal)}</span>
@@ -475,7 +475,7 @@ export default function Wealth() {
             <div className="mt-4 flex gap-1" role="radiogroup" aria-label="Period">
               {RANGES.map(([key, label]) => (
                 <button key={key} type="button" role="radio" aria-checked={range === key} onClick={() => setRange(key)}
-                  className={`min-h-9 min-w-11 rounded-lg px-3 text-xs font-medium ${range === key ? 'bg-surface-2 text-ink' : 'text-ink-2'}`}>{label}</button>
+                  className={`min-h-10 min-w-11 rounded-lg px-3 text-xs font-medium ${range === key ? 'bg-surface-2 text-ink' : 'text-ink-2'}`}>{label}</button>
               ))}
             </div>
             <div className="mt-5">
@@ -506,7 +506,7 @@ export default function Wealth() {
           {/* The latest expenses */}
           <section className="v-block p-4" aria-labelledby="history-title">
             <div className="flex items-center justify-between">
-              <h2 id="history-title" className="text-[15px] font-semibold text-ink">History</h2>
+              <h2 id="history-title" className="text-[15px] font-semibold text-ink">Latest</h2>
               <Link to="/transactions" className="v-press v-h-link -my-2">View all</Link>
             </div>
             {expensesLoading ? <Skeleton className="mt-3 h-40 w-full" /> : recent.length === 0 ? (

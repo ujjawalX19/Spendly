@@ -57,9 +57,8 @@ export function TopBar({ initials, actions = [] }) {
  * @param {object|null} props.safe        GET /safe-to-spend
  * @param {boolean} props.error           that request failed
  * @param {boolean} props.loading         expenses are still loading (or could not be loaded)
- * @param {string} props.name             the signed-in person's name
  */
-export function BalanceCard({ safe, error, onRetry, loading, totalSpent, monthlyBudget, burn, name }) {
+export function BalanceCard({ safe, error, onRetry, loading, totalSpent, monthlyBudget, burn }) {
   if (!safe) {
     return (
       <section className="v-hero-card v-enter p-5" aria-busy={!error}>
@@ -79,12 +78,13 @@ export function BalanceCard({ safe, error, onRetry, loading, totalSpent, monthly
   const whole = Math.floor(value);
   const paise = String(Math.round((value - whole) * 100)).padStart(2, '0');
   const setAside = [safe.upcomingBills > 0 && `${inr(safe.upcomingBills)} bills`, safe.investmentTarget > 0 && `${inr(safe.investmentTarget)} savings`].filter(Boolean);
-  // Bottom left says what the figure allows for; with nothing set aside, whose month it is.
+  // Bottom left says what the figure allows for; with nothing set aside, which month it is.
   const note = over
     ? { label: 'Over plan by', value: inr(safe.overBy) }
     : setAside.length
       ? { label: 'After setting aside', value: setAside.join(' + ') }
-      : { label: 'Name', value: String(name || '').toUpperCase() };
+      : { label: 'Budget month', value: new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) };
+  const used = monthlyBudget > 0 ? Math.min(100, Math.round((totalSpent / monthlyBudget) * 100)) : 0;
 
   return (
     <section className="v-hero-card v-enter p-5" aria-label="Left to spend this month">
@@ -101,7 +101,7 @@ export function BalanceCard({ safe, error, onRetry, loading, totalSpent, monthly
       <div className="mt-5 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] text-white/70">{note.label}</p>
-          <p className="mt-0.5 truncate text-[13px] font-semibold">{note.value}</p>
+          <p className="mt-0.5 break-words text-[13px] font-semibold leading-snug">{note.value}</p>
         </div>
         <div className="shrink-0 text-right">
           <p className="text-[10px] text-white/70">{safe.daysRemaining} day{safe.daysRemaining === 1 ? '' : 's'} left</p>
@@ -110,6 +110,12 @@ export function BalanceCard({ safe, error, onRetry, loading, totalSpent, monthly
           </p>
         </div>
       </div>
+      {/* How much of the month's budget is used, along the foot of the card. */}
+      {!loading && (
+        <div className="mt-3.5 h-1 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-label="Budget used" aria-valuenow={used} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-full rounded-full bg-white transition-[width] duration-500" style={{ width: `${used}%` }} />
+        </div>
+      )}
     </section>
   );
 }
@@ -137,7 +143,7 @@ export function QuickActions({ actions }) {
 export function DailyCard({ spent, daily, parts, loading }) {
   return (
     <section className="v-block v-enter p-4" aria-labelledby="daily-title">
-      <h2 id="daily-title" className="text-[15px] font-medium text-ink">Daily spending</h2>
+      <h2 id="daily-title" className="text-[15px] font-medium text-ink">Today</h2>
       {loading ? <Skeleton className="mt-3 h-[70px] w-full" /> : (
         <>
           <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -173,16 +179,16 @@ export function AnalyticsCard({ days, limit, loading }) {
   return (
     <section className="v-enter" aria-labelledby="analytics-title">
       <div className="flex items-center justify-between">
-        <h2 id="analytics-title" className="v-h">Analytics</h2>
-        <button type="button" onClick={() => navigate('/transactions')} className="v-press v-h-link">View details</button>
+        <h2 id="analytics-title" className="v-h">Last 7 days</h2>
+        <button type="button" onClick={() => navigate('/transactions')} className="v-press v-h-link">See activity</button>
       </div>
       <div className="v-block p-4">
         <div className="flex items-center justify-between text-xs text-ink-soft">
           <ul className="flex gap-4">
             <li className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-warn" aria-hidden="true" />Spent</li>
-            {limit !== null && <li className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-ink-3" aria-hidden="true" />Daily limit</li>}
+            {limit !== null && <li className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-ink-3" aria-hidden="true" />Safe daily amount</li>}
           </ul>
-          <span>Last 7 days</span>
+          {!loading && <span className="font-semibold tabular-nums text-ink">{inr(days.reduce((sum, d) => sum + d.spent, 0))}</span>}
         </div>
         {loading ? <Skeleton className="mt-4 h-[132px] w-full" /> : (
           <>

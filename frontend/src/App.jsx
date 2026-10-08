@@ -19,6 +19,7 @@ import { onReminderOpened, refreshReminders } from './lib/debitReminders';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 import { releaseLaunchScreen } from './plugins/LaunchScreen';
 import { loaderShown } from './lib/appReady';
+import { installKeepFieldVisible } from './lib/keepFieldVisible';
 import AgeGate from './components/AgeGate';
 import UpdateGate from './components/UpdateGate';
 import { ScrollToTopOnNavigate, StatusBarScrim } from './components/ScreenChrome';
@@ -298,6 +299,9 @@ function App() {
     const raf = requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(t); releaseLaunchScreen(); }));
     return () => { clearTimeout(t); cancelAnimationFrame(raf); };
   }, [splashAtStart]);
+
+  // The field being typed in stays above the on-screen keyboard, on every screen.
+  useEffect(() => installKeepFieldVisible(), []);
 
   return (
     <ThemeProvider>

@@ -427,7 +427,7 @@ function EditSheet({ expense, onCancel, onSave, onDelete }) {
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-ink">Edit expense</h2>
-          <button type="button" onClick={onCancel} aria-label="Close" className="v-press flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-ink-2">
+          <button type="button" onClick={onCancel} aria-label="Close" className="v-press flex h-10 w-10 items-center justify-center rounded-lg bg-surface-2 text-ink-2">
             <X className="h-4 w-4" />
           </button>
         </div>

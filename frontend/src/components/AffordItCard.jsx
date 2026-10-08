@@ -110,7 +110,7 @@ export function AffordItSheet({ onClose }) {
         <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-surface-3 sm:hidden" />
         <div className="mb-4 flex items-center justify-between">
           <h2 id="afford-title" className="text-lg font-bold text-ink">Can I afford this?</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="v-press flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-ink-2"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="v-press flex h-10 w-10 items-center justify-center rounded-lg bg-surface-2 text-ink-2"><X className="h-4 w-4" /></button>
         </div>
 
         {result ? (

@@ -70,7 +70,7 @@ function AddExpenseModal({ onClose, onAdd, loading, onScan, scanLoading }) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-ink">Add expense</h2>
           <button type="button" onClick={onClose} aria-label="Close"
-            className="v-press flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-ink-2">
+            className="v-press flex h-10 w-10 items-center justify-center rounded-lg bg-surface-2 text-ink-2">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -431,7 +431,6 @@ export default function Dashboard() {
     }
   };
 
-  const fullName = String(user?.full_name || user?.name || '').trim();
   const initials = String(user?.full_name || user?.name || 'V').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
   // ── RENDER ─────────────────────────────────────────────────
@@ -520,13 +519,14 @@ export default function Dashboard() {
 
         {/* 1. Where do I stand? The one figure, on the card. */}
         <BalanceCard safe={safeToSpend} error={safeError} onRetry={() => { setReloadKey((k) => k + 1); refetchExpenses(); }}
-          loading={loading || expensesUnavailable} totalSpent={totalSpent} monthlyBudget={monthlyBudget} burn={burnRate} name={fullName} />
+          loading={loading || expensesUnavailable} totalSpent={totalSpent} monthlyBudget={monthlyBudget} burn={burnRate} />
 
         {/* 2. The four things people do most */}
         <QuickActions actions={[
           { icon: Plus, label: 'Add', name: 'Add expense', onClick: () => setShowAddModal(true) },
           { icon: ScanLine, label: 'Scan', name: 'Scan a receipt', onClick: () => fileInputRef.current?.click(), busy: scanLoading },
-          { icon: ShoppingBag, label: 'Afford-It', name: 'Check a purchase', onClick: () => setShowAfford(true) },
+          // A non-breaking hyphen: the name never splits across two lines on a narrow tile.
+          { icon: ShoppingBag, label: 'Afford‑It', name: 'Check a purchase', onClick: () => setShowAfford(true) },
           { icon: MessageCircle, label: 'Ask', name: 'Ask Vittova', onClick: () => navigate('/bot') },
         ]} />
 

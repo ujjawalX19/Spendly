@@ -14,7 +14,7 @@ import PulseMark from './PulseMark';
 export default function AuthLayout({ children, tab }) {
   const navigate = useNavigate();
   return (
-    <main className="min-h-screen bg-bg pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-ink">
+    <main className="min-h-screen bg-bg pb-[calc(env(safe-area-inset-bottom)+var(--v-kb,0px))] pt-[env(safe-area-inset-top)] text-ink">
       <div className="mx-auto w-full max-w-md px-5 pb-12 pt-6">
         {/* Brand */}
         <section className="v-hero-card v-enter p-5" aria-label="Vittova, your money's pulse">

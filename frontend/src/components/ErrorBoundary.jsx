@@ -36,7 +36,7 @@ class ErrorBoundary extends React.Component {
       <div role="alert" style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'var(--v-bg, #0A0B0C)', color: 'var(--v-ink, #F3F4F2)', padding: '24px',
-        fontFamily: "'Space Grotesk', system-ui, -apple-system, sans-serif",
+        fontFamily: "'Inter Variable', system-ui, -apple-system, sans-serif",
       }}>
         <div style={{ maxWidth: '380px', width: '100%', textAlign: 'center' }}>
           <img src="/vittova-logo.svg" alt="" width="64" height="64" style={{ display: 'block', margin: '0 auto 20px' }} />
