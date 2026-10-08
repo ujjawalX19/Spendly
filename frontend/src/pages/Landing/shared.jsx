@@ -1,11 +1,16 @@
 /**
- * Small building blocks for the homepage sections. CSS-only motion (see
- * "Landing" in index.css), so the page ships no animation library and
- * prefers-reduced-motion switches everything off.
+ * Small building blocks for the homepage sections. They use the same colour
+ * roles and controls as the app (index.css), so the site follows the dark and
+ * light looks and reads as the same product. CSS-only motion (see "Landing"
+ * in index.css): no animation library, and prefers-reduced-motion switches
+ * everything off.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
+
+/** The page's column: one width and one gutter for every section. */
+export const WRAP = 'mx-auto w-full max-w-6xl px-5 sm:px-8';
 
 /** Fades its children up once they scroll into view. */
 export function Reveal({ as: Tag = 'div', className = '', delay = 0, children, ...rest }) {
@@ -30,25 +35,53 @@ export function Reveal({ as: Tag = 'div', className = '', delay = 0, children, .
 export function SectionHeading({ eyebrow, title, children, center = false }) {
   return (
     <Reveal className={`max-w-2xl ${center ? 'mx-auto text-center' : ''}`}>
-      {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-400">{eyebrow}</p>}
-      <h2 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">{title}</h2>
-      {children && <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">{children}</p>}
+      {eyebrow && <p className="text-sm font-medium text-ink-2">{eyebrow}</p>}
+      <h2 className="mt-2 text-[1.75rem] font-semibold leading-[1.12] tracking-[-0.025em] text-ink sm:text-4xl">{title}</h2>
+      {children && <p className="mt-4 text-base leading-relaxed text-ink-2 sm:text-lg">{children}</p>}
     </Reveal>
   );
 }
 
 export function PrimaryCta({ children = 'Start free', className = '' }) {
   return (
-    <Link to="/signup" className={`l-press inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-lime-400 px-6 text-[15px] font-bold text-black transition-colors hover:bg-lime-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-300 ${className}`}>
+    <Link to="/signup" className={`l-press v-btn-primary px-6 ${className}`}>
       {children} <ArrowRight className="h-4 w-4" aria-hidden="true" />
     </Link>
   );
 }
 
 export function SecondaryCta({ href, children, className = '' }) {
+  return <a href={href} className={`l-press v-btn-secondary min-h-12 px-6 text-[15px] ${className}`}>{children}</a>;
+}
+
+/** A short list of plain statements, each with a tick. */
+export function Ticks({ items, className = '' }) {
   return (
-    <a href={href} className={`l-press inline-flex h-12 items-center justify-center rounded-xl border border-white/15 px-6 text-[15px] font-bold text-zinc-100 transition-colors hover:border-lime-400/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-300 ${className}`}>
-      {children}
-    </a>
+    <ul className={`space-y-2.5 ${className}`}>
+      {items.map((item) => (
+        <li key={item} className="flex gap-3 text-[15px] leading-relaxed text-ink-soft">
+          <Check className="mt-1 h-4 w-4 shrink-0 text-ink-2" aria-hidden="true" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * One product story: words on one side, the matching screen on the other.
+ * `flip` puts the screen first on wide screens.
+ */
+export function Split({ id, eyebrow, title, body, points, flip = false, children }) {
+  return (
+    <div id={id} className="grid scroll-mt-24 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      <Reveal className={flip ? 'lg:order-2' : ''}>
+        <p className="text-sm font-medium text-ink-2">{eyebrow}</p>
+        <h3 className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.02em] text-ink sm:text-[1.75rem]">{title}</h3>
+        <p className="mt-3 text-base leading-relaxed text-ink-2">{body}</p>
+        {points && <Ticks items={points} className="mt-5" />}
+      </Reveal>
+      <Reveal delay={100} className={flip ? 'lg:order-1' : ''}>{children}</Reveal>
+    </div>
   );
 }

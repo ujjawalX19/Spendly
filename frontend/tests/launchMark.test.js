@@ -104,13 +104,14 @@ test('the splash animates only transforms, opacity and a stroke offset, and the 
   const block = css.slice(css.indexOf('Startup splash'), css.indexOf('── Landing'));
   assert.ok(block.length > 100, 'splash styles found');
   // Cheap to animate on any phone: nothing that forces layout or repaint.
-  const animated = [...block.matchAll(/@keyframes [\w-]+ \{([\s\S]*?)\}\n/g)].map((m) => m[1]).join(' ');
+  // \r?\n: a Windows checkout has CRLF line endings.
+  const animated = [...block.matchAll(/@keyframes [\w-]+ \{([\s\S]*?)\}\r?\n/g)].map((m) => m[1]).join(' ');
   const props = new Set([...animated.matchAll(/([a-z-]+):/g)].map((m) => m[1]));
   for (const p of props) assert.ok(['opacity', 'stroke-dashoffset', 'transform'].includes(p), p);
   // The pulse: the mark beats by a few percent at most, and starts and ends at
   // exactly scale 1, so the hand-off from Android's frame has no jump and the
   // vector is at its native size whenever it is still.
-  const beat = /@keyframes v-launch-beat \{([\s\S]*?)\}\n/.exec(block)[1];
+  const beat = /@keyframes v-launch-beat \{([\s\S]*?)\}\r?\n/.exec(block)[1];
   const scales = [...beat.matchAll(/scale\(([\d.]+)\)/g)].map((m) => Number(m[1]));
   assert.equal(scales[0], 1);
   assert.equal(scales[scales.length - 1], 1);

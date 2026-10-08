@@ -104,6 +104,41 @@ test('screens take colours from the roles, not from one-off values', () => {
   assert.deepEqual([...new Set(google)].sort(), ['#34A853', '#4285F4', '#EA4335', '#FBBC05']);
 });
 
+test('the public homepage uses the same roles and follows the chosen look', () => {
+  const dir = 'src/pages/Landing';
+  const files = readdirSync(join(here, '..', dir)).filter((n) => n.endsWith('.jsx'));
+  assert.ok(files.length >= 10, 'homepage sections found');
+  for (const name of files) {
+    const source = read(`${dir}/${name}`);
+    assert.doesNotMatch(source, /(?:bg|text|border|from|to|via|ring|fill|stroke)-\[#[0-9a-fA-F]{3,8}\]/, `${name}: arbitrary hex colour class`);
+    assert.doesNotMatch(source, /bg-gradient-to-|backdrop-blur|blur-3xl|rgba\(/, `${name}: gradient, blur or one-off colour`);
+    // Role names only: the old palette names are for screens not yet rewritten.
+    // (white stays: on the gradient card it is the card's own ink, as in the app.)
+    assert.doesNotMatch(source, /\b(?:bg|text|border)-(?:lime|zinc|amber|rose|emerald)\b/, `${name}: palette name instead of a role`);
+    assert.doesNotMatch(source, /className="[^"]*\buppercase\b/, `${name}: shouted label`);
+    assert.doesNotMatch(source, /\bSparkles\b/, `${name}: sparkle icon`);
+  }
+  // Not pinned to dark any more: it follows the look, and offers the switch.
+  assert.doesNotMatch(read(`${dir}/index.jsx`), /v-dark/);
+  assert.match(read(`${dir}/Navbar.jsx`), /useTheme\(\)/);
+});
+
+test('the saved look is applied before the first paint, by the same rules as the app', () => {
+  const boot = read('public/theme-boot.js');
+  const lib = read('src/lib/theme.js');
+  const key = /THEME_KEY = '([^']+)'/.exec(lib)[1];
+  assert.ok(boot.includes(`'${key}'`), 'same storage key');
+  assert.ok(boot.includes(`'${THEME_COLOR.dark}'`) && boot.includes(`'${THEME_COLOR.light}'`), 'same page colours');
+  assert.match(boot, /choice === 'light'/);
+  assert.match(boot, /choice === 'system'/);
+  // Loaded in <head>, after the theme-color tag it updates and before the app.
+  const html = read('index.html');
+  const at = (needle) => { const i = html.indexOf(needle); assert.ok(i >= 0, needle); return i; };
+  assert.ok(at('name="theme-color"') < at('src="/theme-boot.js"'));
+  assert.ok(at('src="/theme-boot.js"') < at('</head>'));
+  assert.ok(at('src="/theme-boot.js"') < at('src="/src/main.jsx"'));
+});
+
 test('labels are sentence case and nothing is decorated as "AI"', () => {
   for (const dir of ['src/components', 'src/pages']) {
     for (const e of readdirSync(join(here, '..', dir), { withFileTypes: true })) {
