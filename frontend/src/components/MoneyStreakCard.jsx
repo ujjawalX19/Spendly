@@ -162,28 +162,28 @@ export default function MoneyStreakCard({ streak, onChanged }) {
     <>
       {/* One row on Home: the streak and today's mission. The week, the XP and
           the rules are one tap in (the sheet); challenges are one tap across. */}
-      <div className="v-enter flex min-h-[56px] items-center gap-3 py-2">
+      <div className="v-enter v-item">
         <button type="button" disabled={!streak} onClick={() => setOpen(true)} className="v-press flex min-w-0 flex-1 items-center gap-3 text-left"
           aria-label={streak ? `Money Streak: ${streak.current} days. Today's mission and this week` : 'Money Streak loading'}>
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-flame ${celebrate ? 'v-celebrate' : ''}`}>
-            <Flame className="h-[18px] w-[18px]" aria-hidden="true" />
+          <span className={`v-item-icon text-flame ${celebrate ? 'v-celebrate' : ''}`}>
+            <Flame className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
           </span>
           <span className="min-w-0 flex-1">
             {streak ? (
               <>
-                <span className="block text-[15px] font-semibold text-ink">{streak.current}-day streak</span>
-                <span className="block truncate text-xs text-ink-3">{streak.today.mission.title}</span>
+                <span className="block text-sm font-medium text-ink">{streak.current}-day streak</span>
+                <span className="block truncate text-xs text-ink-2">{streak.today.mission.title}</span>
               </>
             ) : (
               <>
                 <span className="block h-5 w-28 animate-pulse rounded bg-surface-2" />
-                <span className="mt-1 block text-xs text-ink-3">Money Streak</span>
+                <span className="mt-1 block text-xs text-ink-2">Money Streak</span>
               </>
             )}
           </span>
         </button>
         <button type="button" disabled={!streak} onClick={() => navigate('/save-to-earn')}
-          className="v-press v-btn-text shrink-0 disabled:opacity-40"
+          className="v-press shrink-0 text-xs font-medium text-warn disabled:opacity-40 min-h-[44px] px-1"
           aria-label="Open Save-to-Earn challenges">
           Challenges
         </button>

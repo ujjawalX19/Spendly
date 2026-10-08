@@ -153,7 +153,7 @@ test('before the app code runs, the page shows the launch frame, not an empty pa
 });
 
 test('money figures use the brand typeface with tabular numerals, not a code font', () => {
-  assert.match(css, /--font-mono: 'Space Grotesk'/);
+  assert.match(css, /--font-mono: 'Inter'/);
   const rule = /\.font-mono, \.font-mono-finance \{[^}]+\}/.exec(css)[0];
   assert.match(rule, /font-variant-numeric: tabular-nums/);
   assert.doesNotMatch(rule, /JetBrains|monospace/);

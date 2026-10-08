@@ -29,4 +29,4 @@ export function resolveTheme(choice, systemPrefersLight) {
 }
 
 /** The browser / status bar colour for each look (matches --v-bg). */
-export const THEME_COLOR = { dark: '#0A0B0C', light: '#F5F4F0' };
+export const THEME_COLOR = { dark: '#000000', light: '#F3F3F3' };

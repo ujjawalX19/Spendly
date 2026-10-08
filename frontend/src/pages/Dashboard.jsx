@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Zap, AlertCircle, Plus, X, Check, CheckCircle } from 'lucide-react';
+import { Camera, Zap, AlertCircle, Bell, MessageCircle, Plus, ScanLine, ShoppingBag, X, Check, CheckCircle } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
@@ -22,9 +22,9 @@ import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import PermissionBanner from '../components/PermissionBanner';
 import SmsAccessSheet from '../components/SmsAccessSheet';
-import AffordItCard from '../components/AffordItCard';
+import { AffordItSheet } from '../components/AffordItCard';
 import MoneyStreakCard from '../components/MoneyStreakCard';
-import { MoneyStatus, InsightRow, MonthRows, RecentActivity, AskRow } from '../components/HomeCards';
+import { TopBar, BalanceCard, QuickActions, DailyCard, AnalyticsCard, InsightRow, MonthRows, RecentActivity } from '../components/HomeCards';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { prepareReceiptImage } from '../lib/receiptImage';
 import { expenseMeta, expenseTitle } from '../lib/expenseDisplay';
@@ -240,6 +240,7 @@ export default function Dashboard() {
   const expensesUnavailable = Boolean(expensesError) && expenses.length === 0;
 
   const [showAddModal, setShowAddModal]     = useState(false);
+  const [showAfford, setShowAfford]         = useState(false);
   const [addLoading, setAddLoading]         = useState(false);
   const [scanLoading, setScanLoading]       = useState(false);
   const [safeToSpend, setSafeToSpend]       = useState(null);
@@ -330,6 +331,39 @@ export default function Dashboard() {
     };
   }, [expenses]);
 
+  // Today by category, and each of the last seven days, from the same rows
+  // (display only: the safe daily amount still comes from /safe-to-spend).
+  const { todaySpent, todayParts, week } = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() - (6 - i));
+      return { key: d.toDateString(), label: d.toLocaleDateString('en-IN', { weekday: 'short' }), spent: 0 };
+    });
+    const byDay = new Map(days.map((d) => [d.key, d]));
+    const byCat = {};
+    let total = 0;
+    for (const e of expenses) {
+      const when = new Date(e.occurred_at || e.created_at);
+      const amount = Number(e.amount) || 0;
+      const day = byDay.get(when.toDateString());
+      if (day) day.spent += amount;
+      if (when >= start) {
+        total += amount;
+        byCat[e.category || 'Other'] = (byCat[e.category || 'Other'] || 0) + amount;
+      }
+    }
+    // Three categories by name; anything beyond that is shown together.
+    const ranked = Object.entries(byCat).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
+    const rest = ranked.slice(3).reduce((sum, p) => sum + p.amount, 0);
+    return {
+      todaySpent: total,
+      todayParts: rest > 0 ? [...ranked.slice(0, 3), { category: 'More', amount: rest }] : ranked,
+      week: days.map(({ label, spent }) => ({ label, spent })),
+    };
+  }, [expenses]);
+
   // ── Handlers ───────────────────────────────────────────────
   const handleAddExpense = async (amount, category, description) => {
     setAddLoading(true);
@@ -397,7 +431,7 @@ export default function Dashboard() {
     }
   };
 
-  const firstName = String(user?.full_name || user?.name || '').trim().split(/\s+/)[0] || 'there';
+  const fullName = String(user?.full_name || user?.name || '').trim();
   const initials = String(user?.full_name || user?.name || 'V').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
   // ── RENDER ─────────────────────────────────────────────────
@@ -470,19 +504,31 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* Can I afford this? */}
+      <AnimatePresence>
+        {showAfford && <AffordItSheet onClose={() => setShowAfford(false)} />}
+      </AnimatePresence>
+
       {/* ─── MAIN CONTENT ─── */}
-      <div className="mx-auto max-w-lg space-y-6">
-        {/* HEADER */}
-        <header className="flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-sm text-ink-2">{getGreeting()}</p>
-            <h1 className="truncate text-xl font-bold tracking-tight text-ink">{firstName}</h1>
-          </div>
-          <button type="button" onClick={() => navigate('/settings')} aria-label="Profile"
-            className="v-press flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-sm font-semibold text-ink">
-            {initials}
-          </button>
-        </header>
+      <div className="mx-auto max-w-lg space-y-5">
+        <h1 className="sr-only">Home</h1>
+        {/* Who is signed in, and two shortcuts */}
+        <TopBar initials={initials} actions={[
+          { icon: ScanLine, label: 'Scan a receipt', onClick: () => fileInputRef.current?.click(), busy: scanLoading },
+          { icon: Bell, label: 'Debit reminders', onClick: () => navigate('/subscription-audit') },
+        ]} />
+
+        {/* 1. Where do I stand? The one figure, on the card. */}
+        <BalanceCard safe={safeToSpend} error={safeError} onRetry={() => { setReloadKey((k) => k + 1); refetchExpenses(); }}
+          loading={loading || expensesUnavailable} totalSpent={totalSpent} monthlyBudget={monthlyBudget} burn={burnRate} name={fullName} />
+
+        {/* 2. The four things people do most */}
+        <QuickActions actions={[
+          { icon: Plus, label: 'Add', name: 'Add expense', onClick: () => setShowAddModal(true) },
+          { icon: ScanLine, label: 'Scan', name: 'Scan a receipt', onClick: () => fileInputRef.current?.click(), busy: scanLoading },
+          { icon: ShoppingBag, label: 'Afford-It', name: 'Check a purchase', onClick: () => setShowAfford(true) },
+          { icon: MessageCircle, label: 'Ask', name: 'Ask Vittova', onClick: () => navigate('/bot') },
+        ]} />
 
         {/* Tracking was turned on under "ask before adding": ask once how to continue. */}
         {tracking.needsChoice && (
@@ -507,42 +553,27 @@ export default function Dashboard() {
           onEnable={() => setShowAccessSheet(true)}
         />
 
-        {/* 1. Where do I stand? The one figure, then per day and spent so far. */}
-        <MoneyStatus safe={safeToSpend} error={safeError} onRetry={() => { setReloadKey((k) => k + 1); refetchExpenses(); }}
-          loading={loading || expensesUnavailable} totalSpent={totalSpent} monthlyBudget={monthlyBudget} burn={burnRate} />
+        {/* 3. Today against the safe daily amount */}
+        <DailyCard spent={todaySpent} daily={safeToSpend && !safeToSpend.isNegative ? safeToSpend.daily : null}
+          parts={expensesUnavailable ? [] : todayParts} loading={loading || expensesUnavailable} />
 
-        {/* 2. Can I afford this? — the main action */}
-        <AffordItCard />
-
-        {/* 3. The one thing that needs attention, if there is one */}
+        {/* 4. The one thing that needs attention, if there is one */}
         <InsightRow burn={burnRate} foodThisMonth={foodThisMonth} />
 
-        {/* 4. Still to come this month */}
+        {/* 5. The last seven days */}
+        <AnalyticsCard days={week} limit={safeToSpend && !safeToSpend.isNegative ? safeToSpend.daily : null} loading={loading || expensesUnavailable} />
+
+        {/* 6. Still to come this month */}
         <MonthRows safe={safeToSpend} categories={expensesUnavailable ? [] : categories} />
 
-        {/* 5. What just happened */}
+        {/* 7. What just happened */}
         <RecentActivity items={expensesUnavailable ? [] : recent} loading={loading} />
 
-        {/* 6. Everything else, one row each */}
-        <section className="v-rows border-t border-line" aria-label="More">
-          <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} />
-          <AskRow />
-        </section>
+        {/* 8. The streak and today's mission */}
+        <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} />
 
         <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanFile} />
-        {/* Room for the + button so it never covers the last row */}
-        <div className="h-16" />
       </div>
-
-      {/* Add expense */}
-      <button
-        type="button"
-        onClick={() => setShowAddModal(true)}
-        className="v-press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-ink text-bg shadow-[var(--v-shadow-pop)]"
-        aria-label="Add expense"
-      >
-        <Plus className="h-6 w-6" strokeWidth={2.25} />
-      </button>
 
     </div>
   );

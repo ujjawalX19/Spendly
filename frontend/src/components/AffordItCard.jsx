@@ -72,7 +72,7 @@ function Result({ check, quota, onAgain, onClose }) {
   );
 }
 
-function AffordItSheet({ onClose }) {
+export function AffordItSheet({ onClose }) {
   const { session } = useAuth();
   const [amount, setAmount] = useState('');
   const [label, setLabel] = useState('');

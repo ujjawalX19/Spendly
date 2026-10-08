@@ -5,8 +5,8 @@
  * Uses useLocation() for real active-tab highlighting instead of
  * a hardcoded value.
  *
- * A plain bar, part of the page: the selected tab is marked by the accent on
- * its icon and label only. No floating pill, no blur, no bounce.
+ * A plain bar, part of the page: the selected tab is white and bold, the rest
+ * grey. No floating pill, no blur, no bounce.
  */
 
 import { useEffect, useState } from 'react';
@@ -75,9 +75,9 @@ export default function BottomNav() {
         const isActive = tab.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
         return (
           <Link key={tab.id} to={tab.id} aria-label={tab.label} aria-current={isActive ? 'page' : undefined}
-            className={`v-press flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-1 ${isActive ? 'text-accent' : 'text-ink-3'}`}>
-            <Icon className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden="true" />
-            <span className="text-[11px] font-semibold leading-none">{tab.label}</span>
+            className={`v-press flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1.5 ${isActive ? 'text-ink' : 'text-ink-3'}`}>
+            <Icon className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.5 : 1.75} aria-hidden="true" />
+            <span className={`text-[11px] leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>{tab.label}</span>
           </Link>
         );
       })}

@@ -20,46 +20,57 @@
 */
 :root, :root.dark, .v-dark {
   color-scheme: dark;
-  --v-bg: #0A0B0C;
-  --v-surface: #141517;
-  --v-surface-2: #1D1F22;
-  --v-surface-3: #2A2D31;
-  --v-line: rgba(255, 255, 255, 0.07);
+  /* Values measured from the reference design: a true black page, charcoal
+     blocks, lighter charcoal tiles, white text, and four data colours. */
+  --v-bg: #000000;
+  --v-surface: #171717;
+  --v-surface-2: #282828;
+  --v-surface-3: #3A3A3A;
+  --v-line: rgba(255, 255, 255, 0.06);
   --v-line-strong: rgba(255, 255, 255, 0.14);
-  --v-ink: #F3F4F2;
-  --v-ink-soft: #D2D5D2;
-  --v-ink-2: #A3A8A4;
-  --v-ink-3: #7B8184;
-  --v-accent: #7FD858;
-  --v-accent-strong: #93E270;
-  --v-on-fill: #07100A;
-  --v-warn: #E2B25C;
-  --v-flame: #E38B4C;
-  --v-danger: #F0787F;
-  --v-info: #7DB5E8;
+  --v-ink: #FFFFFF;
+  --v-ink-soft: #E4E4E4;
+  --v-ink-2: #B1B1B1;
+  --v-ink-3: #7E7E7E;
+  --v-accent: #15B05C;
+  --v-accent-strong: #1CC56A;
+  --v-on-fill: #04130A;
+  --v-warn: #F98A07;
+  --v-flame: #F98A07;
+  --v-danger: #FF5B5B;
+  --v-info: #3DABEE;
+  --v-violet: #AFA4FF;
+  /* The balance card: deep maroon into orange. */
+  --v-card-a: #2E1613;
+  --v-card-b: #A32716;
+  --v-card-c: #F87000;
   --v-knob: #FFFFFF;
-  --v-scrim: rgba(0, 0, 0, 0.66);
-  --v-shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --v-scrim: rgba(0, 0, 0, 0.7);
+  --v-shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 :root.light {
   color-scheme: light;
-  --v-bg: #F5F4F0;
+  --v-bg: #F3F3F3;
   --v-surface: #FFFFFF;
-  --v-surface-2: #EEEDE8;
-  --v-surface-3: #E1E0DA;
-  --v-line: rgba(23, 25, 27, 0.09);
-  --v-line-strong: rgba(23, 25, 27, 0.18);
-  --v-ink: #17191B;
-  --v-ink-soft: #2F3437;
-  --v-ink-2: #565C5F;
-  --v-ink-3: #71777A;
-  --v-accent: #1B7F45;
-  --v-accent-strong: #166B3A;
+  --v-surface-2: #ECECEC;
+  --v-surface-3: #DCDCDC;
+  --v-line: rgba(0, 0, 0, 0.08);
+  --v-line-strong: rgba(0, 0, 0, 0.18);
+  --v-ink: #0A0A0A;
+  --v-ink-soft: #2B2B2B;
+  --v-ink-2: #555555;
+  --v-ink-3: #707070;
+  --v-accent: #0C7F41;
+  --v-accent-strong: #0A6B37;
   --v-on-fill: #FFFFFF;
-  --v-warn: #94650F;
-  --v-flame: #B5561A;
+  --v-warn: #B25A00;
+  --v-flame: #B25A00;
   --v-danger: #C2343D;
-  --v-info: #2B6CA8;
+  --v-info: #1F6FB5;
+  --v-violet: #6557D6;
+  --v-card-a: #2E1613;
+  --v-card-b: #A32716;
+  --v-card-c: #F87000;
   --v-knob: #FFFFFF;
   --v-scrim: rgba(23, 25, 27, 0.45);
   --v-shadow-pop: 0 10px 30px rgba(23, 25, 27, 0.14);
@@ -84,6 +95,7 @@
   --color-flame: var(--v-flame);
   --color-danger: var(--v-danger);
   --color-info: var(--v-info);
+  --color-violet: var(--v-violet);
   --color-knob: var(--v-knob);
   --color-scrim: var(--v-scrim);
 
@@ -128,12 +140,12 @@
   --color-red-500: var(--v-danger);
   --color-sky-400: var(--v-info);
 
-  /* Type: the brand face for titles and figures, the device's own for reading. */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  /* Money figures: the brand typeface with tabular numerals (see .font-mono
+  /* Type: one face throughout, as in the reference design. */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Inter', system-ui, sans-serif;
+  /* Money figures: the same typeface with tabular numerals (see .font-mono
      below), not a code font. A code font gave "₹13 , 192" and slashed zeros. */
-  --font-mono: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'Inter', system-ui, sans-serif;
   /* Weight is a signal, so there are three steps, not five. */
   --font-weight-bold: 600;
   --font-weight-extrabold: 700;
@@ -151,7 +163,7 @@
 }
 
 :root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* The launch mark (lib/brandMark.js), for the frame shown before the app's code runs. */
   --v-boot-mark: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1728 1728'><defs><linearGradient id='g' x1='0' y1='320' x2='0' y2='950' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23E6FF4C'/><stop offset='0.48' stop-color='%238FF03A'/><stop offset='1' stop-color='%232BD460'/></linearGradient></defs><g transform='translate(239 235)' fill='none' stroke='url(%23g)' stroke-width='116' stroke-linecap='round' stroke-linejoin='round'><path d='M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998'/><path d='M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636'/></g></svg>");
 }
@@ -165,21 +177,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Titles and heavy text are set in the brand face; everything read at length
-   uses the device font. */
+/* Titles and figures: the same face, slightly tightened. */
 h1, h2, h3, .font-display, .font-black, .font-extrabold {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  letter-spacing: -0.01em;
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.015em;
 }
 
 /* ── Money figures ──
-   The brand typeface; digits share one width so amounts line up in lists and
-   do not shift as they change. */
+   Digits share one width so amounts line up in lists and do not shift as
+   they change. */
 .font-mono, .font-mono-finance {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1, 'zero' 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 /* ── Shared pieces ────────────────────────────────────────────────────────
@@ -188,19 +199,33 @@ h1, h2, h3, .font-display, .font-black, .font-extrabold {
 @layer components {
 /* A label above a group: sentence case, quiet. */
 .v-label { font-size: 0.8125rem; line-height: 1.25rem; font-weight: 600; color: var(--v-ink-2); }
-/* A block on the page: a tone lighter than the page, no outline. */
-.v-block { background: var(--v-surface); border-radius: 0.875rem; }
+/* A section title on the page ("Analytics", "Allocation"), with room for a
+   quiet link on the right. */
+.v-h { font-size: 1.0625rem; line-height: 1.5rem; font-weight: 600; color: var(--v-ink); letter-spacing: -0.01em; }
+.v-h-link { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: 0.75rem; font-weight: 500; color: var(--v-ink-2); }
+/* A block on the page: charcoal on black, with a hairline edge. */
+.v-block { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 1rem; }
 /* Rows inside a block are separated by a hairline, not boxed one by one. */
 .v-rows > * + * { border-top: 1px solid var(--v-line); }
-/* The one main action in a section. */
-.v-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 3rem; padding: 0 1.25rem; border-radius: 0.75rem; background: var(--v-accent); color: var(--v-on-fill); font-weight: 600; font-size: 0.9375rem; }
-.v-btn-primary:hover { background: var(--v-accent-strong); }
+/* One item in a list of items: its own small block (icon, title, amount). */
+.v-item { display: flex; align-items: center; gap: 0.75rem; min-height: 3.75rem; padding: 0.625rem 0.875rem; background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 0.875rem; text-align: left; }
+.v-item-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: 0.75rem; background: var(--v-surface-2); color: var(--v-ink); }
+/* A quick action: icon over a short label, on a lighter tile. */
+.v-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.375rem; min-height: 4rem; padding: 0.5rem 0.25rem; border-radius: 0.875rem; background: var(--v-surface-2); color: var(--v-ink); font-size: 0.75rem; font-weight: 500; line-height: 1.1; text-align: center; }
+.v-tile:disabled { opacity: 0.5; }
+/* A round icon button in a screen's top bar. */
+.v-round { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: 9999px; background: var(--v-surface); border: 1px solid var(--v-line); color: var(--v-ink); }
+/* The balance card. Always this gradient with white text, in both looks. */
+.v-hero-card { position: relative; overflow: hidden; border-radius: 1.125rem; color: #FFFFFF; background: linear-gradient(105deg, var(--v-card-a) 0%, var(--v-card-b) 46%, var(--v-card-c) 100%); }
+/* The main action: the same white as the selected segment. */
+.v-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 3rem; padding: 0 1.25rem; border-radius: 0.75rem; background: var(--v-ink); color: var(--v-bg); font-weight: 600; font-size: 0.9375rem; }
+.v-btn-primary:hover { opacity: 0.92; }
 .v-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1rem; border-radius: 0.75rem; background: var(--v-surface-2); color: var(--v-ink); font-weight: 600; font-size: 0.875rem; }
 .v-btn-text { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; padding: 0 0.5rem; color: var(--v-ink-2); font-weight: 600; font-size: 0.875rem; }
 .v-btn-primary:disabled, .v-btn-secondary:disabled, .v-btn-text:disabled { opacity: 0.5; }
-/* A segmented choice: the selected segment is a neutral lift, not the accent. */
-.v-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 0.75rem; background: var(--v-surface-2); }
-.v-seg > button { min-height: 2.25rem; padding: 0 0.875rem; border-radius: 0.5625rem; font-size: 0.8125rem; font-weight: 600; color: var(--v-ink-2); }
+/* A segmented choice: a white pill on a charcoal track. */
+.v-seg { display: inline-flex; gap: 2px; padding: 4px; border-radius: 0.75rem; background: var(--v-surface); border: 1px solid var(--v-line); }
+.v-seg > button { min-height: 2.25rem; padding: 0 0.875rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--v-ink); }
 .v-seg > button[aria-pressed="true"], .v-seg > button[aria-checked="true"] { background: var(--v-ink); color: var(--v-bg); }
 
 /* Sheets and dialogs: one dimmed backdrop, one panel, one kind of field. */
@@ -210,12 +235,12 @@ h1, h2, h3, .font-display, .font-black, .font-extrabold {
 .v-field-label { display: block; margin-bottom: 0.375rem; font-size: 0.8125rem; font-weight: 600; color: var(--v-ink-2); }
 .v-input { width: 100%; min-height: 3rem; padding: 0.625rem 0.875rem; border-radius: 0.75rem; background: var(--v-surface-2); border: 1px solid transparent; color: var(--v-ink); font-size: 0.9375rem; outline: none; transition: border-color 150ms ease-out; }
 .v-input::placeholder { color: var(--v-ink-3); }
-.v-input:focus { border-color: var(--v-accent); }
+.v-input:focus { border-color: var(--v-ink-2); }
 /* A message about something that went wrong: quiet tint, plain words. */
 .v-error { border-radius: 0.75rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: var(--v-danger); background: color-mix(in oklab, var(--v-danger) 12%, transparent); }
 }
 
-:focus-visible { outline: 2px solid var(--v-accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--v-ink); outline-offset: 2px; }
 /* A field shows focus with its own border, so it does not get a second ring. */
 .v-input:focus-visible { outline: none; }
 
