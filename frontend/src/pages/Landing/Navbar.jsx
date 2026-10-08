@@ -45,7 +45,7 @@ export default function Navbar() {
 
         <div className="flex items-center gap-2">
           <Link to="/login" className="hidden min-h-[44px] items-center px-3 text-sm font-semibold text-zinc-300 hover:text-white sm:inline-flex">Sign in</Link>
-          <Link to="/signup" className="l-press inline-flex h-10 items-center rounded-xl bg-lime-400 px-4 text-sm font-bold text-black hover:bg-lime-300">Get started</Link>
+          <Link to="/signup" className="l-press inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl bg-lime-400 px-4 text-sm font-bold text-black hover:bg-lime-300">Get started</Link>
           <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-zinc-300 hover:text-white lg:hidden"
             onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? 'Close menu' : 'Open menu'}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

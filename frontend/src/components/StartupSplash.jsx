@@ -8,20 +8,24 @@
  * Only then is Android's screen faded out (LaunchScreen.ready), so the logo
  * never blinks, jumps or changes shade.
  *
- * Then the pulse — Vittova is "your money's pulse", so the mark beats twice,
- * like a heartbeat, and each beat sends one soft ripple out from the mark:
- *     80 ms       first beat: the mark swells 3.5% and settles; ripple one
- *                 leaves the mark; the glow blooms
- *   120–760 ms    a light travels along the pulse line
- *    430 ms       second, softer beat (1.8%) and a fainter ripple
- *   640–1060 ms   "your money's pulse" rises in beneath
- *   1350 ms       wait, if needed, until the first screen is ready underneath
+ * Then the pulse draws itself, the way a heartbeat is traced on a monitor,
+ * and beats (Vittova is "your money's pulse"):
+ *     0–200 ms    the still mark dims to a faint track
+ *   120–860 ms    the line is drawn over the track, left to right: the rising
+ *                 stroke, then the falling one, with a warm light at its tip;
+ *                 the glow blooms behind it as it completes
+ *    900 ms       first beat: the mark swells 3.5% and settles; ripple one
+ *                 leaves the mark
+ *   1000–1420 ms  "Vittova" rises in beneath
+ *   1180–1600 ms  "your money's pulse" rises in under the name
+ *   1250 ms       second, softer beat (1.8%) and a fainter ripple
+ *   1750 ms       wait, if needed, until the first screen is ready underneath
  *                 (lib/appReady; at most READY_WAIT_MS more), so the splash
  *                 never fades onto a loading spinner
- *   then 320 ms   the mark and tagline fade first, then the background
+ *   then 320 ms   the mark and words fade first, then the background
  *                 dissolves onto the app (already rendered below), so the two
  *                 never overlap in a double exposure
- * Two beats, then still: nothing loops, and nothing bounces.
+ * Drawn once, two beats, then still: nothing loops, and nothing bounces.
  *
  * Only transforms, opacity and a stroke offset are animated (the glow is a
  * pre-blurred layer on its own GPU layer), so it stays smooth on low-end
@@ -40,7 +44,7 @@ import { launchGeometry, releaseLaunchScreen } from '../plugins/LaunchScreen';
 
 export { shouldShowSplash } from '../lib/splash';
 
-const PLAY_MS = 1350;      // from hand-off to the start of the exit
+const PLAY_MS = 1750;      // from hand-off to the start of the exit
 const REDUCED_PLAY_MS = 350;
 const READY_WAIT_MS = 2500; // the longest the still mark waits for the first screen
 const EXIT_MS = 320;       // mark and tagline out (160 ms), then the background (200 ms, from 120 ms)
@@ -82,11 +86,12 @@ function LaunchMark({ uid, glow = false }) {
           </g>
         ) : (
           <>
-            {/* As splash_mark.xml: falling stroke, then rising stroke on top. The
-                light is a narrower sheen running inside each stroke. */}
-            <path d={STROKE_DOWN} {...common} stroke={`url(#${gradient})`} strokeWidth={STROKE_WIDTH} />
+            {/* As splash_mark.xml: falling stroke, then rising stroke on top. Each
+                line can be drawn in from its left end (pathLength = 1), and the
+                light is a narrower sheen running inside it, at the tip. */}
+            <path className="v-launch-line v-launch-line-down" d={STROKE_DOWN} pathLength="1" {...common} stroke={`url(#${gradient})`} strokeWidth={STROKE_WIDTH} />
             <path className="v-launch-light v-launch-light-down" d={STROKE_DOWN} pathLength="1" {...common} stroke={`url(#${uid}-light)`} strokeWidth={LIGHT_WIDTH} />
-            <path d={STROKE_UP} {...common} stroke={`url(#${gradient})`} strokeWidth={STROKE_WIDTH} />
+            <path className="v-launch-line v-launch-line-up" d={STROKE_UP} pathLength="1" {...common} stroke={`url(#${gradient})`} strokeWidth={STROKE_WIDTH} />
             <path className="v-launch-light v-launch-light-up" d={STROKE_UP} pathLength="1" {...common} stroke={`url(#${uid}-light)`} strokeWidth={LIGHT_WIDTH} />
           </>
         )}
@@ -165,10 +170,15 @@ export default function StartupSplash({ onDone }) {
           {/* The ripples start at the mark's own size and leave it: one per beat. */}
           <span className="v-launch-ring v-launch-ring-1 absolute left-1/2" style={{ top }} aria-hidden="true" />
           <span className="v-launch-ring v-launch-ring-2 absolute left-1/2" style={{ top }} aria-hidden="true" />
+          {/* The same mark, still: it dims to a faint track for the line to be drawn over. */}
+          <div className="v-launch-track absolute left-1/2" style={{ top, width: LAUNCH.sizeDp, height: LAUNCH.sizeDp, marginLeft: -LAUNCH.sizeDp / 2, marginTop: -LAUNCH.sizeDp / 2 }}>
+            <LaunchMark uid={`${uid}t`} />
+          </div>
           <div className="v-launch-mark absolute left-1/2" style={{ top, width: LAUNCH.sizeDp, height: LAUNCH.sizeDp, marginLeft: -LAUNCH.sizeDp / 2, marginTop: -LAUNCH.sizeDp / 2 }}>
             <LaunchMark uid={uid} />
           </div>
-          <p className="v-launch-tagline absolute inset-x-0 text-center text-[15px] font-medium text-white" style={{ top: `calc(${top} + 84px)` }}>
+          <p className="v-launch-name absolute inset-x-0 text-center text-[28px] font-semibold leading-none text-white" style={{ top: `calc(${top} + 76px)` }}>Vittova</p>
+          <p className="v-launch-tagline absolute inset-x-0 text-center text-[14px] font-medium text-white" style={{ top: `calc(${top} + 116px)` }}>
             your money&rsquo;s <span className="text-warn">pulse</span>
           </p>
         </div>

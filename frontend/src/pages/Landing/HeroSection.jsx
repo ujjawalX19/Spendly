@@ -31,7 +31,7 @@ export default function HeroSection() {
           <p className="l-hero inline-flex items-center gap-2 rounded-full border border-lime-400/25 bg-lime-400/[0.06] px-3.5 py-1.5 text-xs font-semibold text-lime-300">
             <span className="l-beat h-1.5 w-1.5 rounded-full bg-lime-400" aria-hidden="true" /> your money&apos;s pulse
           </p>
-          <h1 className="mt-6 text-[2.6rem] font-extrabold leading-[1.04] tracking-tight text-white sm:text-6xl">
+          <h1 className="mt-6 text-[min(2.6rem,11.5vw)] font-extrabold leading-[1.04] tracking-tight text-white sm:text-6xl">
             {WORDS.map((w, i) => (
               <span key={w + i}><span className="l-word" style={{ animationDelay: `${120 + i * 70}ms` }}>{w}</span>{' '}</span>
             ))}
