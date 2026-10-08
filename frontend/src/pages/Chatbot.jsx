@@ -415,7 +415,7 @@ export default function Chatbot() {
                         type="submit"
                         aria-label="Send question"
                         disabled={!input.trim() || isLoading || limitReached}
-                        className="v-press flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-on-fill disabled:bg-surface-2 disabled:text-ink-3"
+                        className="v-press flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink text-bg disabled:bg-surface-2 disabled:text-ink-3"
                     >
                         <ArrowUp className="h-5 w-5" strokeWidth={2.5} />
                     </button>

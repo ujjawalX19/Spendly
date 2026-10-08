@@ -18,8 +18,8 @@
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CalendarClock, ChevronRight, Lightbulb, Loader2, MessageCircle } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
+import PulseMark from './PulseMark';
 import { Skeleton } from './ui';
-import { STROKE_DOWN, STROKE_UP, STROKE_WIDTH } from '../lib/brandMark';
 import { billDueIn, compactInr, inr } from '../lib/moneyDisplay';
 
 /** The four data colours, in the order they are handed out. */
@@ -52,16 +52,6 @@ export function TopBar({ initials, actions = [] }) {
   );
 }
 
-/** The Vittova pulse, drawn in white for the corner of the card. */
-function CardMark() {
-  return (
-    <svg width="30" height="24" viewBox="160 250 930 760" fill="none" stroke="currentColor" strokeWidth={STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={STROKE_DOWN} />
-      <path d={STROKE_UP} />
-    </svg>
-  );
-}
-
 /**
  * @param {object} props
  * @param {object|null} props.safe        GET /safe-to-spend
@@ -75,7 +65,7 @@ export function BalanceCard({ safe, error, onRetry, loading, totalSpent, monthly
       <section className="v-hero-card v-enter p-5" aria-busy={!error}>
         <div className="flex items-start justify-between">
           <p className="text-xs text-white/75">Left to spend</p>
-          <CardMark />
+          <PulseMark />
         </div>
         {error
           ? <p className="mt-3 text-sm">We couldn't load this just now. <button type="button" onClick={onRetry} className="min-h-[44px] font-semibold underline">Try again</button></p>
@@ -100,7 +90,7 @@ export function BalanceCard({ safe, error, onRetry, loading, totalSpent, monthly
     <section className="v-hero-card v-enter p-5" aria-label="Left to spend this month">
       <div className="flex items-start justify-between">
         <p className="text-xs text-white/75">Left to spend</p>
-        <CardMark />
+        <PulseMark />
       </div>
       <p className="mt-1.5 text-[32px] font-semibold leading-none tabular-nums">
         ₹{whole.toLocaleString('en-IN')}<span className="text-white/55">.{paise}</span>

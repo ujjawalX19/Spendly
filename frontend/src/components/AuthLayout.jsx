@@ -1,32 +1,41 @@
+import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import VittovaLogo from './VittovaLogo';
+import PulseMark from './PulseMark';
 
 /**
- * Shared frame for sign-in, sign-up and password screens: the mark, the name,
- * and the form straight on the page. No decoration, no invented balances or
- * statistics.
+ * Shared frame for sign-in, sign-up and password screens, in the same pieces
+ * as the rest of the app: the gradient card carries the brand (the pulse draws
+ * itself in once), a white-pill switch moves between signing in and creating
+ * an account, and the form sits in a block. No invented balances or statistics.
+ *
+ * @param {{ children: React.ReactNode, tab?: 'login'|'signup' }} props
+ *        `tab`: show the Sign in / Create account switch with this side selected.
  */
-export default function AuthLayout({ children }) {
+export default function AuthLayout({ children, tab }) {
+  const navigate = useNavigate();
   return (
     <main className="min-h-screen bg-bg pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-ink">
-      <div className="mx-auto grid min-h-screen max-w-5xl grid-cols-1 lg:grid-cols-2 lg:gap-12">
+      <div className="mx-auto w-full max-w-md px-5 pb-12 pt-6">
         {/* Brand */}
-        <aside className="v-enter flex items-center gap-3 px-6 pb-6 pt-10 lg:flex-col lg:items-start lg:justify-center lg:gap-0 lg:pb-14">
-          <VittovaLogo size={40} className="lg:hidden" />
-          <VittovaLogo size={72} className="hidden lg:block" />
-          <div className="lg:mt-6">
-            <p className="font-display text-xl font-bold leading-tight lg:text-5xl">Vittova</p>
-            <p className="text-[13px] text-ink-2 lg:mt-2 lg:text-xl">
-              your money&apos;s pulse
-            </p>
+        <section className="v-hero-card v-enter p-5" aria-label="Vittova, your money's pulse">
+          <div className="flex items-start justify-between">
+            <p className="text-xs text-white/75">your money&apos;s pulse</p>
+            <PulseMark width={44} draw />
           </div>
-        </aside>
+          <p className="mt-5 text-[30px] font-semibold leading-none">Vittova</p>
+          <p className="mt-2.5 text-[13px] text-white/80">Know what your money can do next.</p>
+        </section>
+
+        {tab && (
+          <div className="v-seg mt-4 flex w-full [&>button]:min-h-10 [&>button]:flex-1" role="tablist" aria-label="Account">
+            <button type="button" role="tab" aria-selected={tab === 'login'} aria-pressed={tab === 'login'} onClick={() => tab !== 'login' && navigate('/login')}>Sign in</button>
+            <button type="button" role="tab" aria-selected={tab === 'signup'} aria-pressed={tab === 'signup'} onClick={() => tab !== 'signup' && navigate('/signup')}>Create account</button>
+          </div>
+        )}
 
         {/* Form */}
-        <section className="flex items-start justify-center px-6 pb-14 lg:items-center lg:py-12">
-          <div className="v-enter w-full max-w-md lg:rounded-3xl lg:bg-surface lg:p-8">
-            {children}
-          </div>
+        <section className="v-block v-enter mt-4 p-5">
+          {children}
         </section>
       </div>
     </main>
@@ -37,9 +46,9 @@ export default function AuthLayout({ children }) {
 export function OrDivider() {
   return (
     <div className="flex items-center gap-3" role="separator" aria-label="or">
-      <span className="h-px flex-1 bg-line" />
+      <span className="h-px flex-1 bg-line-strong" />
       <span className="text-xs text-ink-3">or</span>
-      <span className="h-px flex-1 bg-line" />
+      <span className="h-px flex-1 bg-line-strong" />
     </div>
   );
 }

@@ -171,10 +171,10 @@ export default function SubscriptionAudit() {
 
       {audit && (
         <>
-          <section>
-            <div className="flex items-end gap-8">
-              <div><p className="text-[13px] text-ink-2">A month</p><p className="mt-1 font-display text-[34px] font-bold leading-none tabular-nums">{inr(audit.totals.monthly)}</p></div>
-              <div><p className="text-[13px] text-ink-2">A year</p><p className="mt-1 font-display text-xl font-bold leading-none tabular-nums text-ink-soft">{inr(audit.totals.yearly)}</p></div>
+          <section className="v-block p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><p className="text-xs text-ink-2">A month</p><p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums">{inr(audit.totals.monthly)}</p></div>
+              <div><p className="text-xs text-ink-2">A year</p><p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums">{inr(audit.totals.yearly)}</p></div>
             </div>
             {audit.totals.priceIncreasesPerYear > 0 && <p className="mt-3 text-xs text-warn">Price rises add about {inr(audit.totals.priceIncreasesPerYear)} a year if they continue.</p>}
             {audit.totals.unwantedMonthly > 0 && <p className="mt-1 text-xs text-ink-2">Marked unwanted: {inr(audit.totals.unwantedMonthly)} a month.</p>}

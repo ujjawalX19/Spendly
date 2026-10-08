@@ -177,15 +177,15 @@ export default function SubscriptionGraveyard() {
           <p className="mx-auto mt-1 max-w-xs text-sm text-ink-2">Keep logging expenses (or turn on UPI detection) and check back later.</p>
         </div>
       ) : (
-        <div className="flex gap-8">
+        <div className="v-block grid grid-cols-2 gap-4 p-4">
           <div>
-            <p className="text-[13px] text-ink-2">Still charging you</p>
-            <p className="mt-1 font-display text-[34px] font-bold leading-none tabular-nums">{inr(data.activeMonthlyTotal)}<span className="text-sm font-normal text-ink-3">/mo</span></p>
+            <p className="text-xs text-ink-2">Still charging you</p>
+            <p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums">{inr(data.activeMonthlyTotal)}<span className="text-xs font-normal text-ink-2">/mo</span></p>
             <p className="mt-1.5 text-xs text-ink-3">{inr(data.activeAnnualTotal)} a year</p>
           </div>
           <div>
-            <p className="text-[13px] text-ink-2">Stopped by cancelling</p>
-            <p className="mt-1 font-display text-xl font-bold leading-none tabular-nums text-accent">{inr(data.cancelledMonthlySavings)}<span className="text-xs font-normal text-ink-3">/mo</span></p>
+            <p className="text-xs text-ink-2">Stopped by cancelling</p>
+            <p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums text-accent">{inr(data.cancelledMonthlySavings)}<span className="text-xs font-normal text-ink-2">/mo</span></p>
             <p className="mt-1.5 text-xs text-ink-3">{data.cancelledCount} cancelled</p>
           </div>
         </div>

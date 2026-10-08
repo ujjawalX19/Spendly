@@ -298,13 +298,12 @@ export default function Transactions() {
           <div className="space-y-6">
             {days.map((day) => (
               <section key={`${day.label}-${day.rows[0].id}`} aria-label={day.label}>
-                <div className="flex items-baseline justify-between border-b border-line pb-2">
+                <div className="mb-2 flex items-baseline justify-between">
                   <h2 className="v-label">{day.label}</h2>
-                  <span className="font-mono-finance text-[13px] font-medium text-ink-2">{rupees(day.total)}</span>
+                  <span className="font-mono-finance text-xs font-medium text-ink-2">{rupees(day.total)}</span>
                 </div>
-                {/* Rows sit on the page under their day, separated by hairlines;
-                    a row is one tap target that opens the expense. */}
-                <ul className="v-rows">
+                {/* One block per day; a row is one tap target that opens the expense. */}
+                <ul className="v-block v-rows px-3.5">
                   {day.rows.map((row) => (
                     <li key={row.id}>
                       <button
@@ -313,12 +312,12 @@ export default function Transactions() {
                         aria-label={`${expenseTitle(row)}, ${rupees(row.amount)}. Edit or delete`}
                         className="v-press flex min-h-[60px] w-full items-center gap-3 py-2.5 text-left"
                       >
-                        <CategoryIcon category={row.category} className="h-9 w-9 rounded-lg" />
+                        <CategoryIcon category={row.category} className="text-ink" />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[15px] font-semibold text-ink">{expenseTitle(row)}</span>
-                          <span className="block truncate text-xs text-ink-3">{expenseMeta(row)}</span>
+                          <span className="block truncate text-sm font-medium text-ink">{expenseTitle(row)}</span>
+                          <span className="block truncate text-xs text-ink-2">{expenseMeta(row)}</span>
                         </span>
-                        <span className="font-mono-finance shrink-0 text-[15px] font-semibold text-ink">{rupees(row.amount)}</span>
+                        <span className="font-mono-finance shrink-0 text-sm font-semibold text-ink">{rupees(row.amount)}</span>
                       </button>
                     </li>
                   ))}

@@ -32,7 +32,7 @@ export const GRADIENT = Object.freeze([
 export const GRADIENT_Y = Object.freeze([320, 950]);
 
 /** Android launch screen and web splash background (res/values: splash_background). */
-export const LAUNCH_BACKGROUND = '#0B1220';
+export const LAUNCH_BACKGROUND = '#000000';
 
 export const LAUNCH = Object.freeze({
   /** Viewport of the launch box. */

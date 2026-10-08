@@ -60,10 +60,13 @@ export default function Login() {
     };
 
     return (
-        <AuthLayout eyebrow="WELCOME BACK">
+        <AuthLayout tab="login">
             <div className="flex flex-col gap-5" aria-labelledby="login-title">
                 {/* Header */}
-                <h1 id="login-title" className="text-2xl font-bold">Sign in</h1>
+                <div>
+                    <h1 id="login-title" className="text-xl font-semibold">Welcome back</h1>
+                    <p className="mt-1 text-sm text-ink-2">Sign in to see where your money stands.</p>
+                </div>
 
                 {accountDeleted && !error && (
                     <div className="rounded-xl bg-surface px-3 py-2.5 text-sm text-ink-soft" role="status">

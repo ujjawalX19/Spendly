@@ -22,7 +22,7 @@ const ICONS = {
 export default function CategoryIcon({ category, className = '' }) {
   const Icon = ICONS[category] || Wallet;
   return (
-    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-ink-2 ${className}`} aria-hidden="true">
+    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-ink ${className}`} aria-hidden="true">
       <Icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
     </span>
   );

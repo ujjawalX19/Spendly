@@ -94,10 +94,10 @@ export default function Signup() {
     }
 
     return (
-        <AuthLayout eyebrow="START SMARTER">
+        <AuthLayout tab="signup">
             <div className="flex flex-col gap-5" aria-labelledby="signup-title">
                 <div>
-                    <h1 id="signup-title" className="text-2xl font-bold">Create your account</h1>
+                    <h1 id="signup-title" className="text-xl font-semibold">Create your account</h1>
                     <p className="mt-1 text-sm text-ink-2">Free. Takes under a minute.</p>
                 </div>
 

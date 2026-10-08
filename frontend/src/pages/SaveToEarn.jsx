@@ -152,25 +152,25 @@ export default function SaveToEarn() {
           className="v-press -mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-2"><Share2 className="h-5 w-5" /></button>
       </header>
 
-      {/* Streak + Victory Pot + level: the figures sit on the page */}
-      <section>
-        <div className="flex gap-10">
+      {/* Streak + Victory Pot + level, in one block */}
+      <section className="v-block p-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="flex items-center gap-1.5 text-[13px] text-ink-2"><Flame className="h-4 w-4 text-flame" aria-hidden="true" /> Money Streak</p>
-            <p className="mt-1 font-display text-[34px] font-bold leading-none tabular-nums">{streak ? streak.current : '–'}<span className="ml-1.5 text-sm font-normal text-ink-2">{streak?.current === 1 ? 'day' : 'days'}</span></p>
+            <p className="flex items-center gap-1.5 text-xs text-ink-2"><Flame className="h-4 w-4 text-flame" aria-hidden="true" /> Money Streak</p>
+            <p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums">{streak ? streak.current : '–'}<span className="ml-1.5 text-xs font-normal text-ink-2">{streak?.current === 1 ? 'day' : 'days'}</span></p>
           </div>
           <div>
-            <p className="text-[13px] text-ink-2">Victory Pot</p>
-            <p className="mt-1 font-display text-[34px] font-bold leading-none"><PotValue value={hub.victoryPot.total} /></p>
+            <p className="text-xs text-ink-2">Victory Pot</p>
+            <p className="mt-1.5 text-[26px] font-semibold leading-none"><PotValue value={hub.victoryPot.total} /></p>
             <p className="mt-1.5 text-[11px] text-ink-3">estimated impact</p>
           </div>
         </div>
-        <div className="mt-5">
+        <div className="mt-4 border-t border-line pt-4">
           <div className="mb-2 flex items-center justify-between text-[13px]">
             <span className="font-medium text-ink">Level {hub.level.level} · {hub.level.levelName}</span>
             <span className="tabular-nums text-ink-2">{hub.level.total} XP</span>
           </div>
-          <Bar pct={hub.level.progressPercent} tone="bg-ink-2" label="Progress to next level" />
+          <Bar pct={hub.level.progressPercent} tone="bg-warn" label="Progress to next level" />
           <p className="mt-1.5 text-[11px] text-ink-3">{hub.level.nextLevel ? `${hub.level.nextLevel.xpToGo} XP to ${hub.level.nextLevel.name}` : 'Top level reached'}</p>
         </div>
       </section>

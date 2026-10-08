@@ -135,8 +135,8 @@ test('the splash fades onto a screen, never onto a loading spinner', async () =>
 });
 
 test('before the app code runs, the page shows the launch frame, not an empty page', () => {
-  assert.match(css, /#root:empty \{\s*position: fixed; inset: 0; z-index: 999;\s*background: #0B1220 var\(--v-boot-mark\) center \/ 288px 288px no-repeat;/);
-  assert.equal(LAUNCH_BACKGROUND, '#0B1220');
+  assert.match(css, /#root:empty \{\s*position: fixed; inset: 0; z-index: 999;\s*background: #000000 var\(--v-boot-mark\) center \/ 288px 288px no-repeat;/);
+  assert.equal(LAUNCH_BACKGROUND, '#000000');
   assert.equal(LAUNCH.sizeDp, 288);
   // The mark in that frame is the same drawing as everywhere else.
   const mark = /--v-boot-mark: url\("data:image\/svg\+xml,([^"]+)"\);/.exec(css)[1];

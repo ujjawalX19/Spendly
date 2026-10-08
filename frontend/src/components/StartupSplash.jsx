@@ -168,7 +168,7 @@ export default function StartupSplash({ onDone }) {
           <div className="v-launch-mark absolute left-1/2" style={{ top, width: LAUNCH.sizeDp, height: LAUNCH.sizeDp, marginLeft: -LAUNCH.sizeDp / 2, marginTop: -LAUNCH.sizeDp / 2 }}>
             <LaunchMark uid={uid} />
           </div>
-          <p className="v-launch-tagline absolute inset-x-0 text-center text-[15px] font-semibold tracking-[0.08em] text-zinc-300" style={{ top: `calc(${top} + 84px)` }}>
+          <p className="v-launch-tagline absolute inset-x-0 text-center text-[15px] font-medium text-white" style={{ top: `calc(${top} + 84px)` }}>
             your money&rsquo;s <span className="text-lime-300">pulse</span>
           </p>
         </div>

@@ -566,12 +566,12 @@ export default function Settings() {
 
       {/* Dark is the default look; light uses the same system. */}
       <SettingsGroup title="Appearance">
-        <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2.5">
+        <div className="px-4 py-3.5">
           <div className="flex items-center gap-3.5">
             <SunMoon className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.75} aria-hidden="true" />
             <p className="text-[15px] font-medium text-ink" id="theme-label">Theme</p>
           </div>
-          <div className="v-seg" role="group" aria-labelledby="theme-label">
+          <div className="v-seg mt-3 flex w-full bg-surface-2 [&>button]:flex-1 [&>button]:px-2" role="group" aria-labelledby="theme-label">
             {[['dark', 'Dark'], ['light', 'Light'], ['system', 'Match phone']].map(([value, name]) => (
               <button key={value} type="button" aria-pressed={themeChoice === value} onClick={() => setThemeChoice(value)}>{name}</button>
             ))}
