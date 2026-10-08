@@ -67,15 +67,12 @@ export default function Signup() {
     if (confirmationSent) {
         return (
             <AuthLayout eyebrow="ALMOST THERE">
-                <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-lime-400/20 bg-lime-400/10">
-                        <MailCheck className="w-8 h-8 text-lime-300" />
-                    </div>
+                <div className="flex flex-col gap-5">
                     <div>
-                        <p className="text-xs font-bold tracking-wider uppercase text-lime-300">ONE MORE STEP</p>
-                        <h2 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight">Check your inbox.</h2>
-                        <p className="mt-3 text-sm leading-6 text-zinc-400">
-                            We sent an email to <strong className="text-zinc-100">{email}</strong>.
+                        <MailCheck className="h-6 w-6 text-ink-2" aria-hidden="true" />
+                        <h2 className="mt-3 text-2xl font-bold leading-tight">Check your inbox</h2>
+                        <p className="mt-2 text-sm leading-6 text-ink-2">
+                            We sent an email to <strong className="font-semibold text-ink">{email}</strong>.
                             Enter the code from it to activate your account.
                         </p>
                     </div>
@@ -85,10 +82,10 @@ export default function Signup() {
                         onVerify={(code) => confirmEmailCode(email.trim(), code, 'signup')}
                         onResend={() => resendSignupEmail(email.trim())}
                     />
-                    <p className="text-xs leading-5 text-zinc-500">
+                    <p className="text-xs leading-5 text-ink-3">
                         No code in the email? Open the link in it on this device instead. Not there at all? Check your spam folder.
                     </p>
-                    <Link to="/login" className="inline-flex min-h-[44px] items-center text-sm text-zinc-400 underline">
+                    <Link to="/login" className="inline-flex min-h-[44px] items-center self-center text-sm text-ink-2 underline">
                         Back to sign in
                     </Link>
                 </div>
@@ -100,13 +97,13 @@ export default function Signup() {
         <AuthLayout eyebrow="START SMARTER">
             <div className="flex flex-col gap-5" aria-labelledby="signup-title">
                 <div>
-                    <h1 id="signup-title" className="text-xl font-extrabold tracking-tight">Create your account</h1>
-                    <p className="mt-1 text-sm text-zinc-400">Free. Takes under a minute.</p>
+                    <h1 id="signup-title" className="text-2xl font-bold">Create your account</h1>
+                    <p className="mt-1 text-sm text-ink-2">Free. Takes under a minute.</p>
                 </div>
 
                 {/* Error alert */}
                 {error && (
-                    <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-center text-sm text-rose-200" role="alert">
+                    <div className="v-error" role="alert">
                         {error}
                     </div>
                 )}
@@ -114,9 +111,9 @@ export default function Signup() {
                 {/* Email form */}
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div>
-                        <label htmlFor="name" className="mb-2 block text-sm font-semibold text-zinc-300">Your name</label>
+                        <label htmlFor="name" className="v-field-label">Your name</label>
                         <div className="relative">
-                            <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                            <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
                             <input
                                 id="name"
                                 type="text"
@@ -124,14 +121,14 @@ export default function Signup() {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="e.g. Aanya Sharma"
-                                className="h-12 w-full rounded-xl border border-white/10 bg-black/30 pl-11 pr-4 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                                className="v-input pl-11"
                             />
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="email" className="mb-2 block text-sm font-semibold text-zinc-300">Email</label>
+                        <label htmlFor="email" className="v-field-label">Email</label>
                         <div className="relative">
-                            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
                             <input
                                 id="email"
                                 type="email"
@@ -139,14 +136,14 @@ export default function Signup() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@example.com"
-                                className="h-12 w-full rounded-xl border border-white/10 bg-black/30 pl-11 pr-4 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                                className="v-input pl-11"
                             />
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="password" className="mb-2 block text-sm font-semibold text-zinc-300">Create a password</label>
+                        <label htmlFor="password" className="v-field-label">Create a password</label>
                         <div className="relative">
-                            <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                            <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
                             <input
                                 id="password"
                                 type={showPassword ? 'text' : 'password'}
@@ -155,12 +152,12 @@ export default function Signup() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="At least 8 characters"
-                                className="h-12 w-full rounded-xl border border-white/10 bg-black/30 pl-11 pr-12 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                                className="v-input pl-11 pr-12"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-zinc-500 transition hover:text-lime-300"
+                                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-ink-3 transition hover:text-ink"
                                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                             >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -168,30 +165,30 @@ export default function Signup() {
                         </div>
                     </div>
                     <fieldset>
-                    <legend className="mb-2 block text-sm font-semibold text-zinc-300">Month and year of birth</legend>
+                    <legend className="v-field-label">Month and year of birth</legend>
                     <div className="grid grid-cols-2 gap-3">
                         <select aria-label="Birth month" value={birthMonth} onChange={(e) => { setBirthMonth(e.target.value); setUnderAge(false); }} required
-                            className={`h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm focus:border-lime-400 focus:outline-none ${birthMonth ? 'text-white' : 'text-zinc-500'}`}>
+                            className={`v-input px-3 ${birthMonth ? '' : 'text-ink-3'}`}>
                             <option value="" disabled>Month</option>
                             {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                         </select>
                         <select aria-label="Birth year" value={birthYear} onChange={(e) => { setBirthYear(e.target.value); setUnderAge(false); }} required
-                            className={`h-12 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm focus:border-lime-400 focus:outline-none ${birthYear ? 'text-white' : 'text-zinc-500'}`}>
+                            className={`v-input px-3 ${birthYear ? '' : 'text-ink-3'}`}>
                             <option value="" disabled>Year</option>
                             {yearOptions().map((y) => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    <p className="mt-1.5 text-xs text-zinc-500">We keep only the month and year.</p>
+                    <p className="mt-1.5 text-xs text-ink-3">We keep only the month and year.</p>
                 </fieldset>
                 {underAge && (
-                    <p role="alert" className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
+                    <p role="alert" className="rounded-xl bg-surface px-3 py-2.5 text-sm text-ink-soft">
                         Vittova is for people aged 18 and over for now, so we can&apos;t create an account for you yet. Nothing has been saved.
                     </p>
                 )}
                 <button
                         type="submit"
                         disabled={loading || googleLoading}
-                        className="v-press mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-[15px] font-extrabold text-black transition hover:bg-lime-300 focus:outline-none focus:ring-4 focus:ring-lime-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="v-press v-btn-primary mt-1 w-full disabled:cursor-not-allowed"
                     >
                         {loading ? (
                             <><Loader2 className="w-4 h-4 animate-spin" /> Creating account…</>
@@ -202,13 +199,13 @@ export default function Signup() {
                 <OrDivider />
                 <GoogleButton onClick={handleGoogleLogin} loading={googleLoading} disabled={loading} />
 
-                <p className="text-center text-xs leading-5 text-zinc-500">
-                    By continuing you agree to the <Link to="/terms" className="underline hover:text-zinc-300">Terms of Service</Link> and
-                    acknowledge the <Link to="/privacy" className="underline hover:text-zinc-300">Privacy Policy</Link>.
+                <p className="text-center text-xs leading-5 text-ink-3">
+                    By continuing you agree to the <Link to="/terms" className="underline hover:text-ink">Terms of Service</Link> and
+                    acknowledge the <Link to="/privacy" className="underline hover:text-ink">Privacy Policy</Link>.
                 </p>
 
-                <p className="text-center text-sm text-zinc-400">
-                    Already using Vittova? <Link to="/login" className="inline-flex min-h-[44px] items-center font-bold text-lime-300 hover:text-lime-200 hover:underline">Log in</Link>
+                <p className="text-center text-sm text-ink-2">
+                    Already using Vittova? <Link to="/login" className="inline-flex min-h-[44px] items-center font-semibold text-ink underline">Log in</Link>
                 </p>
             </div>
         </AuthLayout>

@@ -15,7 +15,7 @@ import Footer from './Footer';
 
 export default function Landing() {
   return (
-    <div className="min-h-screen overflow-x-clip bg-black font-sans text-white selection:bg-lime-400/30">
+    <div className="v-dark min-h-screen overflow-x-clip bg-bg font-sans text-ink selection:bg-lime-400/30">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-lime-400 focus:px-3 focus:py-2 focus:text-black">Skip to content</a>
       <Navbar />
       <main id="main">

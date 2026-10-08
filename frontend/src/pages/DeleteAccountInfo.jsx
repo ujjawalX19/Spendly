@@ -11,7 +11,7 @@ import { SUPPORT_EMAIL } from '../lib/legal';
  */
 export default function DeleteAccountInfo() {
     return (
-        <div className="min-h-screen bg-[#09090b] px-6 py-12 text-zinc-300">
+        <div className="min-h-screen bg-bg px-6 py-12 text-ink-soft">
             <div className="mx-auto max-w-2xl">
                 <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300">
                     <ArrowLeft className="h-4 w-4" /> Vittova

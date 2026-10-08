@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Info, RotateCcw, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ArrowUp, Info, RotateCcw, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -41,8 +41,8 @@ const GREETING = {
 function Inline({ text }) {
     const parts = String(text).split(/(\*\*[^*]+\*\*|₹\s?[\d,]+(?:\.\d+)?)/g).filter(Boolean);
     return parts.map((part, i) => {
-        if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i} className="font-semibold text-white">{part.slice(2, -2)}</strong>;
-        if (/^₹/.test(part)) return <span key={i} className="font-semibold tabular-nums text-white">{part}</span>;
+        if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i} className="font-semibold text-ink">{part.slice(2, -2)}</strong>;
+        if (/^₹/.test(part)) return <span key={i} className="font-semibold tabular-nums text-ink">{part}</span>;
         return <span key={i}>{part}</span>;
     });
 }
@@ -62,18 +62,18 @@ function AnswerText({ text }) {
                 const body = heading ? lines.slice(1) : lines;
                 return (
                     <div key={i}>
-                        {heading && <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[.14em] text-[#A3E635]">{heading[1]}</p>}
+                        {heading && <p className="mb-1.5 text-[13px] font-semibold text-ink">{heading[1]}</p>}
                         <div className="space-y-1">
                             {body.map((line, j) => {
                                 const bullet = /^\s*[•-]\s+(.*)$/.exec(line);
                                 const numbered = /^\s*(\d+)\.\s+(.*)$/.exec(line);
                                 if (bullet) {
-                                    return <p key={j} className="flex gap-2"><span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#A3E635]/70" aria-hidden /><span><Inline text={bullet[1]} /></span></p>;
+                                    return <p key={j} className="flex gap-2"><span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-ink-3" aria-hidden /><span><Inline text={bullet[1]} /></span></p>;
                                 }
                                 if (numbered) {
-                                    return <p key={j} className="flex gap-2"><span className="w-4 shrink-0 font-semibold text-[#A3E635]">{numbered[1]}.</span><span><Inline text={numbered[2]} /></span></p>;
+                                    return <p key={j} className="flex gap-2"><span className="w-4 shrink-0 tabular-nums text-ink-3">{numbered[1]}.</span><span><Inline text={numbered[2]} /></span></p>;
                                 }
-                                return <p key={j} className={i === 0 && !heading ? 'text-[15px] font-medium text-white' : ''}><Inline text={line} /></p>;
+                                return <p key={j} className={i === 0 && !heading ? 'text-[15px] font-medium text-ink' : ''}><Inline text={line} /></p>;
                             })}
                         </div>
                     </div>
@@ -83,36 +83,36 @@ function AnswerText({ text }) {
     );
 }
 
+// A status is plain coloured text, never a badge.
 const TONE = {
-    alert: { ring: 'border-red-500/30', badge: 'bg-red-500/15 text-red-300', icon: AlertTriangle, label: 'Needs attention' },
-    watch: { ring: 'border-amber-400/25', badge: 'bg-amber-400/15 text-amber-200', icon: TrendingUp, label: 'Watch this' },
-    good: { ring: 'border-[#A3E635]/25', badge: 'bg-[#A3E635]/15 text-[#A3E635]', icon: CheckCircle2, label: 'On track' },
-    neutral: { ring: 'border-white/10', badge: 'bg-white/10 text-zinc-300', icon: Sparkles, label: 'Getting started' },
+    alert: { text: 'text-danger', label: 'Needs attention' },
+    watch: { text: 'text-warn', label: 'Watch this' },
+    good: { text: 'text-accent', label: 'On track' },
+    neutral: { text: 'text-ink-2', label: 'Getting started' },
 };
 
 function InsightCard({ insight, loading }) {
     if (loading) {
-        return <div className="h-40 animate-pulse rounded-2xl border border-white/5 bg-zinc-900/70" aria-label="Loading your money insight" />;
+        return <div className="h-36 animate-pulse rounded-2xl bg-surface" aria-label="Loading your money insight" />;
     }
     if (!insight) return null;
     const tone = TONE[insight.tone] || TONE.neutral;
-    const Icon = tone.icon;
     return (
-        <section aria-label="Your money today" className={`rounded-2xl border ${tone.ring} bg-gradient-to-br from-[#10190a] via-zinc-950 to-zinc-950 p-4`}>
+        <section aria-label="Your money today" className="v-block p-4">
             <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-zinc-400">Your money today</p>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone.badge}`}><Icon className="h-3 w-3" aria-hidden />{tone.label}</span>
+                <p className="v-label">Your money today</p>
+                <span className={`text-xs font-semibold ${tone.text}`}>{tone.label}</span>
             </div>
-            <p className="mt-2 text-[15px] font-semibold leading-snug text-white">{insight.headline}</p>
+            <p className="mt-2 text-[15px] font-medium leading-snug text-ink">{insight.headline}</p>
             <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-black tabular-nums text-[#A3E635]">₹{Number(insight.figure?.value || 0).toLocaleString('en-IN')}</span>
-                <span className="text-xs text-zinc-400">{insight.figure?.label}</span>
+                <span className="font-display text-3xl font-bold tabular-nums text-ink">₹{Number(insight.figure?.value || 0).toLocaleString('en-IN')}</span>
+                <span className="text-xs text-ink-2">{insight.figure?.label}</span>
             </div>
-            {insight.opportunity && <p className="mt-2 text-sm text-zinc-300"><Inline text={insight.opportunity} /></p>}
+            {insight.opportunity && <p className="mt-2 text-sm text-ink-2"><Inline text={insight.opportunity} /></p>}
             {insight.nextMove && (
-                <div className="mt-3 rounded-xl bg-white/[.04] px-3 py-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#A3E635]">Next move</p>
-                    <p className="mt-0.5 text-sm text-zinc-200"><Inline text={insight.nextMove} /></p>
+                <div className="mt-3 border-t border-line pt-3">
+                    <p className="text-xs font-semibold text-ink-3">Next move</p>
+                    <p className="mt-0.5 text-sm text-ink-soft"><Inline text={insight.nextMove} /></p>
                 </div>
             )}
         </section>
@@ -297,37 +297,37 @@ export default function Chatbot() {
         : null;
 
     return (
-        <div className="chat-shell -mx-4 -mt-3 flex h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col bg-black text-zinc-100 md:m-0 md:h-[calc(100dvh-4rem)] md:rounded-2xl md:border md:border-white/10">
-            <header className="flex items-center gap-3 border-b border-white/10 bg-zinc-950/95 px-4 py-3">
-                <VittovaLogo size={32} />
+        <div className="chat-shell -mx-4 -mt-3 flex h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col bg-bg text-ink-soft md:m-0 md:h-[calc(100dvh-4rem)] md:rounded-2xl md:border md:border-line">
+            <header className="flex items-center gap-3 border-b border-line px-4 py-3">
+                <VittovaLogo size={28} />
                 <div className="min-w-0 flex-1">
-                    <h1 className="text-base font-extrabold leading-tight text-white">Ask Vittova</h1>
-                    <p className="text-xs text-zinc-400">Answers from your own numbers</p>
+                    <h1 className="text-base font-bold leading-tight text-ink">Ask Vittova</h1>
+                    <p className="text-xs text-ink-2">Answers from your own numbers</p>
                 </div>
                 {remaining !== null && (
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${remaining === 0 ? 'bg-red-500/15 text-red-300' : 'bg-white/[.06] text-zinc-300'}`}>
+                    <span className={`shrink-0 text-xs font-medium tabular-nums ${remaining === 0 ? 'text-danger' : 'text-ink-2'}`}>
                         {remaining} left today
                     </span>
                 )}
             </header>
 
-            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
+            <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4">
                 <InsightCard insight={insight} loading={insightLoading} />
 
                 {fresh && (
                     <section aria-labelledby="quick-asks" className="v-enter">
-                        <h2 id="quick-asks" className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[.16em] text-zinc-500">Tap to ask</h2>
-                        <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-[20px] border border-white/[0.06] bg-[#111113]">
+                        <h2 id="quick-asks" className="v-label mb-2">Tap to ask</h2>
+                        <ul className="v-block v-rows overflow-hidden">
                             {QUICK_ACTIONS.map((q) => (
                                 <li key={q}>
                                     <button type="button" onClick={() => send(q)} disabled={limitReached}
-                                        className="v-press flex min-h-[52px] w-full items-center justify-between gap-3 px-4 text-left text-[15px] font-semibold text-zinc-100 disabled:opacity-40">
-                                        {q}<ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
+                                        className="v-press flex min-h-[52px] w-full items-center justify-between gap-3 px-4 text-left text-[15px] font-medium text-ink disabled:opacity-40">
+                                        {q}<ChevronRight className="h-4 w-4 shrink-0 text-ink-3" aria-hidden />
                                     </button>
                                 </li>
                             ))}
                         </ul>
-                        <p className="mt-3 px-1 text-xs leading-5 text-zinc-500">I read your budget, spending, bills and savings target in Vittova. Income and bank balances aren't tracked, so I'll say when something is missing.</p>
+                        <p className="mt-3 text-xs leading-5 text-ink-3">I read your budget, spending, bills and savings target in Vittova. Income and bank balances aren't tracked, so I'll say when something is missing.</p>
                     </section>
                 )}
 
@@ -342,29 +342,29 @@ export default function Chatbot() {
                                 className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
                             >
                                 {msg.role === 'user' ? (
-                                    <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-[#A3E635] px-4 py-2.5 text-[15px] font-medium text-black">
+                                    <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-surface-2 px-4 py-2.5 text-[15px] text-ink">
                                         {msg.content}
                                     </div>
                                 ) : (
                                     <div className="w-full max-w-[95%]">
-                                        <div className={`break-words rounded-2xl rounded-bl-md border px-4 py-3 text-sm leading-relaxed ${
+                                        <div className={`break-words text-sm leading-relaxed ${
                                             msg.isError
-                                                ? 'border-red-500/25 bg-red-950/40 text-red-100'
+                                                ? 'v-error'
                                                 : msg.isLimitAlert
-                                                    ? 'border-amber-400/25 bg-amber-950/30 text-amber-50'
-                                                    : 'border-white/10 bg-zinc-900 text-zinc-200'
+                                                    ? 'rounded-xl bg-surface px-3 py-2.5 text-ink-soft'
+                                                    : 'text-ink-soft'
                                         }`}>
                                             {msg.isError || msg.isLimitAlert ? <p>{msg.content}</p> : <AnswerText text={msg.content} />}
                                         </div>
-                                        <div className="mt-1.5 flex flex-wrap items-center gap-3 px-1 text-[11px] text-zinc-500">
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-ink-3">
                                             {msg.source === 'ai' && <span>Based on your Vittova data</span>}
                                             {msg.source === 'calculated' && <span>{msg.aiFallback ? 'Calculated from your data (AI wording unavailable)' : 'Calculated from your data'}</span>}
                                             {msg.retry && (
-                                                <button type="button" onClick={() => retry(msg)} disabled={isLoading} className="inline-flex min-h-8 items-center gap-1 font-semibold text-[#A3E635] disabled:opacity-50">
+                                                <button type="button" onClick={() => retry(msg)} disabled={isLoading} className="inline-flex min-h-8 items-center gap-1 font-semibold text-ink disabled:opacity-50">
                                                     <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Try again
                                                 </button>
                                             )}
-                                            {msg.isLimitAlert && <Link to="/pro" className="font-semibold text-amber-300 underline">See what Vittova Pro will include</Link>}
+                                            {msg.isLimitAlert && <Link to="/pro" className="font-semibold text-ink underline">See what Vittova Pro will include</Link>}
                                         </div>
                                     </div>
                                 )}
@@ -373,9 +373,9 @@ export default function Chatbot() {
                     </AnimatePresence>
 
                     {isLoading && (
-                        <div className="flex items-center gap-3 rounded-2xl rounded-bl-md border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-zinc-400" role="status">
+                        <div className="flex items-center gap-3 text-sm text-ink-2" role="status">
                             <span className="flex gap-1" aria-hidden>
-                                {[0, 150, 300].map((d) => <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A3E635]" style={{ animationDelay: `${d}ms` }} />)}
+                                {[0, 150, 300].map((d) => <span key={d} className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-3" style={{ animationDelay: `${d}ms` }} />)}
                             </span>
                             Checking your numbers…
                         </div>
@@ -383,7 +383,7 @@ export default function Chatbot() {
                 </div>
             </div>
 
-            <div className="border-t border-white/10 bg-zinc-950/95 px-4 pb-3 pt-2.5">
+            <div className="border-t border-line bg-bg px-4 pb-3 pt-2.5">
                 {!fresh && <div className="-mx-4 mb-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]">
                     {suggestions.map((s) => (
                         <button
@@ -391,7 +391,7 @@ export default function Chatbot() {
                             type="button"
                             onClick={() => pickSuggestion(s)}
                             disabled={isLoading || limitReached}
-                            className="min-h-9 shrink-0 rounded-full border border-white/10 bg-zinc-900 px-3.5 text-[13px] font-medium text-zinc-200 transition-colors hover:border-[#A3E635]/50 active:bg-zinc-800 disabled:opacity-40"
+                            className="min-h-9 shrink-0 rounded-full bg-surface-2 px-3.5 text-[13px] font-medium text-ink-soft transition-colors active:bg-surface-3 disabled:opacity-40"
                         >
                             {s.label}
                         </button>
@@ -409,18 +409,18 @@ export default function Chatbot() {
                         onKeyDown={onKeyDown}
                         placeholder={limitReached ? 'Daily limit reached. Come back tomorrow.' : 'Or type your own question…'}
                         disabled={limitReached}
-                        className="max-h-28 min-h-12 flex-1 resize-none rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-[15px] leading-6 text-white outline-none placeholder:text-zinc-500 focus:border-[#A3E635]/60 disabled:opacity-60"
+                        className="v-input max-h-28 flex-1 resize-none rounded-2xl px-4 py-3 leading-6 disabled:opacity-60"
                     />
                     <button
                         type="submit"
                         aria-label="Send question"
                         disabled={!input.trim() || isLoading || limitReached}
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#A3E635] text-black transition-transform active:scale-95 disabled:bg-zinc-800 disabled:text-zinc-500"
+                        className="v-press flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-on-fill disabled:bg-surface-2 disabled:text-ink-3"
                     >
-                        <Send className="h-5 w-5" />
+                        <ArrowUp className="h-5 w-5" strokeWidth={2.5} />
                     </button>
                 </form>
-                <div className="mt-2 flex items-start justify-between gap-3 text-[11px] leading-4 text-zinc-500">
+                <div className="mt-2 flex items-start justify-between gap-3 text-[11px] leading-4 text-ink-3">
                     <p className="flex items-start gap-1">
                         <Info className="mt-px h-3 w-3 shrink-0" aria-hidden />
                         General education, not investment advice. Vittova is not a SEBI-registered adviser.

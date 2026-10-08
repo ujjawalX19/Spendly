@@ -28,11 +28,11 @@ export default function PermissionBanner({ isSupported, smsGranted, permissionCh
     const due = Date.now() - prompt.dismissedAt > REMINDER_AFTER_MS;
     if (!due || prompt.reminderDismissed) return null;
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#141414] px-4 py-3 text-xs text-zinc-400">
-        <MessageSquareText className="h-4 w-4 shrink-0 text-lime-400" />
+      <div className="v-block flex items-center gap-3 px-4 py-2 text-sm text-ink-2">
+        <MessageSquareText className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="flex-1">Automatic tracking from bank SMS is off.</span>
-        <button type="button" onClick={onEnable} className="font-bold text-lime-400">Turn on</button>
-        <button type="button" onClick={dismiss} aria-label="Dismiss reminder" className="p-1 text-zinc-600"><X className="h-3.5 w-3.5" /></button>
+        <button type="button" onClick={onEnable} className="v-press min-h-[44px] font-semibold text-ink underline">Turn on</button>
+        <button type="button" onClick={dismiss} aria-label="Dismiss reminder" className="p-2 text-ink-3"><X className="h-4 w-4" /></button>
       </div>
     );
   }
@@ -41,24 +41,22 @@ export default function PermissionBanner({ isSupported, smsGranted, permissionCh
     <motion.section
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-lime-400/20 bg-[#141414] p-4"
+      className="v-block p-4"
       aria-labelledby="sms-access-title"
     >
-      <div className="flex gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lime-400/15">
-          <MessageSquareText className="h-5 w-5 text-lime-400" />
-        </div>
+      <div className="flex gap-3">
+        <MessageSquareText className="mt-0.5 h-5 w-5 shrink-0 text-ink-2" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <h2 id="sms-access-title" className="text-sm font-bold text-white">Track payments automatically</h2>
-          <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+          <h2 id="sms-access-title" className="text-[15px] font-semibold text-ink">Track payments automatically</h2>
+          <p className="mt-1 text-sm leading-relaxed text-ink-2">
             Vittova can add payments for you from your bank&apos;s debit SMS, even when the app is closed. It never reads
             messages from people, and keeps only the amount, payee, bank and time.
           </p>
-          <div className="mt-4 flex gap-2">
-            <button type="button" onClick={onEnable} className="rounded-xl bg-lime-400 px-4 py-2 text-xs font-black text-black">
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={onEnable} className="v-press v-btn-primary min-h-[44px] px-4 text-sm">
               Allow bank SMS
             </button>
-            <button type="button" onClick={dismiss} className="rounded-xl bg-zinc-800 px-4 py-2 text-xs font-bold text-zinc-300">
+            <button type="button" onClick={dismiss} className="v-press v-btn-secondary">
               Not now
             </button>
           </div>

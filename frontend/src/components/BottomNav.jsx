@@ -4,10 +4,12 @@
  * Rendered inside Layout so it appears on ALL authenticated pages.
  * Uses useLocation() for real active-tab highlighting instead of
  * a hardcoded value.
+ *
+ * A plain bar, part of the page: the selected tab is marked by the accent on
+ * its icon and label only. No floating pill, no blur, no bounce.
  */
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Receipt, BarChart2, Users, UserRound } from 'lucide-react';
@@ -63,35 +65,22 @@ export default function BottomNav() {
   if (typing) return null;
 
   return (
-    <motion.nav
-      initial={false}
-      className="md:hidden fixed bottom-0 inset-x-0 z-50
-                 bg-[#181818]/90 backdrop-blur-md border-t border-white/5
-                 flex items-center justify-around px-2 pt-2 rounded-t-3xl
-                 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+    <nav
+      aria-label="Main"
+      className="md:hidden fixed bottom-0 inset-x-0 z-50 flex items-stretch border-t border-line bg-bg px-1
+                 pb-[calc(0.375rem+env(safe-area-inset-bottom))] pt-1.5"
     >
       {tabs.map(tab => {
         const Icon = tab.icon;
         const isActive = tab.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
         return (
-          <Link key={tab.id} to={tab.id} className="min-w-0 flex-1" aria-label={tab.label} aria-current={isActive ? 'page' : undefined}>
-            <motion.div
-              whileTap={{ scale: 0.88 }}
-              className="flex flex-col items-center gap-0.5"
-            >
-              <div className={`px-[14px] py-1.5 rounded-full transition-colors duration-150 ${isActive ? 'bg-[#a3e635]' : 'bg-transparent'}`}>
-                <Icon
-                  className={`w-6 h-6 transition-colors ${isActive ? 'text-black' : 'text-[#71717a]'}`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-              </div>
-              <span className={`text-[11px] font-bold tracking-wide transition-colors ${
-                isActive ? 'text-[#a3e635]' : 'text-[#71717a]'
-              }`}>{tab.label}</span>
-            </motion.div>
+          <Link key={tab.id} to={tab.id} aria-label={tab.label} aria-current={isActive ? 'page' : undefined}
+            className={`v-press flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-1 ${isActive ? 'text-accent' : 'text-ink-3'}`}>
+            <Icon className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden="true" />
+            <span className="text-[11px] font-semibold leading-none">{tab.label}</span>
           </Link>
         );
       })}
-    </motion.nav>
+    </nav>
   );
 }

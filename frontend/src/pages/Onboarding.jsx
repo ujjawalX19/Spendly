@@ -51,19 +51,16 @@ export function hasOnboarded() {
 const SLIDES = [
   {
     icon: Zap,
-    tint: 'text-lime-400 bg-lime-400/15',
     title: 'Track without typing',
     body: "With your permission, Vittova adds payments from your bank's debit SMS to your expenses automatically, even when the app is closed. Or add expenses yourself — both work.",
   },
   {
     icon: PieChart,
-    tint: 'text-sky-400 bg-sky-400/15',
     title: 'See where it actually goes',
     body: 'Categories, trends, and the subscriptions you forgot you were paying for. The numbers explain themselves.',
   },
   {
     icon: TrendingUp,
-    tint: 'text-amber-400 bg-amber-400/15',
     title: 'Know what you can spend',
     body: 'Not just what you spent. Safe-to-Spend works out what is left to use each day this month, based on your budget and bills.',
   },
@@ -92,63 +89,58 @@ export default function Onboarding() {
   const slide = SLIDES[step];
 
   return (
-    <div className="flex min-h-screen flex-col bg-black px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.5rem+env(safe-area-inset-top))] text-white">
+    <div className="flex min-h-screen flex-col bg-bg px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(2.5rem+env(safe-area-inset-top))] text-ink">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
 
-        <div className="mb-6 flex items-center gap-2.5">
-          <VittovaLogo size={32} />
-          <span className="leading-tight">
-            <span className="block text-sm font-extrabold tracking-[.16em] text-white">VITTOVA</span>
-            <span className="block text-[10px] font-bold tracking-[.12em] text-lime-300">YOUR MONEY&apos;S PULSE</span>
-          </span>
-        </div>
-
-        <div className="mb-10 flex items-center justify-between">
-          <div className="flex gap-1.5" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={lastStep + 1}>
-            {Array.from({ length: lastStep + 1 }).map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all ${i === step ? 'w-7 bg-lime-400' : 'w-1.5 bg-white/15'}`}
-              />
-            ))}
+        <div className="mb-12 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <VittovaLogo size={28} />
+            <span className="font-display text-base font-bold">Vittova</span>
           </div>
-          <button type="button" onClick={finish} className="min-h-11 px-2 text-sm font-bold text-zinc-500 hover:text-zinc-300">
+          <button type="button" onClick={finish} className="-mr-2 min-h-11 px-2 text-sm font-medium text-ink-2 hover:text-ink">
             Skip
           </button>
+        </div>
+
+        <div className="mb-8 flex gap-1.5" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={lastStep + 1}>
+          {Array.from({ length: lastStep + 1 }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? 'bg-ink' : 'bg-surface-3'}`}
+            />
+          ))}
         </div>
 
         <AnimatePresence mode="wait">
           {onPermissionScreen ? (
             <motion.div
               key="perm"
-              initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
               className="flex flex-1 flex-col"
             >
-              <span className="mb-7 flex h-16 w-16 items-center justify-center rounded-2xl bg-lime-400/15 text-lime-400">
-                <MessageSquareText className="h-8 w-8" />
-              </span>
+              <MessageSquareText className="mb-6 h-7 w-7 text-ink-2" aria-hidden="true" />
 
-              <h1 className="text-3xl font-black leading-tight tracking-tight">
+              <h1 className="text-[28px] font-bold leading-tight">
                 One permission,<br />and it tracks itself
               </h1>
 
-              <p className="mt-4 text-base leading-relaxed text-zinc-400">
+              <p className="mt-4 text-base leading-relaxed text-ink-2">
                 Payment apps rarely announce a payment, but your bank always sends a debit SMS. With SMS access,
                 Vittova turns those alerts into expenses. Here is exactly what it reads and keeps.
               </p>
 
               <ul className="mt-6 space-y-3">
                 {SMS_DISCLOSURE.map(line => (
-                  <li key={line} className="flex gap-3 text-sm leading-relaxed text-zinc-300">
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-lime-400" />
+                  <li key={line} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
                     <span>{line}</span>
                   </li>
                 ))}
               </ul>
 
               {declined && (
-                <p role="status" className="mt-5 rounded-xl border border-amber-400/25 bg-amber-400/[.06] p-3 text-sm text-amber-100">
+                <p role="status" className="mt-5 rounded-xl bg-surface px-3 py-2.5 text-sm text-ink-soft">
                   {tracking.smsPermission === 'denied'
                     ? 'Android will not ask again. You can allow SMS later in App info → Permissions → SMS.'
                     : "SMS access wasn't allowed. You can add expenses yourself, or allow it later in Profile."}
@@ -160,7 +152,7 @@ export default function Onboarding() {
                   <button
                     type="button"
                     onClick={() => { markOnboarded(); openAppSettings(); }}
-                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black"
+                    className="v-press v-btn-primary min-h-[52px] w-full text-base"
                   >
                     Open App info <ArrowRight className="h-4 w-4" />
                   </button>
@@ -178,7 +170,7 @@ export default function Onboarding() {
                       if (info?.smsGranted) finish();
                       else setDeclined(true);
                     }}
-                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black disabled:opacity-60"
+                    className="v-press v-btn-primary min-h-[52px] w-full text-base"
                   >
                     {asking ? 'Waiting for Android…' : <>Allow bank SMS <ArrowRight className="h-4 w-4" /></>}
                   </button>
@@ -186,7 +178,7 @@ export default function Onboarding() {
                 <button
                   type="button"
                   onClick={() => { recordNotificationPromptDismissed(); finish(); }}
-                  className="min-h-12 w-full text-sm font-bold text-zinc-500 hover:text-zinc-300"
+                  className="min-h-12 w-full text-sm font-medium text-ink-2 hover:text-ink"
                 >
                   Not now — I'll add expenses myself
                 </button>
@@ -195,22 +187,20 @@ export default function Onboarding() {
           ) : (
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
               className="flex flex-1 flex-col"
             >
-              <span className={`mb-7 flex h-16 w-16 items-center justify-center rounded-2xl ${slide.tint}`}>
-                <slide.icon className="h-8 w-8" />
-              </span>
+              <slide.icon className="mb-6 h-7 w-7 text-ink-2" aria-hidden="true" />
 
-              <h1 className="text-3xl font-black leading-tight tracking-tight">{slide.title}</h1>
-              <p className="mt-4 text-base leading-relaxed text-zinc-400">{slide.body}</p>
+              <h1 className="text-[28px] font-bold leading-tight">{slide.title}</h1>
+              <p className="mt-4 text-base leading-relaxed text-ink-2">{slide.body}</p>
 
               <div className="mt-auto pt-8">
                 <button
                   type="button"
                   onClick={next}
-                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-base font-black text-black"
+                  className="v-press v-btn-primary min-h-[52px] w-full text-base"
                 >
                   {step === lastStep ? <>Get started <Check className="h-4 w-4" /></> : <>Next <ArrowRight className="h-4 w-4" /></>}
                 </button>

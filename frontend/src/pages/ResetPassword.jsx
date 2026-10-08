@@ -60,13 +60,13 @@ export default function ResetPassword() {
     if (done) {
         return (
             <AuthLayout eyebrow="PASSWORD UPDATED">
-                <div className="flex flex-col items-center gap-6 text-center">
-                    <CheckCircle2 className="h-14 w-14 text-lime-300" />
+                <div className="flex flex-col gap-5">
                     <div>
-                        <h1 className="text-3xl font-extrabold tracking-tight">Password changed</h1>
-                        <p className="mt-3 text-sm text-zinc-400">Use your new password next time you sign in.</p>
+                        <CheckCircle2 className="h-6 w-6 text-accent" aria-hidden="true" />
+                        <h1 className="mt-3 text-2xl font-bold">Password changed</h1>
+                        <p className="mt-2 text-sm text-ink-2">Use your new password next time you sign in.</p>
                     </div>
-                    <button type="button" onClick={() => navigate('/dash', { replace: true })} className="h-12 w-full rounded-xl bg-lime-400 text-sm font-extrabold text-black">
+                    <button type="button" onClick={() => navigate('/dash', { replace: true })} className="v-press v-btn-primary w-full">
                         Continue to Vittova
                     </button>
                 </div>
@@ -79,15 +79,15 @@ export default function ResetPassword() {
     if (linkError || (!loading && waited && !hasRecoverySession)) {
         return (
             <AuthLayout eyebrow="LINK NOT VALID">
-                <div className="flex flex-col gap-6 text-center">
-                    <h1 className="text-3xl font-extrabold tracking-tight">This reset link can't be used</h1>
-                    <p className="text-sm leading-6 text-zinc-400">
+                <div className="flex flex-col gap-5">
+                    <h1 className="text-2xl font-bold">This reset link can't be used</h1>
+                    <p className="text-sm leading-6 text-ink-2">
                         {linkError || 'It may have expired, been used already, or been opened on a different device from the one that requested it.'}
                     </p>
-                    <Link to="/forgot-password" className="inline-flex h-12 items-center justify-center rounded-xl bg-lime-400 text-sm font-extrabold text-black">
+                    <Link to="/forgot-password" className="v-press v-btn-primary w-full">
                         Request a new link
                     </Link>
-                    <Link to="/login" className="text-sm text-zinc-400 underline">Back to sign in</Link>
+                    <Link to="/login" className="inline-flex min-h-[44px] items-center self-center text-sm text-ink-2 underline">Back to sign in</Link>
                 </div>
             </AuthLayout>
         );
@@ -97,7 +97,7 @@ export default function ResetPassword() {
         return (
             <AuthLayout eyebrow="RESET PASSWORD">
                 <div className="flex items-center justify-center py-10" role="status">
-                    <Loader2 className="h-6 w-6 animate-spin text-lime-300" />
+                    <Loader2 className="h-6 w-6 animate-spin text-ink-2" />
                 </div>
             </AuthLayout>
         );
@@ -107,20 +107,20 @@ export default function ResetPassword() {
         <AuthLayout eyebrow="RESET PASSWORD">
             <div className="flex flex-col gap-6">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight">Choose a new password</h1>
-                    <p className="mt-2 text-sm text-zinc-400">At least {MIN_LENGTH} characters. Avoid reusing a password from another site.</p>
+                    <h1 className="text-2xl font-bold">Choose a new password</h1>
+                    <p className="mt-2 text-sm text-ink-2">At least {MIN_LENGTH} characters. Avoid reusing a password from another site.</p>
                 </div>
 
                 {error && (
-                    <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-center text-sm text-rose-200" role="alert">{error}</div>
+                    <div className="v-error" role="alert">{error}</div>
                 )}
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     {[['new-password', 'New password', password, setPassword], ['confirm-password', 'Confirm new password', confirm, setConfirm]].map(([id, label, value, setter]) => (
                         <div key={id}>
-                            <label htmlFor={id} className="mb-2 block text-sm font-semibold text-zinc-300">{label}</label>
+                            <label htmlFor={id} className="v-field-label">{label}</label>
                             <div className="relative">
-                                <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                                <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
                                 <input
                                     id={id}
                                     type={show ? 'text' : 'password'}
@@ -129,22 +129,22 @@ export default function ResetPassword() {
                                     minLength={MIN_LENGTH}
                                     value={value}
                                     onChange={(e) => setter(e.target.value)}
-                                    className="h-12 w-full rounded-xl border border-white/10 bg-black/30 pl-11 pr-12 text-sm text-white focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                                    className="v-input pl-11 pr-12"
                                 />
                                 {id === 'new-password' && (
-                                    <button type="button" onClick={() => setShow(!show)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 text-zinc-500">
+                                    <button type="button" onClick={() => setShow(!show)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-ink-3">
                                         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 )}
                             </div>
                         </div>
                     ))}
-                    <button type="submit" disabled={saving} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-lime-400 text-sm font-extrabold text-black disabled:opacity-50">
+                    <button type="submit" disabled={saving} className="v-press v-btn-primary w-full">
                         {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : 'Update password'}
                     </button>
                 </form>
 
-                <button type="button" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} className="text-sm text-zinc-500 underline">
+                <button type="button" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} className="min-h-[44px] text-sm text-ink-2 underline">
                     Cancel and sign out
                 </button>
             </div>

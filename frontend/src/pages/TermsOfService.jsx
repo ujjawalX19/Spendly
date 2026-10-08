@@ -6,7 +6,7 @@ import { SUPPORT_EMAIL } from '../lib/legal';
  */
 export default function TermsOfService() {
   return (
-    <div className="min-h-screen bg-black text-white p-6 max-w-2xl mx-auto pb-28">
+    <div className="mx-auto min-h-screen max-w-2xl bg-bg p-6 pb-28 text-ink">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
       <p className="text-zinc-400 mb-8">Last updated: 1 October 2026</p>
 

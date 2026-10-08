@@ -16,7 +16,7 @@ import { friendlyError } from '../lib/errors';
 import { billDueIn, inr, parseAmount, quotaLine, verdictBadge } from '../lib/moneyDisplay';
 
 const VERDICT_WORD = { can_afford: 'Comfortable', wait: 'Wait', not_comfortable: 'Too tight' };
-const VERDICT_TONE = { can_afford: 'text-lime-300', wait: 'text-amber-300', not_comfortable: 'text-rose-300' };
+const VERDICT_TONE = { can_afford: 'text-accent', wait: 'text-warn', not_comfortable: 'text-danger' };
 
 function Fact({ label, value, sub }) {
   return (
@@ -37,13 +37,13 @@ function Result({ check, quota, onAgain, onClose }) {
   return (
     <div className="v-enter space-y-4" aria-live="polite">
       <div>
-        <p className={`flex items-center gap-2 text-4xl font-black tracking-tight ${VERDICT_TONE[check.verdict] || 'text-white'}`}>
-          <span aria-hidden="true" className="text-3xl">{badge.symbol}</span>{VERDICT_WORD[check.verdict] || badge.label}
+        <p className={`flex items-center gap-2 text-3xl font-bold tracking-tight ${VERDICT_TONE[check.verdict] || 'text-ink'}`}>
+          <span aria-hidden="true" className="text-2xl">{badge.symbol}</span>{VERDICT_WORD[check.verdict] || badge.label}
         </p>
-        <p className="mt-1 text-sm text-zinc-300">{check.headline}</p>
+        <p className="mt-1 text-sm text-ink-soft">{check.headline}</p>
       </div>
 
-      <dl className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-black/30 px-3.5">
+      <dl className="v-rows rounded-2xl bg-surface-2 px-4">
         {check.shortfall
           ? <Fact label="Short by" value={inr(check.shortfall)} sub="over what's safe this month" />
           : <Fact label="After this purchase" value={`${inr(check.leftAfter)} left`} sub={check.daysLeft > 0 ? `about ${inr(check.leftAfterPerDay)}/day` : null} />}
@@ -65,8 +65,8 @@ function Result({ check, quota, onAgain, onClose }) {
       {quotaText && <p className="text-center text-[11px] text-zinc-500">{quotaText}</p>}
 
       <div className="flex gap-2">
-        <button type="button" onClick={onAgain} className="v-press h-12 flex-1 rounded-2xl border border-white/10 bg-zinc-800 text-sm font-bold text-zinc-200">Check another</button>
-        <button type="button" onClick={onClose} className="v-press h-12 flex-1 rounded-2xl bg-lime-400 text-sm font-black text-black">Done</button>
+        <button type="button" onClick={onAgain} className="v-press v-btn-secondary min-h-[3rem] flex-1">Check another</button>
+        <button type="button" onClick={onClose} className="v-press v-btn-primary flex-1">Done</button>
       </div>
     </div>
   );
@@ -101,16 +101,16 @@ function AffordItSheet({ onClose }) {
 
   return (
     <motion.div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="v-scrim absolute inset-0" onClick={onClose} />
       <motion.div
         role="dialog" aria-modal="true" aria-labelledby="afford-title"
-        className="relative z-10 max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-zinc-800 bg-zinc-900 p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl"
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+        className="v-sheet relative z-10 max-h-[92vh] w-full max-w-md overflow-y-auto p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'tween', duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
       >
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-zinc-700 sm:hidden" />
-        <div className="mb-5 flex items-center justify-between">
-          <h2 id="afford-title" className="text-lg font-bold text-zinc-100">Can I afford this?</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl bg-zinc-800 p-2 text-zinc-400"><X className="h-4 w-4" /></button>
+        <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-surface-3 sm:hidden" />
+        <div className="mb-4 flex items-center justify-between">
+          <h2 id="afford-title" className="text-lg font-bold text-ink">Can I afford this?</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="v-press flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-ink-2"><X className="h-4 w-4" /></button>
         </div>
 
         {result ? (
@@ -118,29 +118,29 @@ function AffordItSheet({ onClose }) {
         ) : (
           <form onSubmit={submit} className="space-y-4" noValidate>
             <div>
-              <label htmlFor="afford-amount" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Amount</label>
+              <label htmlFor="afford-amount" className="v-field-label">Amount</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">₹</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base font-semibold text-ink-2">₹</span>
                 <input
                   id="afford-amount" autoFocus inputMode="decimal" placeholder="2,499" value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 py-3.5 pl-8 pr-4 font-mono-finance text-lg text-zinc-100 outline-none transition-all placeholder:text-zinc-600 focus:border-lime-500/60 focus:ring-2 focus:ring-lime-500/15"
+                  className="v-input pl-8 font-mono-finance text-lg"
                 />
               </div>
             </div>
             <div>
-              <label htmlFor="afford-label" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">What is it? (optional)</label>
+              <label htmlFor="afford-label" className="v-field-label">What is it? (optional)</label>
               <input
                 id="afford-label" maxLength={60} placeholder="Headphones" value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 outline-none transition-all placeholder:text-zinc-600 focus:border-lime-500/60 focus:ring-2 focus:ring-lime-500/15"
+                className="v-input"
               />
             </div>
-            {error && <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
-            <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 py-3.5 text-sm font-black tracking-wide text-black disabled:opacity-60">
+            {error && <p role="alert" className="v-error">{error}</p>}
+            <button type="submit" disabled={loading} className="v-press v-btn-primary w-full">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Check'}
             </button>
-            <p className="text-center text-[11px] leading-relaxed text-zinc-500">Checked against your budget, bills still due, savings target and usual spending. Vittova doesn't know your income or bank balance.</p>
+            <p className="text-center text-xs leading-relaxed text-ink-3">Checked against your budget, bills still due, savings target and usual spending. Vittova doesn't know your income or bank balance.</p>
           </form>
         )}
       </motion.div>
@@ -152,18 +152,12 @@ export default function AffordItCard() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <section className="v-enter rounded-[20px] border border-lime-400/20 bg-[#111113] p-4">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime-400/15"><ShoppingBag className="h-5 w-5 text-lime-300" aria-hidden="true" /></span>
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-white">Can I afford something?</h2>
-            <p className="text-xs text-zinc-400">Check a purchase before you spend.</p>
-          </div>
-        </div>
-        <button type="button" onClick={() => setOpen(true)}
-          className="v-press mt-3 h-12 w-full rounded-2xl bg-lime-400 text-[15px] font-black text-black">
-          Check a purchase
+      {/* Home's one main action: a button, with one line saying what it does. */}
+      <section className="v-enter" aria-labelledby="afford-entry">
+        <button type="button" id="afford-entry" onClick={() => setOpen(true)} className="v-press v-btn-primary w-full">
+          <ShoppingBag className="h-[18px] w-[18px]" aria-hidden="true" /> Check a purchase
         </button>
+        <p className="mt-2 text-center text-xs text-ink-3">See whether something fits before you buy it.</p>
       </section>
       <AnimatePresence>{open && <AffordItSheet onClose={() => setOpen(false)} />}</AnimatePresence>
     </>

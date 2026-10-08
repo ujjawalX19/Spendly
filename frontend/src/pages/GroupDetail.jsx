@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Copy, Share2, Plus, HandCoins, Loader2, Receipt, ArrowRight, LogOut, Check } from 'lucide-react';
+import { ArrowLeft, Copy, Share2, Plus, Loader2, ArrowRight, LogOut, Check } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
@@ -44,35 +44,35 @@ function AddExpenseSheet({ group, members, me, onClose, onSaved, session }) {
         <Sheet title="Add shared expense" onClose={onClose}>
             <form onSubmit={save} className="space-y-4">
                 <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} placeholder="What was it for?" aria-label="Description"
-                    className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-zinc-100 outline-none focus:border-lime-500/60" />
+                    className="v-input" />
                 <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-zinc-400">₹</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3">₹</span>
                     <input type="number" inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" aria-label="Amount"
-                        className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 py-3 pl-8 pr-4 font-mono text-zinc-100 outline-none focus:border-lime-500/60" />
+                        className="v-input pl-8 font-mono" />
                 </div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500">
+                <label className="v-field-label mb-0">
                     Paid by
-                    <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)} className="mt-1 w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm normal-case tracking-normal text-zinc-100">
+                    <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)} className="v-input mt-1.5 font-normal">
                         {members.map((m) => <option key={m.id} value={m.id}>{m.id === me ? `${m.name} (you)` : m.name}</option>)}
                     </select>
                 </label>
                 <fieldset>
-                    <legend className="text-xs font-bold uppercase tracking-wider text-zinc-500">Split equally between</legend>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <legend className="v-field-label">Split equally between</legend>
+                    <div className="flex flex-wrap gap-2">
                         {members.map((m) => {
                             const on = participants.includes(m.id);
                             return (
                                 <button type="button" key={m.id} onClick={() => toggle(m.id)} aria-pressed={on}
-                                    className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold ${on ? 'border-lime-400 bg-lime-400 text-black' : 'border-zinc-700 bg-zinc-800 text-zinc-400'}`}>
-                                    {on && <Check className="h-3 w-3" />}{m.id === me ? 'You' : m.name}
+                                    className={`flex min-h-[36px] items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium ${on ? 'bg-ink text-bg' : 'bg-surface-2 text-ink-2'}`}>
+                                    {on && <Check className="h-3 w-3" aria-hidden="true" />}{m.id === me ? 'You' : m.name}
                                 </button>
                             );
                         })}
                     </div>
-                    {valid && <p className="mt-2 text-xs text-zinc-500">About {inr(share)} each</p>}
+                    {valid && <p className="mt-2 text-xs text-ink-3">About {inr(share)} each</p>}
                 </fieldset>
-                {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
-                <button type="submit" disabled={!valid || busy} className="flex w-full items-center justify-center rounded-2xl bg-lime-400 py-3 text-sm font-black text-black disabled:opacity-50">
+                {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+                <button type="submit" disabled={!valid || busy} className="v-press v-btn-primary w-full">
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add expense'}
                 </button>
             </form>
@@ -103,17 +103,17 @@ function SettleSheet({ group, suggestion, me, onClose, onSaved, session }) {
     return (
         <Sheet title="Record a payment" onClose={onClose}>
             <form onSubmit={save} className="space-y-4">
-                <p className="text-sm text-zinc-400">
-                    {iPay ? <>You paid <strong className="text-white">{suggestion.to.name}</strong></> : <><strong className="text-white">{suggestion.from.name}</strong> paid you</>}
+                <p className="text-sm text-ink-2">
+                    {iPay ? <>You paid <strong className="font-semibold text-ink">{suggestion.to.name}</strong></> : <><strong className="font-semibold text-ink">{suggestion.from.name}</strong> paid you</>}
                 </p>
                 <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-zinc-400">₹</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3">₹</span>
                     <input type="number" inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Amount"
-                        className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 py-3 pl-8 pr-4 font-mono text-zinc-100 outline-none focus:border-lime-500/60" />
+                        className="v-input pl-8 font-mono" />
                 </div>
-                <p className="text-xs text-zinc-500">Vittova only records the payment. Pay each other through your usual UPI app.</p>
-                {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
-                <button type="submit" disabled={busy || !(Number(amount) > 0)} className="flex w-full items-center justify-center rounded-2xl bg-lime-400 py-3 text-sm font-black text-black disabled:opacity-50">
+                <p className="text-xs text-ink-3">Vittova only records the payment. Pay each other through your usual UPI app.</p>
+                {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+                <button type="submit" disabled={busy || !(Number(amount) > 0)} className="v-press v-btn-primary w-full">
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record payment'}
                 </button>
             </form>
@@ -175,17 +175,19 @@ export default function GroupDetail() {
         }
     };
 
+    const back = <Link to="/pool" className="-ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm text-ink-2"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Groups</Link>;
+
     if (!data) {
         return (
             <div className="space-y-4">
-                <Link to="/pool" className="inline-flex items-center gap-2 text-sm text-zinc-500"><ArrowLeft className="h-4 w-4" /> Groups</Link>
+                {back}
                 {error ? <ErrorState onRetry={load} /> : (
                     <div className="space-y-3" aria-busy="true" aria-label="Loading group">
                         <Skeleton className="h-8 w-40" />
-                        <Skeleton className="h-28 w-full rounded-[20px]" />
+                        <Skeleton className="h-28 w-full rounded-2xl" />
                         <Skeleton className="h-16 w-full rounded-2xl" />
                         <Skeleton className="h-16 w-full rounded-2xl" />
-                        {waking && <p className="text-center text-xs text-zinc-500">Waking the server up…</p>}
+                        {waking && <p className="text-center text-xs text-ink-3">Waking the server up…</p>}
                     </div>
                 )}
             </div>
@@ -196,58 +198,60 @@ export default function GroupDetail() {
     const mySettlements = data.settleUp.filter((s) => s.from.id === me || s.to.id === me);
 
     return (
-        <div className="space-y-5 pb-20">
-            <Link to="/pool" className="inline-flex items-center gap-2 text-sm text-zinc-500"><ArrowLeft className="h-4 w-4" /> Groups</Link>
+        <div className="space-y-6 pb-20 text-ink">
+            <div>
+                {back}
+                <header>
+                    <h1 className="text-2xl font-bold">{data.group.name}</h1>
+                    <p className="mt-1 text-sm text-ink-2">{data.members.length} member{data.members.length === 1 ? '' : 's'} · {inr(data.totalSpent)} spent together</p>
+                    <BalanceText amount={myBalance} className="mt-3 block font-display text-xl font-bold" />
+                </header>
+            </div>
 
-            <header className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-                <h1 className="text-2xl font-black text-white">{data.group.name}</h1>
-                <p className="mt-1 text-sm text-zinc-500">{data.members.length} member{data.members.length === 1 ? '' : 's'} · {inr(data.totalSpent)} spent together</p>
-                <BalanceText amount={myBalance} className="mt-3 block text-lg font-black" />
-                <div className="mt-4 flex items-center gap-2 rounded-xl border border-dashed border-zinc-700 bg-zinc-950 px-3 py-2">
-                    <span className="text-xs text-zinc-500">Invite code</span>
-                    <span className="font-mono text-sm font-bold tracking-widest text-lime-300">{data.group.inviteCode}</span>
-                    <button type="button" onClick={shareCode} className="ml-auto flex items-center gap-1 text-xs font-bold text-zinc-300" aria-label="Share invite code">
-                        {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : Capacitor.isNativePlatform() || navigator.share ? <><Share2 className="h-3.5 w-3.5" /> Share</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
-                    </button>
-                </div>
-            </header>
+            <div className="v-block flex items-center gap-3 px-4 py-2">
+                <span className="text-[13px] text-ink-2">Invite code</span>
+                <span className="font-mono text-sm font-semibold tracking-widest text-ink">{data.group.inviteCode}</span>
+                <button type="button" onClick={shareCode} className="v-press v-btn-text ml-auto -mr-2" aria-label="Share invite code">
+                    {copied ? <><Check className="h-4 w-4" aria-hidden="true" /> Copied</> : Capacitor.isNativePlatform() || navigator.share ? <><Share2 className="h-4 w-4" aria-hidden="true" /> Share</> : <><Copy className="h-4 w-4" aria-hidden="true" /> Copy</>}
+                </button>
+            </div>
 
-            {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
+            {error && <p role="alert" className="v-error">{error}</p>}
 
             <section>
-                <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-zinc-500">Settle up</h2>
+                <h2 className="v-label mb-2">Settle up</h2>
                 {data.settleUp.length === 0 ? (
-                    <p className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">Everyone is settled up.</p>
+                    <p className="text-sm text-ink-2">Everyone is settled up.</p>
                 ) : (
-                    <ul className="space-y-2">
+                    <ul className="v-block v-rows">
                         {data.settleUp.map((s, i) => {
                             const mine = s.from.id === me || s.to.id === me;
                             return (
-                                <li key={i} className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
-                                    <span className="min-w-0 flex-1 truncate text-sm text-zinc-300">
-                                        <strong className="text-white">{s.from.id === me ? 'You' : s.from.name}</strong>
-                                        <ArrowRight className="mx-1.5 inline h-3.5 w-3.5 text-zinc-500" />
-                                        <strong className="text-white">{s.to.id === me ? 'You' : s.to.name}</strong>
+                                <li key={i} className="flex min-h-[56px] items-center gap-3 px-4 py-2">
+                                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
+                                        <span className="font-medium">{s.from.id === me ? 'You' : s.from.name}</span>
+                                        <ArrowRight className="mx-1.5 inline h-3.5 w-3.5 text-ink-3" aria-label="pays" />
+                                        <span className="font-medium">{s.to.id === me ? 'You' : s.to.name}</span>
                                     </span>
-                                    <span className="font-mono text-sm font-bold text-white">{inr(s.amount)}</span>
+                                    <span className="font-mono text-sm font-semibold tabular-nums text-ink">{inr(s.amount)}</span>
                                     {mine && (
-                                        <button type="button" onClick={() => setSheet({ type: 'settle', suggestion: s })} className="rounded-xl bg-lime-400 px-3 py-1.5 text-xs font-black text-black">Record</button>
+                                        <button type="button" onClick={() => setSheet({ type: 'settle', suggestion: s })} className="v-press v-btn-secondary px-3 text-[13px]">Record</button>
                                     )}
                                 </li>
                             );
                         })}
                     </ul>
                 )}
-                {mySettlements.length === 0 && data.settleUp.length > 0 && <p className="mt-2 px-1 text-xs text-zinc-500">You're not part of any open payment.</p>}
+                {mySettlements.length === 0 && data.settleUp.length > 0 && <p className="mt-2 text-xs text-ink-3">You're not part of any open payment.</p>}
             </section>
 
             <section>
-                <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-zinc-500">Balances</h2>
-                <ul className="divide-y divide-zinc-800 rounded-2xl border border-zinc-800 bg-zinc-900">
+                <h2 className="v-label mb-2">Balances</h2>
+                <ul className="v-block v-rows">
                     {data.balances.map((b) => (
-                        <li key={b.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                            <span className="text-zinc-200">{b.id === me ? `${b.name} (you)` : b.name}</span>
-                            <span className={`font-mono font-bold ${b.balance > 0 ? 'text-lime-400' : b.balance < 0 ? 'text-rose-400' : 'text-zinc-500'}`}>
+                        <li key={b.id} className="flex min-h-[48px] items-center justify-between gap-3 px-4 py-2 text-sm">
+                            <span className="truncate text-ink">{b.id === me ? `${b.name} (you)` : b.name}</span>
+                            <span className={`shrink-0 font-mono font-semibold tabular-nums ${b.balance > 0 ? 'text-accent' : b.balance < 0 ? 'text-danger' : 'text-ink-3'}`}>
                                 {b.balance > 0 ? `gets ${inr(b.balance)}` : b.balance < 0 ? `owes ${inr(b.balance)}` : 'settled'}
                             </span>
                         </li>
@@ -256,41 +260,38 @@ export default function GroupDetail() {
             </section>
 
             <section>
-                <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-zinc-500">History</h2>
+                <h2 className="v-label mb-2">History</h2>
                 {data.history.length === 0 ? (
-                    <p className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">No shared expenses yet. Add the first one below.</p>
+                    <p className="text-sm text-ink-2">No shared expenses yet. Add the first one below.</p>
                 ) : (
-                    <ul className="space-y-2">
+                    <ul className="v-rows">
                         {data.history.map((h) => (
-                            <li key={`${h.type}-${h.id}`} className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
-                                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${h.type === 'expense' ? 'bg-sky-400/10' : 'bg-lime-400/10'}`}>
-                                    {h.type === 'expense' ? <Receipt className="h-4 w-4 text-sky-400" /> : <HandCoins className="h-4 w-4 text-lime-400" />}
-                                </div>
+                            <li key={`${h.type}-${h.id}`} className="flex items-start gap-3 py-3">
                                 <div className="min-w-0 flex-1">
                                     {h.type === 'expense' ? (
                                         <>
-                                            <p className="truncate text-sm font-bold text-white">{h.description}</p>
-                                            <p className="text-xs text-zinc-500">{h.paidBy.id === me ? 'You' : h.paidBy.name} paid · split with {h.participants.map((p) => (p.id === me ? 'you' : p.name)).join(', ')}</p>
+                                            <p className="truncate text-[15px] font-medium text-ink">{h.description}</p>
+                                            <p className="mt-0.5 text-xs text-ink-3">{h.paidBy.id === me ? 'You' : h.paidBy.name} paid · split with {h.participants.map((p) => (p.id === me ? 'you' : p.name)).join(', ')}</p>
                                         </>
                                     ) : (
-                                        <p className="text-sm text-zinc-300">{h.from.id === me ? 'You' : h.from.name} paid {h.to.id === me ? 'you' : h.to.name}</p>
+                                        <p className="text-[15px] text-ink-soft">{h.from.id === me ? 'You' : h.from.name} paid {h.to.id === me ? 'you' : h.to.name}</p>
                                     )}
-                                    <p className="text-[11px] text-zinc-600">{when(h.createdAt)}</p>
+                                    <p className="mt-0.5 text-[11px] text-ink-3">{when(h.createdAt)}</p>
                                 </div>
-                                <span className="font-mono text-sm font-bold text-white">{inr(h.amount)}</span>
+                                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-ink">{inr(h.amount)}</span>
                             </li>
                         ))}
                     </ul>
                 )}
             </section>
 
-            <button type="button" onClick={leave} className="flex items-center gap-2 px-1 text-xs font-bold text-zinc-500 hover:text-rose-300">
-                <LogOut className="h-3.5 w-3.5" /> Leave group
+            <button type="button" onClick={leave} className="v-press v-btn-text -ml-2 text-ink-3">
+                <LogOut className="h-4 w-4" aria-hidden="true" /> Leave group
             </button>
 
             <button type="button" onClick={() => setSheet({ type: 'expense' })} aria-label="Add shared expense"
-                className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-lime-400 text-black shadow-[0_4px_24px_rgba(163,230,53,0.4)] md:bottom-8">
-                <Plus className="h-7 w-7" strokeWidth={3} />
+                className="v-press fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-ink text-bg shadow-[var(--v-shadow-pop)] md:bottom-8">
+                <Plus className="h-6 w-6" strokeWidth={2.5} />
             </button>
 
             <AnimatePresence>

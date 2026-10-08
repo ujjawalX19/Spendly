@@ -35,15 +35,15 @@ class ErrorBoundary extends React.Component {
     return (
       <div role="alert" style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#0B1220', color: '#F4F4F5', padding: '24px',
+        background: 'var(--v-bg, #0A0B0C)', color: 'var(--v-ink, #F3F4F2)', padding: '24px',
         fontFamily: "'Space Grotesk', system-ui, -apple-system, sans-serif",
       }}>
         <div style={{ maxWidth: '380px', width: '100%', textAlign: 'center' }}>
           <img src="/vittova-mark.svg" alt="" width="56" height="56" style={{ display: 'block', margin: '0 auto 20px' }} />
-          <h1 style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.01em', margin: '0 0 8px' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '-0.01em', margin: '0 0 8px' }}>
             Something went wrong
           </h1>
-          <p style={{ fontSize: '15px', lineHeight: 1.5, color: '#A1A1AA', margin: 0 }}>
+          <p style={{ fontSize: '15px', lineHeight: 1.5, color: 'var(--v-ink-2, #A3A8A4)', margin: 0 }}>
             Vittova hit a problem and couldn&rsquo;t show this screen. Your data is safe. Reopen the app to carry on.
           </p>
           <button
@@ -51,15 +51,15 @@ class ErrorBoundary extends React.Component {
             onClick={() => window.location.reload()}
             style={{
               marginTop: '24px', minHeight: '48px', width: '100%', padding: '0 20px',
-              background: '#A3E635', color: '#0B1220', border: 'none', borderRadius: '14px',
-              fontWeight: 800, fontSize: '15px', cursor: 'pointer', fontFamily: 'inherit',
+              background: 'var(--v-accent, #7FD858)', color: 'var(--v-on-fill, #07100A)', border: 'none', borderRadius: '12px',
+              fontWeight: 600, fontSize: '15px', cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
             Reopen Vittova
           </button>
           {dev && (
             <pre style={{
-              marginTop: '24px', textAlign: 'left', background: '#05080F', color: '#FBBF24', padding: '12px',
+              marginTop: '24px', textAlign: 'left', background: 'var(--v-surface, #141517)', color: 'var(--v-warn, #E2B25C)', padding: '12px',
               borderRadius: '8px', overflow: 'auto', fontSize: '12px', lineHeight: 1.5, maxHeight: '260px',
               whiteSpace: 'pre-wrap', wordBreak: 'break-word',
             }}>

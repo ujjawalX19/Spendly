@@ -1,85 +1,223 @@
 @import "tailwindcss";
 
-@theme {
-  --color-electric-midnight: #09090b;
-  --color-neon-green: #39ff14;
-  --color-electric-blue: #00f0ff;
-  --color-cyber-rose: #f43f5e;
-  --color-streak-orange: #f97316;
+/* ═══ Vittova design tokens ═══════════════════════════════════════════════
+   One system, two themes. Dark is the primary design; light is derived from
+   the same roles, not inverted. Components use the ROLE (surface, ink, accent),
+   never a hex value.
+
+     bg          the page
+     surface     a grouped block on the page          surface-2  controls, tiles
+     surface-3   pressed / stronger fills             line       hairlines
+     ink         primary text      ink-soft  body     ink-2      secondary
+     ink-3       captions, placeholders
+     accent      the ONE brand colour: the main action on a screen, the key
+                 positive figure, progress, selected states. Nothing else.
+     on-fill     text and icons on an accent or warning fill
+     warn / flame / danger / info   meaning only, used sparingly
+
+   .v-dark pins one part of a page to the dark look whatever the person chose
+   (the public homepage, which is designed dark only).
+*/
+:root, :root.dark, .v-dark {
+  color-scheme: dark;
+  --v-bg: #0A0B0C;
+  --v-surface: #141517;
+  --v-surface-2: #1D1F22;
+  --v-surface-3: #2A2D31;
+  --v-line: rgba(255, 255, 255, 0.07);
+  --v-line-strong: rgba(255, 255, 255, 0.14);
+  --v-ink: #F3F4F2;
+  --v-ink-soft: #D2D5D2;
+  --v-ink-2: #A3A8A4;
+  --v-ink-3: #7B8184;
+  --v-accent: #7FD858;
+  --v-accent-strong: #93E270;
+  --v-on-fill: #07100A;
+  --v-warn: #E2B25C;
+  --v-flame: #E38B4C;
+  --v-danger: #F0787F;
+  --v-info: #7DB5E8;
+  --v-knob: #FFFFFF;
+  --v-scrim: rgba(0, 0, 0, 0.66);
+  --v-shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+:root.light {
+  color-scheme: light;
+  --v-bg: #F5F4F0;
+  --v-surface: #FFFFFF;
+  --v-surface-2: #EEEDE8;
+  --v-surface-3: #E1E0DA;
+  --v-line: rgba(23, 25, 27, 0.09);
+  --v-line-strong: rgba(23, 25, 27, 0.18);
+  --v-ink: #17191B;
+  --v-ink-soft: #2F3437;
+  --v-ink-2: #565C5F;
+  --v-ink-3: #71777A;
+  --v-accent: #1B7F45;
+  --v-accent-strong: #166B3A;
+  --v-on-fill: #FFFFFF;
+  --v-warn: #94650F;
+  --v-flame: #B5561A;
+  --v-danger: #C2343D;
+  --v-info: #2B6CA8;
+  --v-knob: #FFFFFF;
+  --v-scrim: rgba(23, 25, 27, 0.45);
+  --v-shadow-pop: 0 10px 30px rgba(23, 25, 27, 0.14);
+}
+
+@theme inline {
+  /* Roles, as utilities: bg-surface, text-ink-2, border-line, bg-accent… */
+  --color-bg: var(--v-bg);
+  --color-surface: var(--v-surface);
+  --color-surface-2: var(--v-surface-2);
+  --color-surface-3: var(--v-surface-3);
+  --color-line: var(--v-line);
+  --color-line-strong: var(--v-line-strong);
+  --color-ink: var(--v-ink);
+  --color-ink-soft: var(--v-ink-soft);
+  --color-ink-2: var(--v-ink-2);
+  --color-ink-3: var(--v-ink-3);
+  --color-accent: var(--v-accent);
+  --color-accent-strong: var(--v-accent-strong);
+  --color-on-fill: var(--v-on-fill);
+  --color-warn: var(--v-warn);
+  --color-flame: var(--v-flame);
+  --color-danger: var(--v-danger);
+  --color-info: var(--v-info);
+  --color-knob: var(--v-knob);
+  --color-scrim: var(--v-scrim);
+
+  /* The palette names older screens were written with, pointed at the roles
+     above, so every screen follows the theme. New code uses the role names. */
+  --color-white: var(--v-ink);
+  --color-black: var(--v-on-fill);
+  --color-zinc-50: var(--v-ink);
+  --color-zinc-100: var(--v-ink);
+  --color-zinc-200: var(--v-ink);
+  --color-zinc-300: var(--v-ink-soft);
+  --color-zinc-400: var(--v-ink-2);
+  --color-zinc-500: var(--v-ink-3);
+  --color-zinc-600: var(--v-ink-3);
+  --color-zinc-700: var(--v-surface-3);
+  --color-zinc-800: var(--v-surface-2);
+  --color-zinc-900: var(--v-surface);
+  --color-zinc-950: var(--v-bg);
+  --color-lime-100: var(--v-accent);
+  --color-lime-200: var(--v-accent);
+  --color-lime-300: var(--v-accent);
+  --color-lime-400: var(--v-accent);
+  --color-lime-500: var(--v-accent);
+  --color-emerald-400: var(--v-accent);
+  --color-green-400: var(--v-accent);
+  --color-amber-50: var(--v-warn);
+  --color-amber-100: var(--v-warn);
+  --color-amber-200: var(--v-warn);
+  --color-amber-300: var(--v-warn);
+  --color-amber-400: var(--v-warn);
+  --color-amber-500: var(--v-warn);
+  --color-orange-400: var(--v-flame);
+  --color-orange-500: var(--v-flame);
+  --color-rose-200: var(--v-danger);
+  --color-rose-300: var(--v-danger);
+  --color-rose-400: var(--v-danger);
+  --color-rose-500: var(--v-danger);
+  --color-red-100: var(--v-danger);
+  --color-red-200: var(--v-danger);
+  --color-red-300: var(--v-danger);
+  --color-red-400: var(--v-danger);
+  --color-red-500: var(--v-danger);
+  --color-sky-400: var(--v-info);
+
+  /* Type: the brand face for titles and figures, the device's own for reading. */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   /* Money figures: the brand typeface with tabular numerals (see .font-mono
      below), not a code font. A code font gave "₹13 , 192" and slashed zeros. */
   --font-mono: 'Space Grotesk', system-ui, sans-serif;
+  /* Weight is a signal, so there are three steps, not five. */
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 700;
+  /* Labels are sentence case; wide tracking is retired. */
+  --tracking-wide: 0;
+  --tracking-wider: 0.01em;
+  --tracking-widest: 0.02em;
+  /* One radius scale: 8 for small controls, 12 for buttons and inputs, 14 for
+     blocks, 18 for sheets. Full is for avatars, switches and progress only. */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.875rem;
+  --radius-3xl: 1.125rem;
 }
 
 :root {
-  font-family: 'Space Grotesk', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* The launch mark (lib/brandMark.js), for the frame shown before the app's code runs. */
   --v-boot-mark: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1728 1728'><defs><linearGradient id='g' x1='0' y1='320' x2='0' y2='950' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23E6FF4C'/><stop offset='0.48' stop-color='%238FF03A'/><stop offset='1' stop-color='%232BD460'/></linearGradient></defs><g transform='translate(239 235)' fill='none' stroke='url(%23g)' stroke-width='116' stroke-linecap='round' stroke-linejoin='round'><path d='M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998'/><path d='M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636'/></g></svg>");
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--v-bg);
+  color: var(--v-ink);
   margin: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s, color 0.3s;
 }
 
-/* ── Dark Theme (Pitch Black) ── */
-:root.dark {
-  --color-bg: #000000;
-  --color-text: #fafafa;
-  --glass-bg: #0a0a0a;
-  --glass-border: #27272a;
-  --input-bg: #0a0a0a;
-  --card-bg: #09090b;
-  --card-border: #1c1c1e;
-}
-
-/* ── Light Theme ── */
-:root.light {
-  --color-bg: #f3f4f6;
-  --color-text: #1f2937;
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(0, 0, 0, 0.1);
-  --input-bg: rgba(255, 255, 255, 0.9);
-  --card-bg: #ffffff;
-  --card-border: #e5e7eb;
-}
-
-/* ── Glassmorphism (nav bar only) ── */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--glass-border);
-  transition: background 0.3s, border 0.3s;
-}
-
-/* ── Solid Cards (No blur — high FPS on mobile) ── */
-.glass-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  position: relative;
-  overflow: hidden;
-  transition: background 0.3s, border-color 0.3s;
+/* Titles and heavy text are set in the brand face; everything read at length
+   uses the device font. */
+h1, h2, h3, .font-display, .font-black, .font-extrabold {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 /* ── Money figures ──
-   Same typeface as the rest of the app; digits share one width so amounts
-   line up in lists and do not shift as they change. */
+   The brand typeface; digits share one width so amounts line up in lists and
+   do not shift as they change. */
 .font-mono, .font-mono-finance {
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1, 'zero' 0;
   letter-spacing: -0.01em;
 }
+
+/* ── Shared pieces ────────────────────────────────────────────────────────
+   In the components layer, so a utility on the same element (pl-8, w-full,
+   min-h-[44px]) still wins. */
+@layer components {
+/* A label above a group: sentence case, quiet. */
+.v-label { font-size: 0.8125rem; line-height: 1.25rem; font-weight: 600; color: var(--v-ink-2); }
+/* A block on the page: a tone lighter than the page, no outline. */
+.v-block { background: var(--v-surface); border-radius: 0.875rem; }
+/* Rows inside a block are separated by a hairline, not boxed one by one. */
+.v-rows > * + * { border-top: 1px solid var(--v-line); }
+/* The one main action in a section. */
+.v-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 3rem; padding: 0 1.25rem; border-radius: 0.75rem; background: var(--v-accent); color: var(--v-on-fill); font-weight: 600; font-size: 0.9375rem; }
+.v-btn-primary:hover { background: var(--v-accent-strong); }
+.v-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1rem; border-radius: 0.75rem; background: var(--v-surface-2); color: var(--v-ink); font-weight: 600; font-size: 0.875rem; }
+.v-btn-text { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; padding: 0 0.5rem; color: var(--v-ink-2); font-weight: 600; font-size: 0.875rem; }
+.v-btn-primary:disabled, .v-btn-secondary:disabled, .v-btn-text:disabled { opacity: 0.5; }
+/* A segmented choice: the selected segment is a neutral lift, not the accent. */
+.v-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 0.75rem; background: var(--v-surface-2); }
+.v-seg > button { min-height: 2.25rem; padding: 0 0.875rem; border-radius: 0.5625rem; font-size: 0.8125rem; font-weight: 600; color: var(--v-ink-2); }
+.v-seg > button[aria-pressed="true"], .v-seg > button[aria-checked="true"] { background: var(--v-ink); color: var(--v-bg); }
+
+/* Sheets and dialogs: one dimmed backdrop, one panel, one kind of field. */
+.v-scrim { background: var(--v-scrim); }
+.v-sheet { background: var(--v-surface); color: var(--v-ink); border-radius: 1.125rem 1.125rem 0 0; box-shadow: var(--v-shadow-pop); }
+@media (min-width: 640px) { .v-sheet { border-radius: 1.125rem; } }
+.v-field-label { display: block; margin-bottom: 0.375rem; font-size: 0.8125rem; font-weight: 600; color: var(--v-ink-2); }
+.v-input { width: 100%; min-height: 3rem; padding: 0.625rem 0.875rem; border-radius: 0.75rem; background: var(--v-surface-2); border: 1px solid transparent; color: var(--v-ink); font-size: 0.9375rem; outline: none; transition: border-color 150ms ease-out; }
+.v-input::placeholder { color: var(--v-ink-3); }
+.v-input:focus { border-color: var(--v-accent); }
+/* A message about something that went wrong: quiet tint, plain words. */
+.v-error { border-radius: 0.75rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: var(--v-danger); background: color-mix(in oklab, var(--v-danger) 12%, transparent); }
+}
+
+:focus-visible { outline: 2px solid var(--v-accent); outline-offset: 2px; }
+/* A field shows focus with its own border, so it does not get a second ring. */
+.v-input:focus-visible { outline: none; }
 
 /* ── Neon Glow Utilities ── */
 .glow-green {

@@ -85,22 +85,22 @@ export default function UpdateGate() {
   if (!required) return null;
 
   return (
-    <div role="alertdialog" aria-modal="true" aria-labelledby="update-title" className="fixed inset-0 z-[900] flex items-center justify-center bg-[#0B1220] px-6 text-center text-white">
+    <div role="alertdialog" aria-modal="true" aria-labelledby="update-title" className="fixed inset-0 z-[900] flex items-center justify-center bg-bg px-6 text-center text-ink">
       <div className="w-full max-w-sm">
         <img src="/vittova-mark.svg" alt="" width="56" height="56" className="mx-auto mb-5" />
-        <h1 id="update-title" className="text-[22px] font-extrabold tracking-tight">Update Vittova</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-zinc-400">
+        <h1 id="update-title" className="text-[22px] font-bold">Update Vittova</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
           This version is no longer supported. Update to keep your money tracking accurate and secure. Your data stays as it is.
         </p>
         <button
           type="button"
           onClick={() => update(true)}
           disabled={busy}
-          className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-lime-400 text-[15px] font-extrabold text-[#0B1220] disabled:opacity-60"
+          className="v-press v-btn-primary mt-6 w-full"
         >
           <Download className="h-4 w-4" aria-hidden="true" /> {busy ? 'Opening Google Play…' : 'Update now'}
         </button>
-        {note && <p role="status" className="mt-4 text-sm text-zinc-400">{note}</p>}
+        {note && <p role="status" className="mt-4 text-sm text-ink-2">{note}</p>}
       </div>
     </div>
   );

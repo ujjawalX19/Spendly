@@ -22,9 +22,9 @@ import { SUPPORT_EMAIL } from '../lib/legal';
 
 function Shell({ children }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-4 py-10 text-white">
+    <main className="flex min-h-screen items-center justify-center bg-bg px-6 py-10 text-ink">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex justify-center"><VittovaLogo size={56} /></div>
+        <div className="mb-6"><VittovaLogo size={40} /></div>
         {children}
       </div>
     </main>
@@ -64,27 +64,27 @@ function AgeQuestion({ onDone }) {
   const value = toBirthYearMonth(year, month);
   return (
     <Shell>
-      <h1 className="text-center text-2xl font-black">When were you born?</h1>
-      <p className="mt-2 text-center text-sm text-zinc-400">Vittova adapts to your age. We only keep the month and year, and you can't change it later without contacting support.</p>
-      <form className="mt-6 space-y-3" onSubmit={(e) => { e.preventDefault(); if (value) submit(value); }}>
+      <h1 className="text-2xl font-bold">When were you born?</h1>
+      <p className="mt-2 text-sm leading-relaxed text-ink-2">Vittova adapts to your age. We only keep the month and year, and you can't change it later without contacting support.</p>
+      <form className="mt-6 space-y-4" onSubmit={(e) => { e.preventDefault(); if (value) submit(value); }}>
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-semibold text-zinc-300">Month
+          <label className="v-field-label mb-0">Month
             <select value={month} onChange={(e) => setMonth(e.target.value)} required
-              className="mt-1.5 h-12 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 text-white">
+              className="v-input mt-1.5 bg-surface px-3 font-normal">
               <option value="" disabled>Select</option>
               {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </select>
           </label>
-          <label className="text-sm font-semibold text-zinc-300">Year
+          <label className="v-field-label mb-0">Year
             <select value={year} onChange={(e) => setYear(e.target.value)} required
-              className="mt-1.5 h-12 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 text-white">
+              className="v-input mt-1.5 bg-surface px-3 font-normal">
               <option value="" disabled>Select</option>
               {yearOptions().map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </label>
         </div>
-        {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
-        <button type="submit" disabled={!value || busy} className="v-press h-12 w-full rounded-2xl bg-lime-400 font-black text-black disabled:opacity-50">
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        <button type="submit" disabled={!value || busy} className="v-press v-btn-primary w-full">
           {busy ? 'Saving…' : 'Continue'}
         </button>
       </form>
@@ -109,18 +109,18 @@ function NotYetAvailable({ pending }) {
   };
   return (
     <Shell>
-      <h1 className="text-center text-2xl font-black">{pending ? 'A parent or guardian needs to confirm' : 'Vittova is for 18 and over, for now'}</h1>
-      <p className="mt-3 text-center text-sm leading-relaxed text-zinc-400">
+      <h1 className="text-2xl font-bold">{pending ? 'A parent or guardian needs to confirm' : 'Vittova is for 18 and over, for now'}</h1>
+      <p className="mt-3 text-sm leading-relaxed text-ink-2">
         {pending
           ? `Because you're under 18, a parent or guardian needs to confirm before you can use Vittova. Ask them to email ${SUPPORT_EMAIL} from their own address and we'll explain the next steps.`
           : "Because you're under 18, we can't set up Vittova for you yet. We haven't stored any spending data. You can delete this account now, and you're welcome back when you turn 18."}
       </p>
-      {error && <p role="alert" className="mt-3 text-center text-sm text-rose-300">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
       <div className="mt-6 space-y-2">
-        <button type="button" onClick={deleteNow} disabled={busy} className="v-press h-12 w-full rounded-2xl bg-lime-400 font-black text-black disabled:opacity-50">
+        <button type="button" onClick={deleteNow} disabled={busy} className="v-press v-btn-primary w-full">
           {busy ? 'Deleting…' : 'Delete my account'}
         </button>
-        <button type="button" onClick={() => logout()} className="v-press h-12 w-full rounded-2xl border border-white/15 font-bold text-white">Sign out</button>
+        <button type="button" onClick={() => logout()} className="v-press v-btn-secondary min-h-12 w-full">Sign out</button>
       </div>
     </Shell>
   );

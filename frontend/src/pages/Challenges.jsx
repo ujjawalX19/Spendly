@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Gift, Loader2, Megaphone, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, Gift, Megaphone, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { apiJson } from '../lib/apiConfig';
@@ -28,17 +28,17 @@ const STATUS = {
 function RewardDialog({ reward, onClose }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="reward-title">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-t-3xl border border-zinc-800 bg-zinc-900 p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:rounded-3xl">
+      <div className="v-scrim absolute inset-0" onClick={onClose} />
+      <div className="v-sheet relative z-10 w-full max-w-md p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="reward-title" className="text-lg font-bold">Your reward</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl bg-zinc-800 p-2"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-ink-2"><X className="h-5 w-5" /></button>
         </div>
-        <p className="text-sm text-zinc-300">{reward.reward}{reward.sponsor ? ` from ${reward.sponsor}` : ''}</p>
-        <p className="mt-3 select-all rounded-xl border border-lime-400/30 bg-lime-400/10 p-3 text-center font-mono text-lg font-black tracking-wider text-lime-200">{reward.code}</p>
-        <p className="mt-2 text-xs text-zinc-500">Redemption id: {reward.redemptionId}</p>
-        {reward.voucherExpiry && <p className={`mt-1 text-xs ${reward.expired ? 'text-rose-300' : 'text-zinc-400'}`}>{reward.expired ? 'Expired on' : 'Use by'} {formatDay(reward.voucherExpiry)}</p>}
-        <details className="mt-3 text-xs text-zinc-400"><summary className="cursor-pointer font-semibold">Terms</summary><p className="mt-1 whitespace-pre-line">{reward.terms}</p></details>
+        <p className="text-sm text-ink-soft">{reward.reward}{reward.sponsor ? ` from ${reward.sponsor}` : ''}</p>
+        <p className="mt-3 select-all rounded-xl bg-surface-2 p-3 text-center font-mono text-lg font-bold tracking-wider text-ink">{reward.code}</p>
+        <p className="mt-2 text-xs text-ink-3">Redemption id: {reward.redemptionId}</p>
+        {reward.voucherExpiry && <p className={`mt-1 text-xs ${reward.expired ? 'text-danger' : 'text-ink-2'}`}>{reward.expired ? 'Expired on' : 'Use by'} {formatDay(reward.voucherExpiry)}</p>}
+        <details className="mt-3 text-xs text-ink-2"><summary className="flex min-h-[32px] cursor-pointer items-center font-medium">Terms</summary><p className="mt-1 whitespace-pre-line">{reward.terms}</p></details>
       </div>
     </div>
   );
@@ -48,51 +48,50 @@ function ChallengeCard({ c, onJoin, onLeave, onReveal, busy }) {
   const [confirming, setConfirming] = useState(false);
   const e = c.enrollment;
   return (
-    <li className="overflow-hidden rounded-2xl border border-amber-400/30 bg-zinc-900">
-      <p className="flex items-center gap-1.5 bg-amber-400/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-amber-300">
-        <Megaphone className="h-3.5 w-3.5" /> {c.disclosure}
+    <li className="v-block p-4">
+      {/* The promotion label stays the first thing read on the card. */}
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-warn">
+        <Megaphone className="h-3.5 w-3.5" aria-hidden="true" /> {c.disclosure}
       </p>
-      <div className="p-4">
-        <h3 className="font-bold text-white">{c.title}</h3>
-        <p className="mt-1 text-sm text-zinc-300">{c.rule}</p>
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div><dt className="text-zinc-500">Reward</dt><dd className="font-bold text-lime-300">{c.reward.label}</dd></div>
-          <div><dt className="text-zinc-500">Duration</dt><dd className="text-zinc-200">{c.days} days, from the day after you join</dd></div>
-          <div><dt className="text-zinc-500">Rewards left</dt><dd className="text-zinc-200">{c.availability.soldOut ? 'None left' : `${c.availability.remaining}, while stocks last`}</dd></div>
-          <div><dt className="text-zinc-500">Open until</dt><dd className="text-zinc-200">{new Date(c.endsAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</dd></div>
-          {c.reward.voucherExpiry && <div className="col-span-2"><dt className="text-zinc-500">Voucher use-by</dt><dd className="text-zinc-200">{formatDay(c.reward.voucherExpiry)}</dd></div>}
-        </dl>
-        <details className="mt-3 text-xs text-zinc-400">
-          <summary className="cursor-pointer font-semibold">Eligibility and terms</summary>
-          <p className="mt-1">{c.eligibility}</p>
-          <p className="mt-1 whitespace-pre-line">{c.terms}</p>
-        </details>
+      <h3 className="mt-2 text-[15px] font-semibold text-ink">{c.title}</h3>
+      <p className="mt-1 text-sm text-ink-2">{c.rule}</p>
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-3 text-xs">
+        <div><dt className="text-ink-3">Reward</dt><dd className="mt-0.5 font-semibold text-ink">{c.reward.label}</dd></div>
+        <div><dt className="text-ink-3">Duration</dt><dd className="mt-0.5 text-ink-soft">{c.days} days, from the day after you join</dd></div>
+        <div><dt className="text-ink-3">Rewards left</dt><dd className="mt-0.5 text-ink-soft">{c.availability.soldOut ? 'None left' : `${c.availability.remaining}, while stocks last`}</dd></div>
+        <div><dt className="text-ink-3">Open until</dt><dd className="mt-0.5 text-ink-soft">{new Date(c.endsAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</dd></div>
+        {c.reward.voucherExpiry && <div className="col-span-2"><dt className="text-ink-3">Voucher use-by</dt><dd className="mt-0.5 text-ink-soft">{formatDay(c.reward.voucherExpiry)}</dd></div>}
+      </dl>
+      <details className="mt-3 text-xs text-ink-2">
+        <summary className="flex min-h-[32px] cursor-pointer items-center font-medium">Eligibility and terms</summary>
+        <p className="mt-1">{c.eligibility}</p>
+        <p className="mt-1 whitespace-pre-line">{c.terms}</p>
+      </details>
 
-        {e ? (
-          <div className="mt-3 rounded-xl border border-zinc-800 bg-black/30 p-3 text-xs">
-            <p className="font-bold text-zinc-200">{STATUS[e.status]}{e.status === 'active' && e.day ? ` · day ${e.day} of ${c.days}` : ''}</p>
-            {e.status === 'active' && <p className="mt-1 text-zinc-400">Logged on {e.activeDays} of the {e.activeNeeded} days needed. Result on {formatDay(e.judgeOn)}.</p>}
-            {e.reason && e.status === 'failed' && <p className="mt-1 text-zinc-400">{e.reason}</p>}
-            {e.status === 'completed' && e.reward?.issued && (
-              <button type="button" disabled={busy} onClick={() => onReveal(e.id)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-lime-400 px-3 py-2 font-black text-black"><Gift className="h-3.5 w-3.5" /> {e.reward.revealed ? 'Show voucher' : 'Reveal voucher'}</button>
-            )}
-            {e.status === 'completed' && e.reward?.soldOut && <p className="mt-1 text-amber-200">Well done! All rewards had already been given out when you finished.</p>}
-            {e.status === 'active' && <button type="button" disabled={busy} onClick={() => onLeave(c.id)} className="mt-2 text-zinc-400 underline">Leave challenge</button>}
+      {e ? (
+        <div className="mt-3 border-t border-line pt-3 text-xs">
+          <p className="font-semibold text-ink">{STATUS[e.status]}{e.status === 'active' && e.day ? ` · day ${e.day} of ${c.days}` : ''}</p>
+          {e.status === 'active' && <p className="mt-1 text-ink-2">Logged on {e.activeDays} of the {e.activeNeeded} days needed. Result on {formatDay(e.judgeOn)}.</p>}
+          {e.reason && e.status === 'failed' && <p className="mt-1 text-ink-2">{e.reason}</p>}
+          {e.status === 'completed' && e.reward?.issued && (
+            <button type="button" disabled={busy} onClick={() => onReveal(e.id)} className="v-press v-btn-primary mt-3 w-full"><Gift className="h-4 w-4" aria-hidden="true" /> {e.reward.revealed ? 'Show voucher' : 'Reveal voucher'}</button>
+          )}
+          {e.status === 'completed' && e.reward?.soldOut && <p className="mt-1 text-ink-2">Well done! All rewards had already been given out when you finished.</p>}
+          {e.status === 'active' && <button type="button" disabled={busy} onClick={() => onLeave(c.id)} className="mt-1 min-h-[44px] text-ink-2 underline">Leave challenge</button>}
+        </div>
+      ) : confirming ? (
+        <div className="mt-3 border-t border-line pt-3 text-xs text-ink-2">
+          <p>By joining you accept the terms above. It's free. Vittova checks the rule from your own records; {c.sponsor} only learns if a reward is issued.</p>
+          <div className="mt-3 flex gap-2">
+            <button type="button" disabled={busy} onClick={() => onJoin(c.id)} className="v-press v-btn-primary flex-1 px-3">Join challenge</button>
+            <button type="button" onClick={() => setConfirming(false)} className="v-press v-btn-secondary min-h-12 flex-1 px-3">Cancel</button>
           </div>
-        ) : confirming ? (
-          <div className="mt-3 rounded-xl border border-zinc-700 bg-black/30 p-3 text-xs text-zinc-300">
-            <p>By joining you accept the terms above. It's free. Vittova checks the rule from your own records; {c.sponsor} only learns if a reward is issued.</p>
-            <div className="mt-2 flex gap-2">
-              <button type="button" disabled={busy} onClick={() => onJoin(c.id)} className="rounded-lg bg-lime-400 px-3 py-2 font-black text-black">Join challenge</button>
-              <button type="button" onClick={() => setConfirming(false)} className="rounded-lg border border-zinc-700 px-3 py-2 font-bold">Cancel</button>
-            </div>
-          </div>
-        ) : (
-          <button type="button" disabled={busy || c.availability.soldOut} onClick={() => setConfirming(true)} className="mt-3 w-full rounded-xl border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-bold text-zinc-100 disabled:opacity-50">
-            {c.availability.soldOut ? 'All rewards given out' : 'Join (free)'}
-          </button>
-        )}
-      </div>
+        </div>
+      ) : (
+        <button type="button" disabled={busy || c.availability.soldOut} onClick={() => setConfirming(true)} className="v-press v-btn-secondary mt-3 min-h-12 w-full">
+          {c.availability.soldOut ? 'All rewards given out' : 'Join (free)'}
+        </button>
+      )}
     </li>
   );
 }
@@ -128,26 +127,28 @@ export default function Challenges() {
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-4 pb-6 text-white">
-      <Link to="/settings" className="-ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm text-zinc-400"><ArrowLeft className="h-4 w-4" /> Back</Link>
-      <header>
-        <p className="text-xs font-bold uppercase tracking-widest text-amber-300">Sponsored</p>
-        <h1 className="mt-1 text-2xl font-black">Money challenges</h1>
-        <p className="mt-1 text-sm text-zinc-400">Optional challenges from sponsors that reward spending carefully. They are promotions, not Vittova advice.</p>
-        <p className="mt-2 flex items-start gap-2 text-xs text-zinc-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lime-400" /> Sponsors never see your transactions, balances, categories or scores.</p>
-      </header>
+    <div className="mx-auto max-w-lg space-y-6 pb-6 text-ink">
+      <div>
+        <Link to="/settings" className="-ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm text-ink-2"><ArrowLeft className="h-4 w-4" /> Back</Link>
+        <header>
+          <p className="text-[13px] font-semibold text-warn">Sponsored</p>
+          <h1 className="mt-1 text-2xl font-bold">Money challenges</h1>
+          <p className="mt-1 text-sm text-ink-2">Optional challenges from sponsors that reward spending carefully. They are promotions, not Vittova advice.</p>
+          <p className="mt-2 flex items-start gap-2 text-xs text-ink-3"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Sponsors never see your transactions, balances, categories or scores.</p>
+        </header>
+      </div>
 
       {!features.sponsoredChallengesEnabled ? (
-        <p className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-400">No sponsored challenges are running right now.</p>
+        <p className="text-sm text-ink-2">No sponsored challenges are running right now.</p>
       ) : !isPro ? (
-        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5 text-sm text-zinc-300">Sponsored challenges are part of Vittova Pro. <Link to="/pro" className="font-bold text-amber-300 underline">See Pro</Link></div>
+        <p className="text-sm text-ink-2">Sponsored challenges are part of Vittova Pro. <Link to="/pro" className="font-semibold text-ink underline">See Pro</Link></p>
       ) : (
         <>
-          {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
+          {error && <p role="alert" className="v-error">{error}</p>}
           {!list && !error && <div className="space-y-3" aria-busy="true" aria-label="Loading challenges">{[0, 1].map((i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}</div>}
-          {list && !list.length && <p className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-400">No sponsored challenges are running right now.</p>}
+          {list && !list.length && <p className="text-sm text-ink-2">No sponsored challenges are running right now.</p>}
           {list && list.length > 0 && (
-            <ul className="space-y-4">
+            <ul className="space-y-3">
               {list.map((c) => (
                 <ChallengeCard key={c.id} c={c} busy={busy}
                   onJoin={(id) => act(() => apiJson(`/challenges/${id}/join`, { session, method: 'POST', body: {} }))}

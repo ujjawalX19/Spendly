@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Sparkles, FileText, Check } from 'lucide-react';
+import { ArrowLeft, Clock, FileText, Check } from 'lucide-react';
 import { usePro } from '../contexts/ProContext';
 import { useAuth } from '../contexts/AuthContext';
 import { friendlyError } from '../lib/errors';
@@ -96,62 +96,61 @@ export default function ProUpgrade() {
   };
 
   return (
-    <div className="min-h-screen bg-black p-4 pb-16 text-white md:p-6">
-      <button type="button" onClick={() => navigate(-1)} aria-label="Back" className="v-press mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900">
+    <div className="min-h-screen bg-bg p-4 pb-16 text-ink md:p-6">
+      <button type="button" onClick={() => navigate(-1)} aria-label="Back" className="v-press -ml-2 mb-2 flex h-11 w-11 items-center justify-center rounded-full text-ink-2">
         <ArrowLeft className="h-5 w-5" />
       </button>
 
       <div className="mx-auto max-w-lg">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500">
-            <Sparkles className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-black">Vittova Pro</h1>
-          <p className="mt-1 text-base font-bold text-zinc-200">More clarity. Better decisions.</p>
-          {isPro && <p className="mt-3 text-sm text-lime-300">Pro is active on your account.</p>}
+        <div className="mb-7">
+          <h1 className="text-[28px] font-bold leading-tight">Vittova Pro</h1>
+          <p className="mt-1 text-[15px] text-ink-2">More clarity. Better decisions.</p>
+          {isPro && <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-accent"><Check className="h-4 w-4" aria-hidden="true" /> Pro is active on your account.</p>}
           {!isPro && !purchasesAvailable && (
-            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-sm font-bold text-amber-300">
-              <Clock className="h-4 w-4" /> Coming soon: not available to buy yet
+            <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-warn">
+              <Clock className="h-4 w-4" aria-hidden="true" /> Coming soon: not available to buy yet
             </p>
           )}
         </div>
 
         {/* Plans are on their way, or could not be loaded: always say which. */}
         {purchasesAvailable && !isPro && isAndroidApp() && plans === 'loading' && (
-          <p role="status" className="mb-6 text-center text-sm text-zinc-400">Loading plans from Google Play…</p>
+          <p role="status" className="mb-7 text-sm text-ink-2">Loading plans from Google Play…</p>
         )}
         {purchasesAvailable && !isPro && isAndroidApp() && plans?.failed && (
-          <div role="alert" className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-center">
-            <p className="text-sm text-zinc-300">{plansFailureMessage(plans.failed)}</p>
-            <p className="mt-1 text-[11px] text-zinc-500">Code: {plans.failed}</p>
-            <button type="button" onClick={() => setAttempt((n) => n + 1)} className="v-press mt-3 min-h-[44px] rounded-xl border border-zinc-700 px-4 text-sm font-bold text-zinc-200">Try again</button>
+          <div role="alert" className="v-block mb-7 p-4">
+            <p className="text-sm text-ink-soft">{plansFailureMessage(plans.failed)}</p>
+            <p className="mt-1 text-[11px] text-ink-3">Code: {plans.failed}</p>
+            <button type="button" onClick={() => setAttempt((n) => n + 1)} className="v-press v-btn-secondary mt-3">Try again</button>
           </div>
         )}
 
         {/* Plans: only real, currently available Google Play plans. */}
         {purchasesAvailable && !isPro && isAndroidApp() && offer && plans === 'ready' && (
-          <section className="mb-6" aria-label="Plans">
-            {offer.cards.length === 0 && <p className="text-center text-sm text-zinc-400">Plans are not available on this device right now.</p>}
+          <section className="mb-7" aria-label="Plans">
+            {offer.cards.length === 0 && <p className="text-sm text-ink-2">Plans are not available on this device right now.</p>}
             <div className="space-y-2" role="radiogroup">
               {offer.cards.map((c) => (
                 <button key={c.key} type="button" role="radio" aria-checked={selected === c.key} onClick={() => { setSelected(c.key); track('plan_selected', { plan: c.key }); }}
-                  className={`v-press flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-left ${selected === c.key ? 'border-amber-400 bg-amber-400/10' : 'border-zinc-800 bg-zinc-900'}`}>
-                  <span>
-                    <span className="block text-xs font-black uppercase tracking-wider text-zinc-400">{c.title}</span>
-                    <span className="mt-1 block text-lg font-black">{c.price}</span>
-                    <span className="mt-0.5 block text-xs text-zinc-400">{c.renewal}</span>
+                  className={`v-press flex w-full items-start gap-3 rounded-2xl border bg-surface p-4 text-left ${selected === c.key ? 'border-ink' : 'border-line'}`}>
+                  <span aria-hidden="true" className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected === c.key ? 'border-accent bg-accent text-on-fill' : 'border-line-strong'}`}>
+                    {selected === c.key && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                   </span>
-                  {selected === c.key && <Check className="mt-1 h-5 w-5 shrink-0 text-amber-300" />}
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium text-ink-2">{c.title}</span>
+                    <span className="mt-0.5 block font-display text-xl font-bold tabular-nums">{c.price}</span>
+                    <span className="mt-0.5 block text-xs text-ink-3">{c.renewal}</span>
+                  </span>
                 </button>
               ))}
             </div>
             {card && (
               <>
                 <button type="button" disabled={!!busy} onClick={() => run('buy')}
-                  className="v-press mt-4 h-12 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-sm font-black text-black disabled:opacity-60">
+                  className="v-press v-btn-primary mt-4 w-full disabled:opacity-60">
                   {busy === 'buy' ? 'Opening Google Play…' : 'Continue with Google Play'}
                 </button>
-                <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                <p className="mt-3 text-[11px] leading-relaxed text-ink-3">
                   {card.renewal} Billed by Google Play to your Google account. Cancel any time in Google Play → Payments &amp; subscriptions; Pro stays on until the end of the period you paid for. {card.key === 'limited_yearly' ? 'Offer eligibility is decided by Google Play. ' : ''}Refunds follow Google Play's policies.
                 </p>
               </>
@@ -159,50 +158,50 @@ export default function ProUpgrade() {
           </section>
         )}
         {purchasesAvailable && !isPro && !isAndroidApp() && (
-          <p className="mb-6 text-center text-sm text-zinc-400">Vittova Pro can be bought in the Vittova Android app.</p>
+          <p className="mb-7 text-sm text-ink-2">Vittova Pro can be bought in the Vittova Android app.</p>
         )}
 
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-500">{purchasesAvailable ? 'Pro includes' : 'Planned for Pro'}</h2>
-        <ul className="mb-4 divide-y divide-white/[0.06] rounded-[20px] border border-white/[0.06] bg-[#111113] px-4">
+        <h2 className="v-label mb-2">{purchasesAvailable ? 'Pro includes' : 'Planned for Pro'}</h2>
+        <ul className="v-block v-rows mb-3 px-4">
           {INCLUDES.filter((f) => !f.sponsored || features.sponsoredChallengesEnabled).map((feat) => (
             <li key={feat.title} className="flex min-h-[48px] items-start gap-3 py-3">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
-              <span><span className="block text-sm font-semibold text-white">{feat.title}</span>{feat.desc && <span className="block text-xs text-zinc-500">{feat.desc}</span>}</span>
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-ink-2" aria-hidden="true" />
+              <span><span className="block text-sm font-medium text-ink">{feat.title}</span>{feat.desc && <span className="block text-xs text-ink-3">{feat.desc}</span>}</span>
             </li>
           ))}
         </ul>
-        <p className="mb-6 text-center text-xs text-zinc-500">Identify potential spending leaks and make more informed decisions. Results depend on your own choices; no savings are guaranteed.</p>
+        <p className="mb-7 text-xs leading-relaxed text-ink-3">Identify potential spending leaks and make more informed decisions. Results depend on your own choices; no savings are guaranteed.</p>
 
         {!isPro && limits && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 text-sm text-zinc-400">
-            <p className="mb-2 font-bold text-zinc-200">Your free plan today</p>
-            <ul className="space-y-1">
-              <li>Receipt scans this month: {limits.receiptScansUsed} of {limits.receiptScansLimit}</li>
-              <li>Ask Vittova questions today: {limits.chatMessagesUsed} of {limits.chatMessagesLimit}</li>
-              <li>Expenses today: {limits.expensesToday} of {limits.expensesLimit}</li>
-              {limits.moneyChecksLimit != null && <li>Money checks today: {limits.moneyChecksUsed ?? 0} of {limits.moneyChecksLimit}</li>}
+          <>
+            <h2 className="v-label mb-2">Your free plan today</h2>
+            <ul className="v-block v-rows px-4 text-sm text-ink-2">
+              <li className="flex items-center justify-between gap-3 py-3"><span>Receipt scans this month</span><span className="tabular-nums text-ink">{limits.receiptScansUsed} of {limits.receiptScansLimit}</span></li>
+              <li className="flex items-center justify-between gap-3 py-3"><span>Ask Vittova questions today</span><span className="tabular-nums text-ink">{limits.chatMessagesUsed} of {limits.chatMessagesLimit}</span></li>
+              <li className="flex items-center justify-between gap-3 py-3"><span>Expenses today</span><span className="tabular-nums text-ink">{limits.expensesToday} of {limits.expensesLimit}</span></li>
+              {limits.moneyChecksLimit != null && <li className="flex items-center justify-between gap-3 py-3"><span>Money checks today</span><span className="tabular-nums text-ink">{limits.moneyChecksUsed ?? 0} of {limits.moneyChecksLimit}</span></li>}
             </ul>
-          </div>
+          </>
         )}
 
         <div className="mt-6 flex flex-col items-center gap-2 text-xs">
           {purchasesAvailable && isAndroidApp() && (
-            <button type="button" disabled={!!busy} onClick={() => run('restore')} className="min-h-[44px] px-3 font-bold text-zinc-300 underline disabled:opacity-60">
+            <button type="button" disabled={!!busy} onClick={() => run('restore')} className="v-press v-btn-text disabled:opacity-60">
               {busy === 'restore' ? 'Checking…' : 'Restore purchases'}
             </button>
           )}
-          {isPro && isAndroidApp() && <a href={MANAGE_SUBSCRIPTIONS_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 underline">Manage subscription in Google Play</a>}
-          <p className="text-zinc-500"><Link to="/terms" className="inline-flex min-h-[44px] items-center px-2 underline">Terms</Link> · <Link to="/privacy" className="inline-flex min-h-[44px] items-center px-2 underline">Privacy</Link></p>
+          {isPro && isAndroidApp() && <a href={MANAGE_SUBSCRIPTIONS_URL} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline">Manage subscription in Google Play</a>}
+          <p className="text-ink-3"><Link to="/terms" className="inline-flex min-h-[44px] items-center px-2 underline">Terms</Link> · <Link to="/privacy" className="inline-flex min-h-[44px] items-center px-2 underline">Privacy</Link></p>
         </div>
 
-        {message && <p role="status" className="mt-4 text-center text-sm text-zinc-200">{message}</p>}
+        {message && <p role="status" className="mt-4 text-center text-sm text-ink-soft">{message}</p>}
 
         {!purchasesAvailable && (
-          <p className="mt-6 text-center text-xs text-zinc-600">
+          <p className="mt-6 text-center text-xs text-ink-3">
             Nothing is charged and no subscription exists. We'll show pricing here only when Pro can actually be purchased through Google Play.
           </p>
         )}
-        <p className="mt-4 flex items-center justify-center gap-1 text-[11px] text-zinc-600"><FileText className="h-3 w-3" /> Vittova is a budgeting tool, not investment advice.</p>
+        <p className="mt-4 flex items-center justify-center gap-1 text-[11px] text-ink-3"><FileText className="h-3 w-3" /> Vittova is a budgeting tool, not investment advice.</p>
       </div>
     </div>
   );

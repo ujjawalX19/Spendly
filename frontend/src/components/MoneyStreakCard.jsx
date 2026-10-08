@@ -56,7 +56,7 @@ export function StreakSheet({ streak, onClose, onChanged }) {
 
   return (
     <motion.div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="v-scrim absolute inset-0" onClick={onClose} />
       <motion.div
         role="dialog" aria-modal="true" aria-labelledby="streak-title"
         className="relative z-10 max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-zinc-800 bg-zinc-900 p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl"
@@ -65,20 +65,20 @@ export function StreakSheet({ streak, onClose, onChanged }) {
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-zinc-700 sm:hidden" />
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-widest text-[#f97316]">Money Streak</p>
-            <h2 id="streak-title" className="flex items-center gap-2 text-2xl font-black text-white">{streak.current} day{streak.current === 1 ? '' : 's'} <Flame className="h-6 w-6 text-orange-400" aria-hidden="true" /></h2>
-            {streak.longest > streak.current && <p className="text-xs text-zinc-500">Best: {streak.longest} days</p>}
+            <p className="v-label">Money Streak</p>
+            <h2 id="streak-title" className="flex items-center gap-2 text-2xl font-bold text-ink">{streak.current} day{streak.current === 1 ? '' : 's'} <Flame className="h-5 w-5 text-flame" aria-hidden="true" /></h2>
+            {streak.longest > streak.current && <p className="text-xs text-ink-3">Best: {streak.longest} days</p>}
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl bg-zinc-800 p-2 text-zinc-400"><X className="h-4 w-4" /></button>
         </div>
 
         <WeekDots week={streak.week} size="lg" />
-        {streak.today.status === 'to_do' && <p className="mt-3 text-center text-sm font-bold text-[#f97316]">Keep your streak alive!</p>}
+        {streak.today.status === 'to_do' && <p className="mt-3 text-center text-sm font-semibold text-ink-2">Log today to keep your streak.</p>}
 
-        <section className="mt-5 rounded-2xl border border-zinc-800 bg-black/30 p-4">
+        <section className="mt-5 rounded-2xl bg-surface-2 p-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400"><Target className="h-4 w-4 text-lime-400" /> Today's mission</p>
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${TONE_CLASSES[status.tone]}`}>{status.label}</span>
+            <p className="v-label flex items-center gap-2"><Target className="h-4 w-4" aria-hidden="true" /> Today's mission</p>
+            <span className={`text-xs font-semibold ${TONE_CLASSES[status.tone]}`}>{status.label}</span>
           </div>
           <h3 className="mt-2 font-bold text-white">{streak.today.mission.title}</h3>
           <p className="mt-1 text-sm text-zinc-400">{streak.today.mission.detail}</p>
@@ -95,8 +95,8 @@ export function StreakSheet({ streak, onClose, onChanged }) {
           {error && <p role="alert" className="mt-2 text-sm text-red-300">{error}</p>}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-zinc-800 bg-black/30 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">This week's goal</p>
+        <section className="mt-2 rounded-2xl bg-surface-2 p-4">
+          <p className="v-label">This week's goal</p>
           <p className="mt-1 text-sm text-zinc-300">Spend within <span className="font-mono">{inr(streak.weekly.limit)}</span> and log on {streak.weekly.minActiveDays} days.</p>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-800">
             <div className={`h-full rounded-full ${streak.weekly.status === 'over' ? 'bg-rose-500' : 'bg-lime-400'}`} style={{ width: `${weeklyPercent}%` }} />
@@ -104,18 +104,18 @@ export function StreakSheet({ streak, onClose, onChanged }) {
           <p className="mt-1.5 text-xs text-zinc-500"><span className="font-mono">{inr(streak.weekly.spent)}</span> spent · {streak.weekly.activeDays} of {streak.weekly.minActiveDays} days logged</p>
         </section>
 
-        <section className="mt-3 rounded-2xl border border-zinc-800 bg-black/30 p-4">
+        <section className="mt-2 rounded-2xl bg-surface-2 p-4">
           <div className="flex items-center justify-between">
-            <p className="flex items-center gap-2 font-bold text-white"><Trophy className="h-4 w-4 text-amber-300" /> Level {xp.level} · {xp.levelName}</p>
+            <p className="flex items-center gap-2 font-semibold text-ink"><Trophy className="h-4 w-4 text-ink-2" aria-hidden="true" /> Level {xp.level} · {xp.levelName}</p>
             <p className="font-mono text-sm text-zinc-300">{xp.total} XP</p>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-800" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={xp.progressPercent}>
-            <div className="h-full rounded-full bg-amber-300" style={{ width: `${xp.progressPercent}%` }} />
+            <div className="h-full rounded-full bg-ink-2" style={{ width: `${xp.progressPercent}%` }} />
           </div>
           <p className="mt-1.5 text-xs text-zinc-500">{xp.nextLevel ? `${xp.nextLevel.xpToGo} XP to ${xp.nextLevel.name}` : 'Top level reached'}{xp.today ? ` · +${xp.today} XP today` : ''}</p>
         </section>
 
-        <details className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-xs text-zinc-400">
+        <details className="mt-2 px-1 py-2 text-xs text-ink-2">
           <summary className="cursor-pointer list-none font-semibold text-zinc-300">How XP works</summary>
           <ul className="mt-2 space-y-1">
             <li>Log an expense: +{streak.rules.expenseLogged} XP (up to {streak.rules.expenseLoggedDailyCap} a day)</li>
@@ -160,37 +160,34 @@ export default function MoneyStreakCard({ streak, onChanged }) {
   const celebrate = useStreakIncreased(streak?.current);
   return (
     <>
-      <section className="v-enter rounded-[20px] border border-white/[0.06] bg-[#111113] p-4">
-        <div className="flex items-center gap-3">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 ${celebrate ? 'v-celebrate' : ''}`}>
-            <Flame className="h-5 w-5 text-orange-400" aria-hidden="true" />
+      {/* One row on Home: the streak and today's mission. The week, the XP and
+          the rules are one tap in (the sheet); challenges are one tap across. */}
+      <div className="v-enter flex min-h-[56px] items-center gap-3 py-2">
+        <button type="button" disabled={!streak} onClick={() => setOpen(true)} className="v-press flex min-w-0 flex-1 items-center gap-3 text-left"
+          aria-label={streak ? `Money Streak: ${streak.current} days. Today's mission and this week` : 'Money Streak loading'}>
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-flame ${celebrate ? 'v-celebrate' : ''}`}>
+            <Flame className="h-[18px] w-[18px]" aria-hidden="true" />
           </span>
-          <div className="min-w-0 flex-1">
+          <span className="min-w-0 flex-1">
             {streak ? (
               <>
-                <p className="text-base font-bold text-white">{streak.current}-day streak</p>
-                <p className="text-xs text-zinc-500">Level {streak.xp.level} · {streak.xp.levelName}</p>
+                <span className="block text-[15px] font-semibold text-ink">{streak.current}-day streak</span>
+                <span className="block truncate text-xs text-ink-3">{streak.today.mission.title}</span>
               </>
             ) : (
               <>
-                <span className="block h-5 w-28 animate-pulse rounded bg-zinc-800" />
-                <p className="mt-1 text-xs text-zinc-500">Money Streak</p>
+                <span className="block h-5 w-28 animate-pulse rounded bg-surface-2" />
+                <span className="mt-1 block text-xs text-ink-3">Money Streak</span>
               </>
             )}
-          </div>
-          <button type="button" disabled={!streak} onClick={() => navigate('/save-to-earn')}
-            className="v-press min-h-[44px] shrink-0 rounded-xl border border-white/10 px-3 text-xs font-bold text-zinc-100 disabled:opacity-40"
-            aria-label={streak ? `Open Save-to-Earn. Money Streak: ${streak.current} days` : 'Money Streak loading'}>
-            Continue
-          </button>
-        </div>
-        {streak && (
-          <button type="button" onClick={() => setOpen(true)} className="mt-3 block w-full text-left" aria-label="Today's mission and this week">
-            <WeekDots week={streak.week} size="md" />
-            <span className="mt-2 flex items-center gap-1.5 text-xs text-zinc-400"><Target className="h-3.5 w-3.5 shrink-0 text-lime-400" aria-hidden="true" /> {streak.today.mission.title}</span>
-          </button>
-        )}
-      </section>
+          </span>
+        </button>
+        <button type="button" disabled={!streak} onClick={() => navigate('/save-to-earn')}
+          className="v-press v-btn-text shrink-0 disabled:opacity-40"
+          aria-label="Open Save-to-Earn challenges">
+          Challenges
+        </button>
+      </div>
       <AnimatePresence>{open && streak && <StreakSheet streak={streak} onClose={() => setOpen(false)} onChanged={onChanged} />}</AnimatePresence>
     </>
   );

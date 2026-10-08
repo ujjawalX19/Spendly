@@ -58,12 +58,12 @@ function WebCallback() {
     if (linkError || (timedOut && !loading)) {
         return (
             <AuthLayout eyebrow="SIGN-IN PROBLEM">
-                <div className="flex flex-col gap-6 text-center">
-                    <h1 className="text-3xl font-extrabold tracking-tight">We couldn't sign you in</h1>
-                    <p className="text-sm text-zinc-400">
+                <div className="flex flex-col gap-5">
+                    <h1 className="text-2xl font-bold">We couldn't sign you in</h1>
+                    <p className="text-sm leading-6 text-ink-2">
                         {linkError || 'The link may have expired, been used already, or been opened in a different browser from the one you started in.'}
                     </p>
-                    <Link to="/login" className="inline-flex h-12 items-center justify-center rounded-xl bg-lime-400 text-sm font-extrabold text-black">Back to sign in</Link>
+                    <Link to="/login" className="v-press v-btn-primary w-full">Back to sign in</Link>
                 </div>
             </AuthLayout>
         );
@@ -71,8 +71,8 @@ function WebCallback() {
 
     return (
         <AuthLayout eyebrow="SIGNING IN">
-            <div className="flex items-center justify-center gap-3 py-10 text-zinc-400" role="status">
-                <Loader2 className="h-5 w-5 animate-spin text-lime-300" /> Finishing sign-in…
+            <div className="flex items-center justify-center gap-3 py-10 text-ink-2" role="status">
+                <Loader2 className="h-5 w-5 animate-spin" /> Finishing sign-in…
             </div>
         </AuthLayout>
     );

@@ -12,9 +12,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
   ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
-  Users, Repeat, Radar, Gift, Bell, Trophy, Zap, Settings2, MessageSquareText
+  Users, Repeat, Radar, Gift, Bell, Trophy, Zap, Settings2, MessageSquareText, SunMoon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { usePro } from '../contexts/ProContext';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import { TRACKING } from '../lib/paymentTracking';
@@ -41,8 +42,8 @@ async function httpError(response) {
 }
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 22 } },
+  hidden: { opacity: 0, y: 6 },
+  visible: { opacity: 1, y: 0, transition: { type: 'tween', duration: 0.2, ease: 'easeOut' } },
 };
 
 /**
@@ -53,8 +54,8 @@ const cardVariants = {
 function SettingsGroup({ title, note, children }) {
   return (
     <motion.section variants={cardVariants} aria-label={title}>
-      <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-zinc-500">{title}</h2>
-      <div className="divide-y divide-white/[.06] overflow-hidden rounded-2xl border border-white/[.06] bg-zinc-900">
+      <h2 className="v-label mb-1.5 px-1">{title}</h2>
+      <div className="v-block v-rows overflow-hidden">
         {children}
       </div>
       {note}
@@ -69,18 +70,17 @@ function SettingRow({ icon: Icon, label, value, color, onClick, danger = false }
   return (
     <Tag
       {...(onClick ? { type: 'button', onClick } : {})}
-      className={`flex min-h-[60px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${onClick ? 'hover:bg-white/[.03] active:bg-white/[.05]' : ''}`}
+      className={`flex min-h-[56px] w-full items-center justify-between gap-3 px-4 py-2.5 text-left ${onClick ? 'v-press' : ''}`}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${danger ? 'bg-red-500/10' : 'bg-white/[.06]'}`}>
-          <Icon className={`h-5 w-5 ${danger ? 'text-red-400' : color === 'text-red-400' ? color : 'text-zinc-300'}`} strokeWidth={1.9} aria-hidden="true" />
-        </div>
+      {/* The icon stands on the row itself: no tile behind every icon. */}
+      <div className="flex min-w-0 flex-1 items-center gap-3.5">
+        <Icon className={`h-5 w-5 shrink-0 ${danger || color === 'text-red-400' ? 'text-danger' : 'text-ink-2'}`} strokeWidth={1.75} aria-hidden="true" />
         <div className="min-w-0">
-          <p className={`text-[15px] font-semibold ${danger ? 'text-red-400' : 'text-white'}`}>{label}</p>
-          {value && <p className="mt-0.5 text-xs leading-snug text-zinc-500">{value}</p>}
+          <p className={`text-[15px] font-medium ${danger ? 'text-danger' : 'text-ink'}`}>{label}</p>
+          {value && <p className="text-xs leading-snug text-ink-3">{value}</p>}
         </div>
       </div>
-      {onClick && <ChevronRight className={`h-4 w-4 shrink-0 ${danger ? 'text-red-500/70' : 'text-zinc-600'}`} aria-hidden="true" />}
+      {onClick && <ChevronRight className="h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />}
     </Tag>
   );
 }
@@ -103,29 +103,26 @@ function EditBudgetModal({ current, onClose, onSave }) {
       className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="v-scrim absolute inset-0" onClick={onClose} />
       <motion.div
-        className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] z-10"
+        className="v-sheet relative w-full max-w-md p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-10"
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+        transition={{ type: 'tween', duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
       >
-        <h2 className="text-lg font-bold text-white mb-4">Edit Monthly Budget</h2>
-        <div className="relative mb-4">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">₹</span>
+        <h2 className="text-lg font-bold text-ink mb-4">Monthly budget</h2>
+        <div className="relative mb-2">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-2 font-semibold">₹</span>
           <input
-            type="number" autoFocus value={budget}
+            type="number" autoFocus value={budget} aria-label="Monthly budget in rupees"
             onChange={e => setBudget(e.target.value)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl pl-8 pr-4 py-3 text-zinc-100 font-mono outline-none focus:border-lime-500/60"
+            className="v-input pl-8 font-mono text-lg"
             min="500" step="500"
           />
         </div>
-        <p className="text-xs text-zinc-500 mb-4">Minimum ₹500. This affects your Safe-to-Spend calculation.</p>
-        <motion.button
-          whileTap={{ scale: 0.97 }} onClick={handleSave} disabled={saving}
-          className="w-full bg-lime-400 text-black font-black py-3 rounded-2xl text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-        >
+        <p className="text-xs text-ink-3 mb-4">Minimum ₹500. This affects your Safe-to-Spend calculation.</p>
+        <button type="button" onClick={handleSave} disabled={saving} className="v-press v-btn-primary w-full">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Save budget</>}
-        </motion.button>
+        </button>
       </motion.div>
     </motion.div>
   );
@@ -149,47 +146,45 @@ function EditInvestmentTargetModal({ current, onClose, onSave }) {
       className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="v-scrim absolute inset-0" onClick={onClose} />
       <motion.div
-        className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] z-10"
+        className="v-sheet relative w-full max-w-md p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-10"
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+        transition={{ type: 'tween', duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
       >
-        <h2 className="text-lg font-bold text-white mb-2">Set Investment Target</h2>
-        <p className="text-xs text-zinc-500 mb-4">
+        <h2 className="text-lg font-bold text-ink mb-1">Investment target</h2>
+        <p className="text-sm text-ink-2 mb-4">
           How much do you want to invest per month? This amount is deducted from your Safe-to-Spend calculation.
         </p>
-        <div className="relative mb-4">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">₹</span>
+        <div className="relative mb-3">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-2 font-semibold">₹</span>
           <input
-            type="number" autoFocus value={target}
+            type="number" autoFocus value={target} aria-label="Monthly investment target in rupees"
             onChange={e => setTarget(e.target.value)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl pl-8 pr-4 py-3 text-zinc-100 font-mono outline-none focus:border-sky-500/60"
+            className="v-input pl-8 font-mono text-lg"
             min="0" step="100"
           />
         </div>
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-4">
           {[500, 1000, 2000, 5000].map(amt => (
             <button
               key={amt}
               type="button"
               onClick={() => setTarget(amt.toString())}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+              aria-pressed={parseInt(target) === amt}
+              className={`v-press min-h-[40px] px-3 rounded-lg font-mono text-sm font-semibold transition-colors ${
                 parseInt(target) === amt
-                  ? 'bg-sky-400 text-black border-sky-400'
-                  : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600'
+                  ? 'bg-ink text-bg'
+                  : 'bg-surface-2 text-ink-2'
               }`}
             >
               ₹{amt.toLocaleString('en-IN')}
             </button>
           ))}
         </div>
-        <motion.button
-          whileTap={{ scale: 0.97 }} onClick={handleSave} disabled={saving}
-          className="w-full bg-sky-400 text-black font-black py-3 rounded-2xl text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-        >
+        <button type="button" onClick={handleSave} disabled={saving} className="v-press v-btn-primary w-full">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Save target</>}
-        </motion.button>
+        </button>
       </motion.div>
     </motion.div>
   );
@@ -211,45 +206,44 @@ function DeleteAccountModal({ onClose, onDelete }) {
       className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="v-scrim absolute inset-0" onClick={onClose} />
       <motion.div
-        className="relative w-full max-w-md bg-zinc-900 border border-red-500/20 rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] z-10"
+        className="v-sheet relative w-full max-w-md p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-10"
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+        transition={{ type: 'tween', duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <AlertTriangle className="w-6 h-6 text-red-400" />
-          <h2 className="text-lg font-bold text-red-400">Delete account</h2>
+        <div className="flex items-center gap-2.5 mb-3">
+          <AlertTriangle className="w-5 h-5 text-danger" aria-hidden="true" />
+          <h2 className="text-lg font-bold text-ink">Delete account</h2>
         </div>
-        <p className="text-sm text-zinc-400 mb-2">This will permanently delete:</p>
-        <ul className="text-xs text-zinc-500 space-y-1 mb-4 list-disc pl-4">
+        <p className="text-sm text-ink-soft mb-2">This will permanently delete:</p>
+        <ul className="text-sm text-ink-2 space-y-1 mb-4 list-disc pl-4">
           <li>Your login, and you will be signed out on every device</li>
           <li>All expenses, recurring bills and statement-import history</li>
           <li>Your Spend Score history, streaks and AI coach conversations</li>
           <li>Group pools you created, and your membership of other pools</li>
           <li>Recurring-payment audit, Pro purchase and sponsored-challenge records</li>
         </ul>
-        <p className="text-xs text-amber-200/90 mb-2">Paying for Vittova Pro? Cancel it in Google Play first: deleting your account does not stop Google Play charges.</p>
-        <p className="text-xs text-zinc-500 mb-4">This cannot be undone. Export your expenses first if you want a copy.</p>
-        <p className="text-sm text-zinc-400 mb-3">Type <span className="font-mono text-red-400 font-bold">DELETE</span> to confirm:</p>
+        <p className="text-sm text-warn mb-2">Paying for Vittova Pro? Cancel it in Google Play first: deleting your account does not stop Google Play charges.</p>
+        <p className="text-sm text-ink-2 mb-4">This cannot be undone. Export your expenses first if you want a copy.</p>
+        <label htmlFor="delete-confirm" className="v-field-label">Type <span className="font-mono font-bold text-ink">DELETE</span> to confirm</label>
         <input
-          type="text" value={confirmation}
+          id="delete-confirm" type="text" value={confirmation}
           onChange={e => setConfirmation(e.target.value)}
-          className="w-full bg-zinc-800 border border-red-500/30 rounded-2xl px-4 py-3 text-zinc-100 font-mono outline-none focus:border-red-500/60 mb-4"
-          placeholder="Type DELETE"
+          className="v-input mb-4 font-mono focus:border-danger"
+          placeholder="DELETE" autoCapitalize="characters"
         />
-        <div className="flex gap-3">
-          <motion.button whileTap={{ scale: 0.97 }} onClick={onClose}
-            className="flex-1 bg-zinc-800 text-zinc-400 font-bold py-3 rounded-2xl text-sm">
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="v-press v-btn-secondary min-h-[3rem] flex-1">
             Cancel
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.97 }} onClick={handleDelete}
+          </button>
+          <button
+            type="button" onClick={handleDelete}
             disabled={confirmation !== 'DELETE' || deleting}
-            className="flex-1 bg-red-500 text-white font-black py-3 rounded-2xl text-sm disabled:opacity-40 flex items-center justify-center gap-2"
+            className="v-press flex min-h-[3rem] flex-1 items-center justify-center gap-2 rounded-xl bg-danger text-[15px] font-semibold text-on-fill disabled:opacity-40"
           >
-            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Delete Forever</>}
-          </motion.button>
+            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" /> Delete forever</>}
+          </button>
         </div>
       </motion.div>
     </motion.div>
@@ -259,20 +253,20 @@ function DeleteAccountModal({ onClose, onDelete }) {
 /** A switch row: the state is in the text too, never only in the colour. */
 function ToggleRow({ icon: Icon, label, detail, on, busy, onToggle, disabled }) {
   return (
-    <div className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[.06]"><Icon className="h-5 w-5 text-zinc-300" strokeWidth={1.9} aria-hidden="true" /></div>
+    <div className="flex min-h-[56px] items-center justify-between gap-3 px-4 py-2.5">
+      <div className="flex min-w-0 flex-1 items-center gap-3.5">
+        <Icon className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.75} aria-hidden="true" />
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold text-white">{label}</p>
-          {detail && <p className="mt-0.5 text-xs leading-snug text-zinc-500">{detail}</p>}
+          <p className="text-[15px] font-medium text-ink">{label}</p>
+          {detail && <p className="text-xs leading-snug text-ink-3">{detail}</p>}
         </div>
       </div>
       {/* The switch alone says on or off; the 44px button around it is the touch target. */}
       <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle} disabled={disabled || busy}
         className="flex min-h-[44px] shrink-0 items-center pl-2 disabled:opacity-40">
         {/* left-0: without it the knob starts at the button's centred text position and sits outside the track. */}
-        <span className={`relative block h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${on ? 'bg-lime-400' : 'bg-zinc-700'}`}>
-          <span className={`absolute left-0 top-1 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
+        <span className={`relative block h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${on ? 'bg-accent' : 'bg-surface-3'}`}>
+          <span className={`absolute left-0 top-1 block h-5 w-5 rounded-full bg-knob shadow transition-transform duration-200 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
         </span>
       </button>
     </div>
@@ -283,6 +277,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { user, session, logout, applyServerProfile } = useAuth();
   const { isPro, features } = usePro();
+  const { choice: themeChoice, setChoice: setThemeChoice } = useTheme();
   const tracking = usePaymentTracking();
   const [trackingBusy, setTrackingBusy] = useState(false);
   const [showSmsSheet, setShowSmsSheet] = useState(false);
@@ -410,47 +405,46 @@ export default function Settings() {
     <motion.div
       className="space-y-6 pb-6"
       initial="hidden" animate="visible"
-      variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+      variants={{ visible: { transition: { staggerChildren: 0.03 } } }}
     >
       {/* Header */}
-      <motion.header variants={cardVariants} className="mb-2">
-        <h1 className="text-2xl font-black text-white">{user?.full_name || user?.name || 'Profile'}</h1>
-        <p className="text-sm text-zinc-500 mt-1">{user?.email}</p>
+      <motion.header variants={cardVariants} className="flex items-center gap-3.5">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-2 text-base font-semibold text-ink" aria-hidden="true">
+          {String(user?.full_name || user?.name || 'V').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)}
+        </span>
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold text-ink">{user?.full_name || user?.name || 'Profile'}</h1>
+          <p className="truncate text-sm text-ink-2">{user?.email}</p>
+        </div>
       </motion.header>
 
       {banner && (
         <div
           role={banner.type === 'error' ? 'alert' : 'status'}
-          className={`flex items-start gap-3 rounded-2xl border p-3.5 text-sm font-semibold ${
-            banner.type === 'error'
-              ? 'border-red-500/30 bg-red-500/10 text-red-200'
-              : 'border-lime-500/30 bg-lime-500/10 text-lime-200'
-          }`}
+          className="v-block flex items-center gap-3 px-4 py-1 text-sm font-semibold text-ink"
         >
-          <span className="flex-1">{banner.message}</span>
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${banner.type === 'error' ? 'bg-danger' : 'bg-accent'}`} aria-hidden="true" />
+          <span className="flex-1 py-2">{banner.message}</span>
           <button
             type="button" onClick={() => setBanner(null)} aria-label="Dismiss"
-            className="-my-3 flex h-11 w-11 shrink-0 items-center justify-center text-lg leading-none opacity-70 hover:opacity-100"
+            className="-mr-3 flex h-11 w-11 shrink-0 items-center justify-center text-lg leading-none text-ink-3"
           >
             &times;
           </button>
         </div>
       )}
 
-      {/* Pro Status */}
+      {/* Plan */}
       <motion.button type="button" variants={cardVariants} onClick={() => navigate('/pro')}
-        className={`v-press block w-full text-left rounded-2xl p-4 border ${isPro
-          ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/20'
-          : 'bg-zinc-900 border-zinc-800'
-        }`}
+        className="v-press v-block block w-full px-4 py-3 text-left"
       >
-        <div className="flex items-center gap-3">
-          <Crown className={`w-6 h-6 ${isPro ? 'text-amber-400' : 'text-zinc-600'}`} />
+        <div className="flex items-center gap-3.5">
+          <Crown className={`h-5 w-5 shrink-0 ${isPro ? 'text-accent' : 'text-ink-2'}`} strokeWidth={1.75} aria-hidden="true" />
           <div>
-            <p className="text-[15px] font-semibold text-white">{isPro ? 'Vittova Pro is active' : 'Free plan'}</p>
-            <p className="text-xs text-zinc-500">{isPro ? 'All features unlocked' : 'See what Vittova Pro includes'}</p>
+            <p className="text-[15px] font-medium text-ink">{isPro ? 'Vittova Pro is active' : 'Free plan'}</p>
+            <p className="text-xs text-ink-3">{isPro ? 'All features unlocked' : 'See what Vittova Pro includes'}</p>
           </div>
-          <ChevronRight className="ml-auto h-4 w-4 text-zinc-600" aria-hidden="true" />
+          <ChevronRight className="ml-auto h-4 w-4 text-ink-3" aria-hidden="true" />
         </div>
       </motion.button>
 
@@ -523,7 +517,7 @@ export default function Settings() {
         )}
       </AnimatePresence>
 
-      <SettingsGroup title="Reminders" note={reminderNote ? <p role="status" className="mt-2 px-1 text-xs text-amber-200">{reminderNote}</p> : null}>
+      <SettingsGroup title="Reminders" note={reminderNote ? <p role="status" className="mt-2 px-1 text-xs text-warn">{reminderNote}</p> : null}>
         {!remindersSupported() ? (
           <SettingRow icon={Bell} label="Debit reminders" value="Available in the Vittova Android app" />
         ) : isPro && features.subscriptionAuditEnabled !== false ? (
@@ -569,6 +563,21 @@ export default function Settings() {
           )}
         </SettingsGroup>
       )}
+
+      {/* Dark is the default look; light uses the same system. */}
+      <SettingsGroup title="Appearance">
+        <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2.5">
+          <div className="flex items-center gap-3.5">
+            <SunMoon className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.75} aria-hidden="true" />
+            <p className="text-[15px] font-medium text-ink" id="theme-label">Theme</p>
+          </div>
+          <div className="v-seg" role="group" aria-labelledby="theme-label">
+            {[['dark', 'Dark'], ['light', 'Light'], ['system', 'Match phone']].map(([value, name]) => (
+              <button key={value} type="button" aria-pressed={themeChoice === value} onClick={() => setThemeChoice(value)}>{name}</button>
+            ))}
+          </div>
+        </div>
+      </SettingsGroup>
 
       <SettingsGroup title="Your data">
         <SettingRow

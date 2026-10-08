@@ -105,9 +105,9 @@ export default function Transactions() {
 
   return (
     <div className="pb-8">
-      <header className="mb-5">
-        <h1 className="text-2xl font-black tracking-tight text-white">Activity</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+      <header className="mb-4">
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Activity</h1>
+        <p className="mt-0.5 text-sm text-ink-2">
           {s.loading
             ? 'Loading…'
             : `${s.total.toLocaleString('en-IN')} ${s.total === 1 ? 'expense' : 'expenses'}${s.isFiltered ? ' matching' : ''} · ${rupees(pageTotal)} shown`}
@@ -116,16 +116,17 @@ export default function Transactions() {
 
       {/* Payments captured while the app was closed that are not in the list yet */}
       {tracking.supported && (tracking.waiting > 0 || tracking.reviewCount > 0) && (
-        <div role="status" className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-xs text-zinc-300">
-          <span className="flex-1">
+        <div role="status" className="v-block mb-3 flex items-center gap-3 px-4 py-1.5 text-sm text-ink-soft">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" aria-hidden="true" />
+          <span className="flex-1 py-1.5">
             {tracking.waiting > 0 && `${plural(tracking.waiting)} waiting to upload. `}
             {tracking.reviewCount > 0 && `${plural(tracking.reviewCount)} need${tracking.reviewCount === 1 ? 's' : ''} your review.`}
           </span>
           {tracking.waiting > 0 && (
-            <button type="button" onClick={() => tracking.syncNow()} className="v-press min-h-[40px] shrink-0 font-bold text-lime-300">Retry</button>
+            <button type="button" onClick={() => tracking.syncNow()} className="v-press min-h-[44px] shrink-0 font-semibold text-ink underline">Retry</button>
           )}
           {tracking.reviewCount > 0 && (
-            <button type="button" onClick={() => navigate('/dash')} className="v-press min-h-[40px] shrink-0 font-bold text-lime-300">Review</button>
+            <button type="button" onClick={() => navigate('/dash')} className="v-press min-h-[44px] shrink-0 font-semibold text-ink underline">Review</button>
           )}
         </div>
       )}
@@ -133,27 +134,26 @@ export default function Transactions() {
       {/* Search + filter toggle */}
       <div className="mb-3 flex gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
           <input
             type="search"
             value={s.filters.q}
             onChange={(e) => s.setFilter('q', e.target.value)}
-            placeholder="Search descriptions…"
+            placeholder="Search payee or note"
             aria-label="Search transactions"
-            className="w-full rounded-2xl border border-white/10 bg-[#181818] py-3 pl-10 pr-3 text-sm text-white
-                       placeholder:text-zinc-600 focus:border-lime-400/40 focus:outline-none focus:ring-2 focus:ring-lime-400/20"
+            className="v-input bg-surface pl-10"
           />
         </div>
         <button
           type="button"
           onClick={() => setShowFilters(v => !v)}
           aria-expanded={showFilters}
-          aria-label="Filters"
-          className={`flex min-h-12 min-w-12 items-center justify-center rounded-2xl border px-4 transition
-            ${s.isFiltered
-              ? 'border-lime-400/40 bg-lime-400/15 text-lime-300'
-              : 'border-white/10 bg-[#181818] text-zinc-400 hover:text-white'}`}
+          aria-label={s.isFiltered ? 'Filters (on)' : 'Filters'}
+          className={`v-press relative flex min-h-12 min-w-12 items-center justify-center rounded-xl transition-colors
+            ${showFilters ? 'bg-surface-2 text-ink' : 'bg-surface text-ink-2'}`}
         >
+          {/* A filter is on: a small accent dot, not a green button. */}
+          {s.isFiltered && <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />}
           <SlidersHorizontal className="h-4 w-4" />
         </button>
       </div>
@@ -166,9 +166,9 @@ export default function Transactions() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="mb-4 space-y-4 rounded-2xl border border-white/10 bg-[#141414] p-4">
+            <div className="v-block mb-4 space-y-4 p-4">
               <div>
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Category</p>
+                <p className="v-field-label">Category</p>
                 <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map(c => {
                     const active = s.filters.category === c;
@@ -177,8 +177,9 @@ export default function Transactions() {
                         key={c}
                         type="button"
                         onClick={() => s.setFilter('category', active ? '' : c)}
-                        className={`rounded-full px-3 py-2 text-xs font-bold transition
-                          ${active ? 'bg-lime-400 text-black' : 'bg-white/[.06] text-zinc-400 hover:text-white'}`}
+                        aria-pressed={active}
+                        className={`v-press min-h-[40px] rounded-lg px-3 text-sm font-semibold transition-colors
+                          ${active ? 'bg-ink text-bg' : 'bg-surface-2 text-ink-2'}`}
                       >
                         {c}
                       </button>
@@ -189,44 +190,44 @@ export default function Transactions() {
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">From</span>
+                  <span className="v-field-label">From</span>
                   <input
                     type="date" value={s.filters.from}
                     onChange={(e) => s.setFilter('from', e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3 py-2.5 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                    className="v-input"
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">To</span>
+                  <span className="v-field-label">To</span>
                   <input
                     type="date" value={s.filters.to}
                     onChange={(e) => s.setFilter('to', e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3 py-2.5 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                    className="v-input"
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Min ₹</span>
+                  <span className="v-field-label">Min ₹</span>
                   <input
                     type="number" inputMode="numeric" min="0" value={s.filters.minAmount}
                     onChange={(e) => s.setFilter('minAmount', e.target.value)}
                     placeholder="0"
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-lime-400/40 focus:outline-none"
+                    className="v-input"
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Max ₹</span>
+                  <span className="v-field-label">Max ₹</span>
                   <input
                     type="number" inputMode="numeric" min="0" value={s.filters.maxAmount}
                     onChange={(e) => s.setFilter('maxAmount', e.target.value)}
                     placeholder="Any"
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-lime-400/40 focus:outline-none"
+                    className="v-input"
                   />
                 </label>
               </div>
 
               <div>
-                <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                  <ArrowDownUp className="h-3 w-3" /> Sort
+                <p className="v-field-label flex items-center gap-1.5">
+                  <ArrowDownUp className="h-3.5 w-3.5" aria-hidden="true" /> Sort
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {SORTS.map(o => (
@@ -234,8 +235,9 @@ export default function Transactions() {
                       key={o.value}
                       type="button"
                       onClick={() => s.setFilter('sort', o.value)}
-                      className={`rounded-full px-3 py-2 text-xs font-bold transition
-                        ${s.filters.sort === o.value ? 'bg-lime-400 text-black' : 'bg-white/[.06] text-zinc-400 hover:text-white'}`}
+                      aria-pressed={s.filters.sort === o.value}
+                      className={`v-press min-h-[40px] rounded-lg px-3 text-sm font-semibold transition-colors
+                        ${s.filters.sort === o.value ? 'bg-ink text-bg' : 'bg-surface-2 text-ink-2'}`}
                     >
                       {o.label}
                     </button>
@@ -247,7 +249,7 @@ export default function Transactions() {
                 <button
                   type="button"
                   onClick={s.resetFilters}
-                  className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-white"
+                  className="v-press v-btn-text -ml-2"
                 >
                   <X className="h-3.5 w-3.5" /> Clear all filters
                 </button>
@@ -259,33 +261,33 @@ export default function Transactions() {
 
       {/* Results */}
       {s.error ? (
-        <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-200">
+        <div role="alert" className="v-block p-4 text-sm text-ink-soft">
           <p>{s.error}</p>
-          <button type="button" onClick={s.refresh} className="mt-3 rounded-xl bg-red-500/20 px-4 py-2 text-xs font-bold text-red-100">
+          <button type="button" onClick={s.refresh} className="v-press v-btn-secondary mt-3">
             Try again
           </button>
         </div>
       ) : s.loading ? (
-        <div className="space-y-2" aria-busy="true" aria-label="Loading transactions">
+        <div className="space-y-1" aria-busy="true" aria-label="Loading transactions">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-[68px] animate-pulse rounded-2xl bg-white/[.04]" />
+            <div key={i} className="h-[60px] animate-pulse rounded-xl bg-surface" />
           ))}
         </div>
       ) : s.rows.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-[#141414] px-6 py-12 text-center">
-          <Receipt className="mx-auto mb-3 h-8 w-8 text-zinc-600" />
+        <div className="px-6 py-14 text-center">
+          <Receipt className="mx-auto mb-3 h-7 w-7 text-ink-3" aria-hidden="true" />
           {s.isFiltered ? (
             <>
-              <p className="font-bold text-zinc-300">Nothing matches those filters</p>
-              <p className="mt-1 text-sm text-zinc-500">Try widening the date range or clearing the category.</p>
-              <button type="button" onClick={s.resetFilters} className="mt-4 rounded-xl bg-lime-400 px-4 py-2.5 text-xs font-black text-black">
+              <p className="font-semibold text-ink">Nothing matches those filters</p>
+              <p className="mt-1 text-sm text-ink-2">Try widening the date range or clearing the category.</p>
+              <button type="button" onClick={s.resetFilters} className="v-press v-btn-secondary mt-4">
                 Clear filters
               </button>
             </>
           ) : (
             <>
-              <p className="font-bold text-zinc-300">No expenses yet</p>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="font-semibold text-ink">No expenses yet</p>
+              <p className="mt-1 text-sm text-ink-2">
                 Add your first expense from Home, or allow bank SMS in Profile and Vittova will track your payments for you.
               </p>
             </>
@@ -293,29 +295,30 @@ export default function Transactions() {
         </div>
       ) : (
         <>
-          <div className="space-y-5">
+          <div className="space-y-6">
             {days.map((day) => (
               <section key={`${day.label}-${day.rows[0].id}`} aria-label={day.label}>
-                <div className="mb-2 flex items-baseline justify-between px-1">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-500">{day.label}</h2>
-                  <span className="font-mono-finance text-xs font-semibold text-zinc-500">{rupees(day.total)}</span>
+                <div className="flex items-baseline justify-between border-b border-line pb-2">
+                  <h2 className="v-label">{day.label}</h2>
+                  <span className="font-mono-finance text-[13px] font-medium text-ink-2">{rupees(day.total)}</span>
                 </div>
-                {/* One container per day; a row is one tap target that opens the expense. */}
-                <ul className="divide-y divide-white/[.06] overflow-hidden rounded-2xl border border-white/[.06] bg-[#141414]">
+                {/* Rows sit on the page under their day, separated by hairlines;
+                    a row is one tap target that opens the expense. */}
+                <ul className="v-rows">
                   {day.rows.map((row) => (
                     <li key={row.id}>
                       <button
                         type="button"
                         onClick={() => setEditing(row)}
                         aria-label={`${expenseTitle(row)}, ${rupees(row.amount)}. Edit or delete`}
-                        className="flex min-h-[64px] w-full items-center gap-3 px-3.5 py-3 text-left transition active:bg-white/[.04] hover:bg-white/[.03]"
+                        className="v-press flex min-h-[60px] w-full items-center gap-3 py-2.5 text-left"
                       >
-                        <CategoryIcon category={row.category} />
+                        <CategoryIcon category={row.category} className="h-9 w-9 rounded-lg" />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[15px] font-semibold text-zinc-100">{expenseTitle(row)}</span>
-                          <span className="mt-0.5 block truncate text-xs text-zinc-500">{expenseMeta(row)}</span>
+                          <span className="block truncate text-[15px] font-semibold text-ink">{expenseTitle(row)}</span>
+                          <span className="block truncate text-xs text-ink-3">{expenseMeta(row)}</span>
                         </span>
-                        <span className="font-mono-finance shrink-0 text-[15px] font-bold text-white">{rupees(row.amount)}</span>
+                        <span className="font-mono-finance shrink-0 text-[15px] font-semibold text-ink">{rupees(row.amount)}</span>
                       </button>
                     </li>
                   ))}
@@ -329,7 +332,7 @@ export default function Transactions() {
               type="button"
               onClick={s.loadMore}
               disabled={s.loadingMore}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#181818] py-3.5 text-sm font-bold text-zinc-300 transition hover:text-white disabled:opacity-60"
+              className="v-press v-btn-secondary mt-5 w-full"
             >
               {s.loadingMore ? <><Loader2 className="h-4 w-4 animate-spin" /> Loading…</> : 'Load more'}
             </button>
@@ -362,11 +365,9 @@ export default function Transactions() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className={`fixed inset-x-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[300] mx-auto max-w-sm rounded-2xl border p-3.5 text-sm font-semibold backdrop-blur-xl md:bottom-8
-              ${toast.type === 'error'
-                ? 'border-red-500/30 bg-red-500/15 text-red-100'
-                : 'border-lime-500/30 bg-[#181818] text-lime-200'}`}
+            className="fixed inset-x-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[300] mx-auto flex max-w-sm items-center gap-2.5 rounded-xl bg-surface-2 p-3.5 text-sm font-semibold text-ink shadow-[var(--v-shadow-pop)] md:bottom-8"
           >
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${toast.type === 'error' ? 'bg-danger' : 'bg-accent'}`} aria-hidden="true" />
             {toast.message}
           </motion.div>
         )}
@@ -413,7 +414,7 @@ function EditSheet({ expense, onCancel, onSave, onDelete }) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[400] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="v-scrim fixed inset-0 z-[400] flex items-end justify-center p-0 sm:items-center sm:p-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={onCancel}
       role="dialog" aria-modal="true" aria-label="Edit expense"
@@ -422,32 +423,33 @@ function EditSheet({ expense, onCancel, onSave, onDelete }) {
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-        className="w-full max-w-md space-y-4 rounded-t-3xl border border-white/10 bg-[#141414] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-3xl"
+        transition={{ type: 'tween', duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+        className="v-sheet w-full max-w-md space-y-4 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-white">Edit expense</h2>
-          <button type="button" onClick={onCancel} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 hover:text-white">
-            <X className="h-5 w-5" />
+          <h2 className="text-lg font-bold text-ink">Edit expense</h2>
+          <button type="button" onClick={onCancel} aria-label="Close" className="v-press flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-ink-2">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         <label className="block">
-          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Amount</span>
+          <span className="v-field-label">Amount</span>
           <input
             type="number" inputMode="decimal" step="0.01" min="0.01" value={amount} autoFocus
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-[#181818] px-3 py-3 text-lg font-black text-white focus:border-lime-400/40 focus:outline-none"
+            className="v-input font-mono-finance text-lg font-semibold"
           />
         </label>
 
         <div>
-          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Category</span>
+          <span className="v-field-label">Category</span>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(c => (
               <button
                 key={c} type="button" onClick={() => setCategory(c)}
-                className={`rounded-full px-3 py-2 text-xs font-bold transition ${category === c ? 'bg-lime-400 text-black' : 'bg-white/[.06] text-zinc-400'}`}
+                aria-pressed={category === c}
+                className={`v-press min-h-[40px] rounded-lg px-3 text-sm font-semibold transition-colors ${category === c ? 'bg-ink text-bg' : 'bg-surface-2 text-ink-2'}`}
               >
                 {c}
               </button>
@@ -456,44 +458,44 @@ function EditSheet({ expense, onCancel, onSave, onDelete }) {
         </div>
 
         <label className="block">
-          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Description</span>
+          <span className="v-field-label">Description</span>
           <input
             type="text" value={description} maxLength={200}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What was it for?"
-            className="w-full rounded-xl border border-white/10 bg-[#181818] px-3 py-3 text-sm text-white placeholder:text-zinc-600 focus:border-lime-400/40 focus:outline-none"
+            className="v-input"
           />
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Date</span>
+          <span className="v-field-label">Date</span>
           <input
             type="date" value={date} max={toDateInput(new Date().toISOString())}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-[#181818] px-3 py-3 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+            className="v-input"
           />
         </label>
 
-        <p className="text-[11px] leading-4 text-zinc-500">
-          Editing an expense does not change round-up savings or your streak — those were earned when you logged it.
+        <p className="text-xs leading-relaxed text-ink-3">
+          Editing an expense does not change round-up savings or your streak. Those were earned when you logged it.
         </p>
 
-        {formError && <p role="alert" className="text-sm font-semibold text-red-400">{formError}</p>}
+        {formError && <p role="alert" className="v-error">{formError}</p>}
 
         <div className="flex gap-2 pt-1">
           <button
             type="submit" disabled={saving}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-lime-400 py-3.5 text-sm font-black text-black disabled:opacity-60"
+            className="v-press v-btn-primary flex-1"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {saving ? 'Saving…' : 'Save changes'}
           </button>
-          <button type="button" onClick={onCancel} className="rounded-xl bg-white/[.06] px-5 py-3.5 text-sm font-bold text-zinc-300">
+          <button type="button" onClick={onCancel} className="v-press v-btn-secondary min-h-[3rem]">
             Cancel
           </button>
         </div>
         <button type="button" onClick={onDelete} disabled={saving}
-          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 disabled:opacity-50">
+          className="v-press flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-danger disabled:opacity-50">
           <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete this expense
         </button>
       </motion.form>
@@ -505,31 +507,31 @@ function ConfirmDelete({ expense, onCancel, onConfirm }) {
   const [busy, setBusy] = useState(false);
   return (
     <motion.div
-      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="v-scrim fixed inset-0 z-[400] flex items-center justify-center p-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={onCancel}
       role="alertdialog" aria-modal="true" aria-label="Confirm delete"
     >
       <motion.div
         onClick={(e) => e.stopPropagation()}
-        initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }}
-        className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#141414] p-5"
+        initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.98, opacity: 0 }}
+        className="w-full max-w-sm rounded-3xl bg-surface p-5 shadow-[var(--v-shadow-pop)]"
       >
-        <h2 className="text-lg font-black text-white">Delete this expense?</h2>
-        <p className="mt-2 text-sm text-zinc-400">
+        <h2 className="text-lg font-bold text-ink">Delete this expense?</h2>
+        <p className="mt-2 text-sm text-ink-soft">
           {rupees(expense.amount)}{expense.description ? ` · ${expense.description}` : ''}
         </p>
-        <p className="mt-1 text-sm text-zinc-500">This cannot be undone.</p>
+        <p className="mt-1 text-sm text-ink-3">This cannot be undone.</p>
         <div className="mt-5 flex gap-2">
           <button
             type="button"
             disabled={busy}
             onClick={async () => { setBusy(true); await onConfirm(); setBusy(false); }}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3.5 text-sm font-black text-white disabled:opacity-60"
+            className="v-press flex min-h-[3rem] flex-1 items-center justify-center gap-2 rounded-xl bg-danger text-[15px] font-semibold text-on-fill disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete
           </button>
-          <button type="button" onClick={onCancel} className="rounded-xl bg-white/[.06] px-5 py-3.5 text-sm font-bold text-zinc-300">
+          <button type="button" onClick={onCancel} className="v-press v-btn-secondary min-h-[3rem]">
             Cancel
           </button>
         </div>

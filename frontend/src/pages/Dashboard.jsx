@@ -24,10 +24,10 @@ import PermissionBanner from '../components/PermissionBanner';
 import SmsAccessSheet from '../components/SmsAccessSheet';
 import AffordItCard from '../components/AffordItCard';
 import MoneyStreakCard from '../components/MoneyStreakCard';
-import { MoneyStatus, MoneyHealth, InsightCard } from '../components/HomeCards';
+import { MoneyStatus, InsightRow, MonthRows, RecentActivity, AskRow } from '../components/HomeCards';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { prepareReceiptImage } from '../lib/receiptImage';
-import { expenseTitle } from '../lib/expenseDisplay';
+import { expenseMeta, expenseTitle } from '../lib/expenseDisplay';
 
 // ─── ADD EXPENSE MODAL ────────────────────────────────────────
 // Must match the backend's expense categories (routes/expenses.js). 'Grocery'
@@ -56,90 +56,83 @@ function AddExpenseModal({ onClose, onAdd, loading, onScan, scanLoading }) {
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="v-scrim absolute inset-0"
         onClick={onClose}
       />
       <motion.div
-        className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-2xl z-10"
+        className="v-sheet relative w-full max-w-md p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] z-10"
         initial={{ y: '100%', opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+        transition={{ type: 'tween', duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
       >
-        <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-5 sm:hidden" />
+        <div className="w-9 h-1 bg-surface-3 rounded-full mx-auto mb-4 sm:hidden" />
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-zinc-100">Add expense</h2>
-          <motion.button onClick={onClose} whileTap={{ scale: 0.9 }}
-            className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">
+          <h2 className="text-lg font-bold text-ink">Add expense</h2>
+          <button type="button" onClick={onClose} aria-label="Close"
+            className="v-press flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-ink-2">
             <X className="w-4 h-4" />
-          </motion.button>
+          </button>
         </div>
         <button type="button" onClick={onScan} disabled={scanLoading}
-          className="v-press mb-4 flex min-h-[48px] w-full items-center gap-3 rounded-2xl border border-white/10 bg-zinc-800/70 px-4 text-left disabled:opacity-60">
-          {scanLoading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-lime-400 border-t-transparent" /> : <Camera className="h-5 w-5 text-lime-300" aria-hidden="true" />}
+          className="v-press mb-4 flex min-h-[52px] w-full items-center gap-3 rounded-xl bg-surface-2 px-4 text-left disabled:opacity-60">
+          {scanLoading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-ink-2 border-t-transparent" /> : <Camera className="h-5 w-5 text-ink-2" aria-hidden="true" />}
           <span className="flex-1">
-            <span className="block text-sm font-bold text-zinc-100">{scanLoading ? 'Reading your receipt…' : 'Scan a receipt'}</span>
-            <span className="block text-xs text-zinc-500">We fill in the amount for you</span>
+            <span className="block text-[15px] font-semibold text-ink">{scanLoading ? 'Reading your receipt…' : 'Scan a receipt'}</span>
+            <span className="block text-xs text-ink-3">We fill in the amount for you</span>
           </span>
         </button>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold mb-1.5 block">
+            <label htmlFor="expense-desc" className="v-field-label">
               What did you spend on?
             </label>
             <input
-              autoFocus type="text" placeholder="Zomato, Netflix, Swiggy..."
+              id="expense-desc" autoFocus type="text" placeholder="Zomato, Netflix, Swiggy..."
               value={form.desc}
               onChange={e => setForm({ ...form, desc: e.target.value })}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm
-                         text-zinc-100 placeholder:text-zinc-600 outline-none
-                         focus:border-lime-500/60 focus:ring-2 focus:ring-lime-500/15 transition-all"
+              className="v-input"
               required />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold mb-1.5 block">
+            <label htmlFor="expense-amount" className="v-field-label">
               Amount
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-sm">{'\u20b9'}</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-2 font-semibold text-base">{'\u20b9'}</span>
               <input
-                type="number" placeholder="0" value={form.amount}
+                id="expense-amount" type="number" placeholder="0" value={form.amount}
                 onChange={e => setForm({ ...form, amount: e.target.value })}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl pl-8 pr-4 py-3 text-sm
-                           text-zinc-100 placeholder:text-zinc-600 outline-none font-mono-finance
-                           focus:border-lime-500/60 focus:ring-2 focus:ring-lime-500/15 transition-all"
+                className="v-input pl-8 font-mono-finance"
                 min="1" step="0.01" required />
             </div>
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold mb-2 block">
+            <p className="v-field-label" id="expense-category-label">
               Category
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="expense-category-label">
               {CATEGORIES.map(cat => (
-                <motion.button key={cat} type="button" whileTap={{ scale: 0.92 }}
+                <button key={cat} type="button"
                   onClick={() => setForm({ ...form, category: cat })}
                   aria-pressed={form.category === cat}
-                  className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  className={`v-press min-h-[40px] px-3 rounded-lg text-sm font-semibold transition-colors ${
                     form.category === cat
-                      ? 'bg-lime-400 text-black border-lime-400 shadow-[0_0_10px_rgba(57,255,20,0.3)]'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600'
+                      ? 'bg-ink text-bg'
+                      : 'bg-surface-2 text-ink-2'
                   }`}>
                   {cat}
-                </motion.button>
+                </button>
               ))}
             </div>
           </div>
-          {error && <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
-          <motion.button type="submit" disabled={loading}
-            whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.01 }}
-            className="w-full bg-lime-400 hover:bg-lime-300 text-black font-black py-3.5 rounded-2xl
-                       text-sm tracking-wide transition-all shadow-[0_0_20px_rgba(57,255,20,0.25)]
-                       disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2">
+          {error && <p role="alert" className="v-error">{error}</p>}
+          <button type="submit" disabled={loading}
+            className="v-press v-btn-primary w-full disabled:cursor-wait">
             {loading
-              ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               : <><Check className="w-4 h-4" /> Add expense</>}
-          </motion.button>
+          </button>
         </form>
       </motion.div>
     </motion.div>
@@ -166,19 +159,18 @@ function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -60, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -40, scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ type: 'tween', duration: 0.2, ease: 'easeOut' }}
       className="fixed top-[calc(1rem+env(safe-area-inset-top))] inset-x-4 z-[300] max-w-sm mx-auto
-                 bg-zinc-900 border border-lime-500/30 rounded-2xl p-4
-                 shadow-[0_0_30px_rgba(57,255,20,0.2)] backdrop-blur-xl"
+                 bg-surface-2 rounded-2xl p-4 shadow-[var(--v-shadow-pop)]"
       role="dialog"
       aria-label={copy.title}
     >
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-lime-500/15 flex items-center justify-center shrink-0 mt-0.5">
-          <Zap className="w-5 h-5 text-lime-400" />
+        <div className="w-9 h-9 rounded-lg bg-surface-3 text-ink-2 flex items-center justify-center shrink-0 mt-0.5">
+          <Zap className="w-[18px] h-[18px]" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-zinc-100">
@@ -197,7 +189,7 @@ function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
                 <input
                   type="number" inputMode="decimal" min="0.01" step="0.01" value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-1.5 pl-6 pr-2 font-mono text-zinc-100 outline-none focus:border-lime-500/60"
+                  className="w-full rounded-lg border border-transparent bg-surface-3 py-1.5 pl-6 pr-2 font-mono text-ink outline-none focus:border-accent"
                 />
               </span>
             </label>
@@ -214,15 +206,15 @@ function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
       </div>
       <div className="flex gap-2 mt-3">
         {isExpense && (
-          <motion.button whileTap={{ scale: 0.94 }} onClick={() => valid && onAdd(parsed)} disabled={!valid || saving}
-            className="flex-1 bg-lime-400 text-black text-xs font-black py-2 rounded-xl hover:bg-lime-300 transition-colors disabled:opacity-50">
+          <button type="button" onClick={() => valid && onAdd(parsed)} disabled={!valid || saving}
+            className="v-press v-btn-primary min-h-[44px] flex-1 px-3 text-sm">
             {saving ? 'Saving…' : 'Add expense'}
-          </motion.button>
+          </button>
         )}
-        <motion.button whileTap={{ scale: 0.94 }} onClick={onDismiss}
-          className="flex-1 bg-zinc-800 text-zinc-400 text-xs font-bold py-2 rounded-xl hover:bg-zinc-700 transition-colors">
+        <button type="button" onClick={onDismiss}
+          className="v-press flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-surface-3 px-3 text-sm font-semibold text-ink">
           {isExpense ? 'Not an expense' : 'OK'}
-        </motion.button>
+        </button>
       </div>
     </motion.div>
   );
@@ -319,7 +311,7 @@ export default function Dashboard() {
   const monthlyBudget = user?.monthly_budget || 5000;
 
   // This month's spending by category, from the user's own rows (display only).
-  const { categories, foodThisMonth, lastExpense } = useMemo(() => {
+  const { categories, foodThisMonth, recent } = useMemo(() => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const rows = expenses.filter((e) => new Date(e.occurred_at || e.created_at) >= monthStart);
@@ -330,7 +322,11 @@ export default function Dashboard() {
       categories: Object.entries(byCat).map(([category, amount]) => ({ category, amount, share: total ? Math.round((amount / total) * 100) : 0 }))
         .sort((a, b) => b.amount - a.amount),
       foodThisMonth: byCat.Food || 0,
-      lastExpense: expenses[0] ? { description: expenseTitle(expenses[0]), amount: Number(expenses[0].amount) } : null,
+      // The newest three, worded the way Activity words them.
+      recent: expenses.slice(0, 3).map((e) => ({
+        id: e.id, title: expenseTitle(e), category: e.category || 'Other', amount: Number(e.amount) || 0,
+        meta: `${expenseMeta(e)} · ${new Date(e.occurred_at || e.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+      })),
     };
   }, [expenses]);
 
@@ -406,7 +402,7 @@ export default function Dashboard() {
 
   // ── RENDER ─────────────────────────────────────────────────
   return (
-    <div className="bg-black pb-4 text-white">
+    <div className="pb-4 text-ink">
 
       {/* UPI Toast */}
       <AnimatePresence>
@@ -426,29 +422,21 @@ export default function Dashboard() {
       <AnimatePresence>
         {scanToast && (
           <motion.div
-            initial={{ opacity: 0, y: -60, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -40, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-            className={`fixed top-[calc(1rem+env(safe-area-inset-top))] inset-x-4 z-[300] max-w-sm mx-auto
-                       rounded-2xl p-4 shadow-xl backdrop-blur-xl border ${
-                         scanToast.type === 'success'
-                           ? 'bg-zinc-900 border-lime-500/30 shadow-[0_0_30px_rgba(57,255,20,0.15)]'
-                           : 'bg-zinc-900 border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)]'
-                       }`}
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ type: 'tween', duration: 0.2, ease: 'easeOut' }}
+            role="status"
+            className="fixed top-[calc(1rem+env(safe-area-inset-top))] inset-x-4 z-[300] max-w-sm mx-auto
+                       rounded-2xl bg-surface-2 p-4 shadow-[var(--v-shadow-pop)]"
           >
+            {/* The icon carries the outcome; the message stays in plain ink. */}
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                scanToast.type === 'success' ? 'bg-lime-500/15' : 'bg-red-500/15'
-              }`}>
-                {scanToast.type === 'success'
-                  ? <CheckCircle className="w-5 h-5 text-lime-400" />
-                  : <AlertCircle className="w-5 h-5 text-red-400" />}
-              </div>
-              <p className={`text-sm font-bold ${
-                scanToast.type === 'success' ? 'text-lime-400' : 'text-red-400'
-              }`}>{scanToast.message}</p>
-              <button onClick={() => setScanToast(null)} className="ml-auto text-zinc-600 hover:text-zinc-400 p-1">
+              {scanToast.type === 'success'
+                ? <CheckCircle className="w-5 h-5 shrink-0 text-accent" aria-hidden="true" />
+                : <AlertCircle className="w-5 h-5 shrink-0 text-danger" aria-hidden="true" />}
+              <p className="text-sm font-semibold text-ink">{scanToast.message}</p>
+              <button type="button" onClick={() => setScanToast(null)} aria-label="Dismiss" className="ml-auto text-ink-3 p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -483,30 +471,30 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div className="mx-auto max-w-lg space-y-3">
+      <div className="mx-auto max-w-lg space-y-6">
         {/* HEADER */}
-        <header className="flex items-center justify-between pb-1">
+        <header className="flex items-center justify-between">
           <div className="min-w-0">
-            <p className="text-sm text-zinc-500">{getGreeting()}</p>
-            <h1 className="truncate text-2xl font-black tracking-tight text-white">{firstName}</h1>
+            <p className="text-sm text-ink-2">{getGreeting()}</p>
+            <h1 className="truncate text-xl font-bold tracking-tight text-ink">{firstName}</h1>
           </div>
           <button type="button" onClick={() => navigate('/settings')} aria-label="Profile"
-            className="v-press flex h-11 w-11 items-center justify-center rounded-full bg-lime-400 text-sm font-black text-black">
+            className="v-press flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-sm font-semibold text-ink">
             {initials}
           </button>
         </header>
 
         {/* Tracking was turned on under "ask before adding": ask once how to continue. */}
         {tracking.needsChoice && (
-          <section className="rounded-2xl border border-lime-400/20 bg-[#141414] p-4" aria-labelledby="auto-add-title">
-            <h2 id="auto-add-title" className="text-sm font-bold text-white">Add detected payments automatically?</h2>
-            <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+          <section className="v-block p-4" aria-labelledby="auto-add-title">
+            <h2 id="auto-add-title" className="text-[15px] font-semibold text-ink">Add detected payments automatically?</h2>
+            <p className="mt-1 text-sm leading-relaxed text-ink-2">
               Vittova can now add clear payments to your expenses by itself, even when the app is closed.
               Unclear ones still wait for you. You can change this in Profile.
             </p>
             <div className="mt-3 flex gap-2">
-              <button type="button" onClick={() => tracking.setMode('auto')} className="v-press min-h-[44px] rounded-xl bg-lime-400 px-4 text-xs font-black text-black">Add automatically</button>
-              <button type="button" onClick={() => tracking.setMode('review')} className="v-press min-h-[44px] rounded-xl bg-zinc-800 px-4 text-xs font-bold text-zinc-300">Keep asking me</button>
+              <button type="button" onClick={() => tracking.setMode('auto')} className="v-press v-btn-primary min-h-[44px] px-4 text-sm">Add automatically</button>
+              <button type="button" onClick={() => tracking.setMode('review')} className="v-press v-btn-secondary">Keep asking me</button>
             </div>
           </section>
         )}
@@ -519,35 +507,41 @@ export default function Dashboard() {
           onEnable={() => setShowAccessSheet(true)}
         />
 
-        {/* 1. How much can I spend? */}
-        <MoneyStatus safe={safeToSpend} error={safeError} onRetry={() => { setReloadKey((k) => k + 1); refetchExpenses(); }} />
+        {/* 1. Where do I stand? The one figure, then per day and spent so far. */}
+        <MoneyStatus safe={safeToSpend} error={safeError} onRetry={() => { setReloadKey((k) => k + 1); refetchExpenses(); }}
+          loading={loading || expensesUnavailable} totalSpent={totalSpent} monthlyBudget={monthlyBudget} burn={burnRate} />
 
         {/* 2. Can I afford this? — the main action */}
         <AffordItCard />
 
-        {/* 3. What needs attention? */}
-        <MoneyHealth loading={loading || expensesUnavailable} totalSpent={totalSpent} monthlyBudget={monthlyBudget}
-          safe={safeToSpend} burn={burnRate} categories={categories} lastExpense={lastExpense} />
+        {/* 3. The one thing that needs attention, if there is one */}
+        <InsightRow burn={burnRate} foodThisMonth={foodThisMonth} />
 
-        {/* 4. Habit */}
-        <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} compact />
+        {/* 4. Still to come this month */}
+        <MonthRows safe={safeToSpend} categories={expensesUnavailable ? [] : categories} />
 
-        {/* One insight at most, plus Ask Vittova */}
-        <InsightCard burn={burnRate} foodThisMonth={foodThisMonth} />
+        {/* 5. What just happened */}
+        <RecentActivity items={expensesUnavailable ? [] : recent} loading={loading} />
+
+        {/* 6. Everything else, one row each */}
+        <section className="v-rows border-t border-line" aria-label="More">
+          <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} />
+          <AskRow />
+        </section>
 
         <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanFile} />
-        {/* Room for the + button so it never covers the last card */}
-        <div className="h-24" />
+        {/* Room for the + button so it never covers the last row */}
+        <div className="h-16" />
       </div>
 
       {/* Add expense */}
       <button
         type="button"
         onClick={() => setShowAddModal(true)}
-        className="v-press fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-lime-400 text-black shadow-[0_6px_20px_rgba(0,0,0,0.45)]"
+        className="v-press fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-ink text-bg shadow-[var(--v-shadow-pop)]"
         aria-label="Add expense"
       >
-        <Plus className="h-7 w-7" strokeWidth={3} />
+        <Plus className="h-6 w-6" strokeWidth={2.25} />
       </button>
 
     </div>

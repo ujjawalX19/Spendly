@@ -63,17 +63,17 @@ export default function Login() {
         <AuthLayout eyebrow="WELCOME BACK">
             <div className="flex flex-col gap-5" aria-labelledby="login-title">
                 {/* Header */}
-                <h1 id="login-title" className="text-xl font-extrabold tracking-tight">Sign in</h1>
+                <h1 id="login-title" className="text-2xl font-bold">Sign in</h1>
 
                 {accountDeleted && !error && (
-                    <div className="rounded-xl border border-lime-400/30 bg-lime-400/10 p-3 text-center text-sm text-lime-200" role="status">
+                    <div className="rounded-xl bg-surface px-3 py-2.5 text-sm text-ink-soft" role="status">
                         Your account and data have been deleted.
                     </div>
                 )}
 
                 {/* Error alert */}
                 {error && (
-                    <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-center text-sm text-rose-200" role="alert">
+                    <div className="v-error" role="alert">
                         {error}
                     </div>
                 )}
@@ -81,9 +81,9 @@ export default function Login() {
                 {/* Email form */}
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div>
-                        <label htmlFor="email" className="mb-2 block text-sm font-semibold text-zinc-300">Email</label>
+                        <label htmlFor="email" className="v-field-label">Email</label>
                         <div className="relative">
-                            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
                             <input
                                 id="email"
                                 type="email"
@@ -92,17 +92,17 @@ export default function Login() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="h-12 w-full rounded-xl border border-white/10 bg-black/30 pl-11 pr-4 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                                className="v-input pl-11"
                             />
                         </div>
                     </div>
                     <div>
-                        <div className="mb-2 flex items-center justify-between">
-                            <label htmlFor="password" className="block text-sm font-semibold text-zinc-300">Password</label>
-                            <Link to="/forgot-password" className="-my-3 inline-flex min-h-[44px] items-center text-xs font-semibold text-lime-300 hover:underline">Forgot password?</Link>
+                        <div className="mb-1.5 flex items-center justify-between">
+                            <label htmlFor="password" className="v-field-label mb-0">Password</label>
+                            <Link to="/forgot-password" className="-my-3 inline-flex min-h-[44px] items-center text-[13px] font-medium text-ink-2 hover:underline">Forgot password?</Link>
                         </div>
                         <div className="relative">
-                            <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                            <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
                             <input
                                 id="password"
                                 type={showPassword ? 'text' : 'password'}
@@ -111,12 +111,12 @@ export default function Login() {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="h-12 w-full rounded-xl border border-white/10 bg-black/30 pl-11 pr-12 text-sm text-white placeholder:text-zinc-600 transition focus:border-lime-400 focus:bg-black/50 focus:outline-none focus:ring-4 focus:ring-lime-400/10"
+                                className="v-input pl-11 pr-12"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-zinc-500 transition hover:text-lime-300"
+                                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-ink-3 transition hover:text-ink"
                                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                             >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -126,7 +126,7 @@ export default function Login() {
                     <button
                         type="submit"
                         disabled={loading || googleLoading}
-                        className="v-press mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 text-[15px] font-extrabold text-black transition hover:bg-lime-300 focus:outline-none focus:ring-4 focus:ring-lime-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="v-press v-btn-primary mt-1 w-full disabled:cursor-not-allowed"
                     >
                         {loading ? (
                             <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>
@@ -137,8 +137,8 @@ export default function Login() {
                 <OrDivider />
                 <GoogleButton onClick={handleGoogleLogin} loading={googleLoading} disabled={loading} />
 
-                <p className="text-center text-sm text-zinc-400">
-                    New to Vittova? <Link to="/signup" className="inline-flex min-h-[44px] items-center font-bold text-lime-300 hover:text-lime-200 hover:underline focus:outline-none focus:underline">Create an account</Link>
+                <p className="text-center text-sm text-ink-2">
+                    New to Vittova? <Link to="/signup" className="inline-flex min-h-[44px] items-center font-semibold text-ink underline">Create an account</Link>
                 </p>
             </div>
         </AuthLayout>

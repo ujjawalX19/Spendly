@@ -4,9 +4,9 @@
  */
 
 export const CONFIDENCE = {
-  high: { label: 'High confidence', className: 'border-lime-400/30 bg-lime-400/10 text-lime-300' },
-  medium: { label: 'Medium confidence', className: 'border-sky-400/30 bg-sky-400/10 text-sky-300' },
-  possible: { label: 'Possible recurring', className: 'border-zinc-600 bg-zinc-800 text-zinc-300' },
+  high: { label: 'High confidence', className: 'text-ink-2' },
+  medium: { label: 'Medium confidence', className: 'text-ink-2' },
+  possible: { label: 'Possible recurring', className: 'text-ink-3' },
 };
 
 export const DECISIONS = [
@@ -42,9 +42,9 @@ export function dueLabel(dateKey, todayKey) {
 }
 
 export const VERIFY_LABEL = {
-  matched: { label: 'Seen', className: 'text-lime-300' },
-  not_confirmed: { label: 'Not seen', className: 'text-amber-300' },
-  pending: { label: 'Waiting', className: 'text-zinc-400' },
+  matched: { label: 'Seen', className: 'text-accent' },
+  not_confirmed: { label: 'Not seen', className: 'text-warn' },
+  pending: { label: 'Waiting', className: 'text-ink-2' },
 };
 
 /** Groups for the screen: what needs a decision first, then what is counted, then set aside. */

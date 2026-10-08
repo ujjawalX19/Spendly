@@ -34,42 +34,40 @@ export default function SmsAccessSheet({ smsGranted, smsPermission, requestSms, 
       className="fixed inset-0 z-[400] flex items-end justify-center sm:items-center"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="v-scrim absolute inset-0" onClick={onClose} />
       <motion.section
         role="dialog"
         aria-modal="true"
         aria-labelledby="sms-sheet-title"
-        className="relative z-10 max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] w-full max-w-md overflow-y-auto rounded-t-3xl border border-zinc-800 bg-zinc-900 px-5 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-3xl"
+        className="v-sheet relative z-10 max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] w-full max-w-md overflow-y-auto px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5"
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+        transition={{ type: 'tween', duration: 0.24, ease: 'easeOut' }}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${phase === 'declined' ? 'bg-amber-400/15 text-amber-400' : 'bg-lime-400/15 text-lime-400'}`}>
-              {phase === 'granted' ? <CheckCircle2 className="h-5 w-5" /> : phase === 'declined' ? <ShieldAlert className="h-5 w-5" /> : <MessageSquareText className="h-5 w-5" />}
-            </span>
-            <h2 id="sms-sheet-title" className="text-lg font-black text-white">
+            {phase === 'granted' ? <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" /> : phase === 'declined' ? <ShieldAlert className="h-5 w-5 shrink-0 text-warn" aria-hidden="true" /> : <MessageSquareText className="h-5 w-5 shrink-0 text-ink-2" aria-hidden="true" />}
+            <h2 id="sms-sheet-title" className="text-lg font-bold text-ink">
               {phase === 'granted' ? 'Bank SMS tracking is on'
                 : phase === 'declined' ? 'SMS access is off'
                   : 'Track payments from bank SMS'}
             </h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl bg-zinc-800 p-2 text-zinc-400">
-            <X className="h-4 w-4" />
+          <button type="button" onClick={onClose} aria-label="Close" className="-mr-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-2">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {phase === 'granted' ? (
           <>
-            <p className="text-sm leading-relaxed text-zinc-300">
+            <p className="text-sm leading-relaxed text-ink-soft">
               New debit alerts from your bank are added to your expenses automatically. Unclear ones wait for you on Home.
             </p>
-            <button type="button" onClick={onClose} className="mt-5 min-h-12 w-full rounded-2xl bg-lime-400 text-sm font-black text-black">Done</button>
+            <button type="button" onClick={onClose} className="v-press v-btn-primary mt-5 w-full">Done</button>
           </>
         ) : (
           <>
             {phase === 'declined' && (
-              <p role="status" className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/[.06] p-3 text-sm text-amber-100">
+              <p role="status" className="mb-4 rounded-xl bg-surface-2 px-3 py-2.5 text-sm text-ink-soft">
                 {blocked
                   ? 'Android will not ask again. To allow it: App info → Permissions → SMS → Allow.'
                   : "SMS access wasn't allowed, so bank debit alerts can't be added. You can allow it any time."}
@@ -77,21 +75,21 @@ export default function SmsAccessSheet({ smsGranted, smsPermission, requestSms, 
             )}
             <ul className="space-y-3">
               {SMS_DISCLOSURE.map((line) => (
-                <li key={line} className="flex gap-3 text-sm leading-relaxed text-zinc-300">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-lime-400" aria-hidden="true" />
+                <li key={line} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
                   <span>{line}</span>
                 </li>
               ))}
             </ul>
-            <div className="mt-5 space-y-2">
+            <div className="mt-5 space-y-1">
               {blocked ? (
-                <button type="button" onClick={openAppSettings} className="min-h-12 w-full rounded-2xl bg-lime-400 text-sm font-black text-black">Open App info</button>
+                <button type="button" onClick={openAppSettings} className="v-press v-btn-primary w-full">Open App info</button>
               ) : (
-                <button type="button" onClick={allow} disabled={phase === 'asking'} className="min-h-12 w-full rounded-2xl bg-lime-400 text-sm font-black text-black disabled:opacity-60">
+                <button type="button" onClick={allow} disabled={phase === 'asking'} className="v-press v-btn-primary w-full">
                   {phase === 'asking' ? 'Waiting for Android…' : 'Allow bank SMS'}
                 </button>
               )}
-              <button type="button" onClick={onClose} className="min-h-11 w-full text-sm font-bold text-zinc-400">Not now</button>
+              <button type="button" onClick={onClose} className="min-h-11 w-full text-sm font-medium text-ink-2">Not now</button>
             </div>
           </>
         )}

@@ -54,10 +54,10 @@ function FullScreenLoader({ label = 'Loading...' }) {
   // The startup splash stays up while this is on screen (lib/appReady).
   useEffect(() => loaderShown(), []);
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)]" role="status" aria-live="polite">
+    <div className="min-h-screen flex items-center justify-center bg-bg" role="status" aria-live="polite">
       <div className="text-center">
-        <div className="w-8 h-8 border-2 border-lime-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-zinc-500 text-sm">{label}</p>
+        <div className="w-6 h-6 border-2 border-ink-3 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-ink-3 text-sm">{label}</p>
       </div>
     </div>
   );
@@ -67,13 +67,13 @@ function ProfileUnavailable() {
   const { refreshProfile, logout } = useAuth();
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-6 text-center text-white">
+    <div className="min-h-screen flex items-center justify-center bg-bg px-6 text-center text-ink">
       <div className="max-w-sm">
-        <h1 className="text-xl font-black">We couldn't load your account</h1>
-        <p className="mt-2 text-sm text-zinc-400">Check your connection and try again. If this keeps happening, sign out and sign in again.</p>
-        <div className="mt-6 flex flex-col gap-3">
-          <button type="button" onClick={refreshProfile} className="h-12 rounded-xl bg-lime-400 font-bold text-black">Try again</button>
-          <button type="button" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} className="h-12 rounded-xl border border-white/10 font-bold text-zinc-300">Sign out</button>
+        <h1 className="text-xl font-bold">We couldn't load your account</h1>
+        <p className="mt-2 text-sm text-ink-2">Check your connection and try again. If this keeps happening, sign out and sign in again.</p>
+        <div className="mt-6 flex flex-col gap-2">
+          <button type="button" onClick={refreshProfile} className="v-press v-btn-primary">Try again</button>
+          <button type="button" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} className="v-press v-btn-secondary">Sign out</button>
         </div>
       </div>
     </div>
@@ -314,7 +314,7 @@ function App() {
             <ScrollToTopOnNavigate />
             <StatusBarScrim />
             {authMessage ? (
-              <div role="alert" className="fixed top-0 inset-x-0 z-50 bg-red-500/95 text-white text-sm px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-start gap-3">
+              <div role="alert" className="fixed top-0 inset-x-0 z-50 bg-danger text-on-fill text-sm font-semibold px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-start gap-3">
                 <span className="flex-1">{authMessage}</span>
                 <button type="button" onClick={() => setAuthMessage('')} aria-label="Dismiss" className="shrink-0 px-2 -my-1 text-lg leading-none">
                   &times;

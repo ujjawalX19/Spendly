@@ -33,7 +33,7 @@ export function StatusBarScrim() {
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none fixed inset-x-0 top-0 z-[45] h-[env(safe-area-inset-top)] bg-[#0B1220]/95 backdrop-blur-md transition-opacity duration-150 ${scrolled ? 'opacity-100' : 'opacity-0'}`}
+      className={`pointer-events-none fixed inset-x-0 top-0 z-[45] h-[env(safe-area-inset-top)] bg-bg transition-opacity duration-150 ${scrolled ? 'opacity-100' : 'opacity-0'}`}
     />
   );
 }

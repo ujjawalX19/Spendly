@@ -22,7 +22,7 @@ function Section({ title, children }) {
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-[#09090b] px-6 py-12 text-zinc-300">
+    <div className="min-h-screen bg-bg px-6 py-12 text-ink-soft">
       <div className="mx-auto max-w-3xl">
         <Link to="/" className="text-sm text-zinc-500 hover:text-zinc-300">← Vittova</Link>
         <h1 className="mt-6 text-3xl font-black text-white">Privacy Policy</h1>
@@ -79,7 +79,7 @@ export default function PrivacyPolicy() {
               <strong className="text-zinc-100">Payment-app notifications (optional).</strong> With Notification Access, Vittova also
               detects payments from these supported apps only:
             </p>
-            <p className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs leading-6 text-zinc-400">
+            <p className="rounded-xl bg-surface p-3 text-xs leading-6 text-ink-2">
               {SUPPORTED_PAYMENT_APPS.map((a) => a.name).join(', ')}.
             </p>
             <ul className="list-disc space-y-1 pl-5">

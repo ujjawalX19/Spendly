@@ -9,25 +9,25 @@ const navigation = [
   { to: '/bot', label: 'Ask Vittova', icon: Bot },
   { to: '/wealth', label: 'Wealth', icon: TrendingUp },
   { to: '/graveyard', label: 'Recurring charges', icon: Repeat },
-  { to: '/import', label: 'Statement Import', icon: FileText },
+  { to: '/import', label: 'Statement import', icon: FileText },
   { to: '/settings', label: 'Profile', icon: Settings },
 ];
 
+/** Desktop navigation. The selected item is a neutral lift with the accent on its icon. */
 export default function Sidebar({ onLogout }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 select-none border-r border-white/10 bg-[#0c0f0c] p-4 md:flex md:flex-col" aria-label="App navigation">
-      <NavLink to="/dash" className="mb-8 flex items-center gap-3 rounded-2xl px-2 py-2 no-underline" aria-label="Vittova overview">
-        <VittovaLogo size={40} />
-        <span><span className="block text-lg font-extrabold tracking-tight text-white">Vittova</span><span className="block text-[10px] font-bold tracking-[.16em] text-lime-300">YOUR MONEY&apos;S PULSE</span></span>
+    <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 select-none border-r border-line bg-bg p-4 md:flex md:flex-col" aria-label="App navigation">
+      <NavLink to="/dash" className="mb-8 flex items-center gap-3 rounded-xl px-2 py-2 no-underline" aria-label="Vittova overview">
+        <VittovaLogo size={36} />
+        <span><span className="block font-display text-lg font-bold tracking-tight text-ink">Vittova</span><span className="block text-xs text-ink-3">your money&apos;s pulse</span></span>
       </NavLink>
 
-      <p className="mb-2 px-3 text-[10px] font-bold tracking-[.18em] text-zinc-500">YOUR SPACE</p>
-      <nav className="space-y-1" aria-label="Main navigation">
+      <nav className="space-y-0.5" aria-label="Main navigation">
         {navigation.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
-            className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-all ${isActive ? 'bg-lime-400 text-black shadow-lg shadow-lime-400/10' : 'text-zinc-400 hover:bg-white/[.06] hover:text-white'}`}
+            className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${isActive ? 'bg-surface-2 text-ink [&_svg]:text-accent' : 'text-ink-2 hover:bg-surface hover:text-ink'}`}
           >
             <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
             <span>{label}</span>
@@ -35,13 +35,9 @@ export default function Sidebar({ onLogout }) {
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-white/10 pt-4">
-        <div className="mb-3 rounded-2xl border border-lime-400/10 bg-lime-400/[.06] p-3">
-          <p className="text-xs font-bold text-lime-200">Small steps add up.</p>
-          <p className="mt-1 text-[11px] leading-4 text-zinc-500">Keep tracking and make every rupee count.</p>
-        </div>
-        <button type="button" onClick={onLogout} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-400 transition hover:bg-rose-400/10 hover:text-rose-300">
-          <span>Log out</span><LogOut className="h-4 w-4" />
+      <div className="mt-auto border-t border-line pt-3">
+        <button type="button" onClick={onLogout} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-surface hover:text-ink">
+          <span>Log out</span><LogOut className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </aside>

@@ -21,10 +21,12 @@ export const STATE = {
   tight: { label: 'Tight', tone: 'bad' },
 };
 
+// A status is coloured text, not a filled badge: the colour carries the
+// meaning and the row stays calm.
 export const TONE_CLASSES = {
-  good: 'bg-lime-400/15 text-lime-300 border-lime-400/30',
-  warn: 'bg-amber-400/15 text-amber-300 border-amber-400/30',
-  bad: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+  good: 'text-accent',
+  warn: 'text-warn',
+  bad: 'text-danger',
 };
 
 export function verdictBadge(verdict) {
@@ -65,11 +67,11 @@ export function quotaLine(quota) {
 /** Money Streak day dot → classes and accessible label. */
 export function dayDot(status) {
   switch (status) {
-    case 'kept': return { className: 'bg-[#f97316] text-black', label: 'kept', mark: '✓' };
-    case 'missed': return { className: 'bg-zinc-800 text-zinc-500', label: 'missed', mark: '–' };
-    case 'today': return { className: 'bg-transparent text-[#f97316] ring-2 ring-[#f97316]', label: 'today', mark: '?' };
-    case 'not_started': return { className: 'bg-zinc-900 text-zinc-700', label: 'before your streak started', mark: '' };
-    default: return { className: 'bg-zinc-900 text-zinc-700', label: 'upcoming', mark: '' };
+    case 'kept': return { className: 'bg-flame text-on-fill', label: 'kept', mark: '✓' };
+    case 'missed': return { className: 'bg-surface-3 text-ink-3', label: 'missed', mark: '–' };
+    case 'today': return { className: 'bg-transparent text-flame ring-2 ring-flame', label: 'today', mark: '?' };
+    case 'not_started': return { className: 'bg-surface-3/60 text-ink-3', label: 'before your streak started', mark: '' };
+    default: return { className: 'bg-surface-3/60 text-ink-3', label: 'upcoming', mark: '' };
   }
 }
 

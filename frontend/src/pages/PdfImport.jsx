@@ -5,8 +5,8 @@
  */
 
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, FileUp } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProGate from '../components/ProGate';
 import { API_URL as API_BASE_URL } from '../lib/apiConfig';
@@ -73,46 +73,32 @@ export default function PdfImport() {
   return (
     <ProGate
       feature="pdf_import"
-      title="Bank Statement Import"
+      title="Statement import"
       description="Import past expenses from a bank statement PDF. This is planned for Vittova Pro, which is not available yet."
     >
       <motion.div
-        className="space-y-6 pb-6 p-4 max-w-lg mx-auto"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        className="mx-auto max-w-lg space-y-6 pb-6 text-ink"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
       >
         <header>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-lime-400/15 flex items-center justify-center">
-              <FileUp className="w-5 h-5 text-lime-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-white">Statement Import</h1>
-              <p className="text-sm text-zinc-500">Auto-categorize transactions from PDFs</p>
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold">Statement import</h1>
+          <p className="mt-1 text-sm text-ink-2">Add past expenses from a bank statement PDF.</p>
         </header>
 
         {/* Supported Banks Info */}
-        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Supported Banks</p>
-          <div className="flex flex-wrap gap-2">
-            {['SBI', 'HDFC', 'ICICI', 'Axis', 'Kotak', 'PNB'].map(bank => (
-              <span key={bank} className="px-3 py-1 rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">
-                {bank}
-              </span>
-            ))}
-          </div>
-          <div className="mt-4 text-xs text-zinc-500 bg-black/50 p-3 rounded-xl border border-zinc-800">
-            <p><span className="font-bold text-lime-400">Privacy first:</span> Your PDF is processed securely and immediately deleted from our servers. We do not store your bank statements.</p>
-          </div>
+        <div>
+          <p className="v-label mb-2">Supported banks</p>
+          <p className="text-sm text-ink-soft">SBI · HDFC · ICICI · Axis · Kotak · PNB</p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-3">Your PDF is processed securely and immediately deleted from our servers. We do not store your bank statements.</p>
         </div>
 
         {/* Upload Area */}
-        <div 
+        <div
           onClick={() => !loading && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer transition-colors ${
-            file ? 'border-lime-500 bg-lime-500/5' : 'border-zinc-700 bg-zinc-900/50 hover:border-zinc-500'
+          className={`cursor-pointer rounded-2xl border border-dashed p-8 text-center transition-colors ${
+            file ? 'border-accent bg-surface' : 'border-line-strong bg-surface'
           }`}
         >
           <input 
@@ -125,77 +111,68 @@ export default function PdfImport() {
           />
           
           {loading ? (
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <Loader2 className="w-10 h-10 text-lime-400 animate-spin" />
+            <div className="flex flex-col items-center justify-center gap-3" role="status">
+              <Loader2 className="h-6 w-6 animate-spin text-ink-2" />
               <div>
-                <p className="text-lime-400 font-bold">Processing PDF...</p>
-                <p className="text-xs text-zinc-500 mt-1">Extracting and categorizing transactions</p>
+                <p className="text-[15px] font-semibold text-ink">Reading your statement…</p>
+                <p className="mt-1 text-xs text-ink-3">Finding the payments and sorting them into categories</p>
               </div>
             </div>
           ) : file ? (
-            <div className="flex flex-col items-center justify-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-lime-400/20 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-lime-400" />
-              </div>
+            <div className="flex flex-col items-center justify-center gap-3">
+              <FileText className="h-6 w-6 text-ink-2" aria-hidden="true" />
               <div>
-                <p className="text-white font-bold">{file.name}</p>
-                <p className="text-xs text-zinc-500 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                <p className="break-all text-[15px] font-semibold text-ink">{file.name}</p>
+                <p className="mt-1 text-xs text-ink-3">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
               </div>
-              <p className="text-xs text-lime-400 underline mt-2">Tap to change file</p>
+              <p className="text-xs text-ink-2 underline">Tap to change file</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
-                <Upload className="w-6 h-6 text-zinc-400" />
-              </div>
+            <div className="flex flex-col items-center justify-center gap-3">
+              <Upload className="h-6 w-6 text-ink-3" aria-hidden="true" />
               <div>
-                <p className="text-white font-bold">Tap to upload bank statement</p>
-                <p className="text-xs text-zinc-500 mt-1">PDF format, up to 10MB</p>
+                <p className="text-[15px] font-semibold text-ink">Tap to choose a bank statement</p>
+                <p className="mt-1 text-xs text-ink-3">PDF, up to 10 MB</p>
               </div>
             </div>
           )}
         </div>
 
         {error && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-300">{error}</p>
-          </motion.div>
+          <p role="alert" className="v-error flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
+          </p>
         )}
 
         {result && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-5 rounded-2xl bg-lime-400/10 border border-lime-400/20">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="w-5 h-5 text-lime-400" />
-              <p className="font-bold text-lime-400">Import Successful</p>
-            </div>
-            <div className="space-y-2 text-sm text-zinc-300">
-              <div className="flex justify-between"><span>Bank:</span> <span className="font-bold text-white">{result.bankName}</span></div>
-              <div className="flex justify-between"><span>New transactions added:</span> <span className="font-bold text-white">{result.imported}</span></div>
+          <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} role="status">
+            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-accent">
+              <CheckCircle className="h-4 w-4" aria-hidden="true" /> Import complete
+            </p>
+            <dl className="v-block v-rows px-4 text-sm text-ink-2">
+              <div className="flex justify-between gap-3 py-3"><dt>Bank</dt><dd className="font-medium text-ink">{result.bankName}</dd></div>
+              <div className="flex justify-between gap-3 py-3"><dt>New transactions added</dt><dd className="font-medium tabular-nums text-ink">{result.imported}</dd></div>
               {result.duplicatesSkipped > 0 && (
-                <div className="flex justify-between"><span>Already in Vittova (skipped):</span> <span className="font-bold text-white">{result.duplicatesSkipped}</span></div>
+                <div className="flex justify-between gap-3 py-3"><dt>Already in Vittova (skipped)</dt><dd className="font-medium tabular-nums text-ink">{result.duplicatesSkipped}</dd></div>
               )}
               {result.invalidRowsSkipped > 0 && (
-                <div className="flex justify-between"><span>Unreadable rows skipped:</span> <span className="font-bold text-white">{result.invalidRowsSkipped}</span></div>
+                <div className="flex justify-between gap-3 py-3"><dt>Unreadable rows skipped</dt><dd className="font-medium tabular-nums text-ink">{result.invalidRowsSkipped}</dd></div>
               )}
-              <div className="flex justify-between"><span>Total Amount:</span> <span className="font-mono text-white">₹{Number(result.totalAmount || 0).toLocaleString('en-IN')}</span></div>
-              <div className="flex justify-between"><span>Round-ups:</span> <span className="font-mono text-lime-400">+₹{Number(result.totalChillar || 0).toLocaleString('en-IN')}</span></div>
-            </div>
-          </motion.div>
+              <div className="flex justify-between gap-3 py-3"><dt>Total amount</dt><dd className="font-mono text-ink">₹{Number(result.totalAmount || 0).toLocaleString('en-IN')}</dd></div>
+              <div className="flex justify-between gap-3 py-3"><dt>Round-ups</dt><dd className="font-mono text-ink">+₹{Number(result.totalChillar || 0).toLocaleString('en-IN')}</dd></div>
+            </dl>
+          </motion.section>
         )}
 
-        <motion.button
-          whileTap={file && !loading ? { scale: 0.96 } : {}}
+        <button
+          type="button"
           onClick={handleUpload}
           disabled={!file || loading}
-          className={`w-full py-4 rounded-2xl font-black transition-colors ${
-            file && !loading
-              ? 'bg-lime-400 text-black hover:bg-lime-300 shadow-[0_0_20px_rgba(163,230,53,0.3)]'
-              : 'bg-zinc-800 text-zinc-500'
-          }`}
+          className="v-press v-btn-primary w-full"
         >
-          {loading ? 'Processing...' : 'Import Transactions'}
-        </motion.button>
+          {loading ? 'Reading…' : 'Import transactions'}
+        </button>
       </motion.div>
     </ProGate>
   );
