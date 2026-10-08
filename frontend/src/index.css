@@ -165,7 +165,7 @@
 :root {
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* The launch mark (lib/brandMark.js), for the frame shown before the app's code runs. */
-  --v-boot-mark: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1728 1728'><defs><linearGradient id='g' x1='0' y1='320' x2='0' y2='950' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23E6FF4C'/><stop offset='0.48' stop-color='%238FF03A'/><stop offset='1' stop-color='%232BD460'/></linearGradient></defs><g transform='translate(239 235)' fill='none' stroke='url(%23g)' stroke-width='116' stroke-linecap='round' stroke-linejoin='round'><path d='M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998'/><path d='M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636'/></g></svg>");
+  --v-boot-mark: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1728 1728'><defs><linearGradient id='g' x1='0' y1='320' x2='0' y2='950' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23FFFFFF'/><stop offset='0.48' stop-color='%23FFFFFF'/><stop offset='1' stop-color='%23FFFFFF'/></linearGradient></defs><g transform='translate(239 235)' fill='none' stroke='url(%23g)' stroke-width='116' stroke-linecap='round' stroke-linejoin='round'><path d='M590 618 L672 872 Q688 908 716 908 Q744 908 762 874 L870 674 Q888 648 918 648 H998'/><path d='M252 657 H398 Q430 657 446 624 L566 380 Q586 350 614 350 Q646 350 660 386 L744 636'/></g></svg>");
 }
 
 body {
@@ -376,7 +376,7 @@ h1, h2, h3, .font-display, .font-black, .font-extrabold {
    the mark rather than to appear behind it, and thins out as it goes. */
 .v-launch-ring {
   width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 9999px;
-  border: 1.5px solid rgba(43, 212, 96, 0.9);
+  border: 1.5px solid rgba(248, 112, 0, 0.9);
   opacity: 0; transform: scale(0.9); will-change: transform, opacity; pointer-events: none;
 }
 @keyframes v-launch-ripple {

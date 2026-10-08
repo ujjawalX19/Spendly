@@ -39,7 +39,7 @@ class ErrorBoundary extends React.Component {
         fontFamily: "'Space Grotesk', system-ui, -apple-system, sans-serif",
       }}>
         <div style={{ maxWidth: '380px', width: '100%', textAlign: 'center' }}>
-          <img src="/vittova-mark.svg" alt="" width="56" height="56" style={{ display: 'block', margin: '0 auto 20px' }} />
+          <img src="/vittova-logo.svg" alt="" width="64" height="64" style={{ display: 'block', margin: '0 auto 20px' }} />
           <h1 style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '-0.01em', margin: '0 0 8px' }}>
             Something went wrong
           </h1>

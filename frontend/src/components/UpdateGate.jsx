@@ -87,7 +87,7 @@ export default function UpdateGate() {
   return (
     <div role="alertdialog" aria-modal="true" aria-labelledby="update-title" className="fixed inset-0 z-[900] flex items-center justify-center bg-bg px-6 text-center text-ink">
       <div className="w-full max-w-sm">
-        <img src="/vittova-mark.svg" alt="" width="56" height="56" className="mx-auto mb-5" />
+        <img src="/vittova-logo.svg" alt="" width="64" height="64" className="mx-auto mb-5" />
         <h1 id="update-title" className="text-[22px] font-bold">Update Vittova</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
           This version is no longer supported. Update to keep your money tracking accurate and secure. Your data stays as it is.

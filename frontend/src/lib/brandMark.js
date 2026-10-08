@@ -1,11 +1,10 @@
 /**
  * The Vittova pulse mark: one definition for every place it is drawn.
  *
- * Two interlocking strokes in the 1254×1254 artboard of public/vittova-logo.svg.
- * The rising stroke is drawn over the falling one. On the app-icon tile it has
- * a tile-coloured rim (SEPARATION_WIDTH); the launch mark leaves the rim out,
- * because the strokes never overlap and against the splash glow the rim would
- * read as an outline.
+ * Two interlocking strokes in the 1254×1254 artboard of public/vittova-logo.svg,
+ * white, the rising stroke drawn over the falling one. The app icon sets them
+ * on the maroon-to-orange tile (TILE_GRADIENT); the launch screen sets them on
+ * black.
  *
  * The launch mark (LAUNCH) is the mark centred in a 1728×1728 box drawn at
  * 288 dp: exactly how Android's launch screen draws
@@ -23,13 +22,30 @@ export const STROKE_WIDTH = 116;
 /** Width of the tile-coloured rim under the rising stroke (app-icon logo only). */
 export const SEPARATION_WIDTH = 134;
 
-/** Vertical gradient (user space y 320 → 950). */
+/**
+ * The pulse is white. It is still described as a vertical gradient (user space
+ * y 320 → 950) because Android's launch vector, the web splash and the boot
+ * frame all draw it that way and are checked against these stops.
+ */
 export const GRADIENT = Object.freeze([
-  { offset: 0, color: '#E6FF4C' },
-  { offset: 0.48, color: '#8FF03A' },
-  { offset: 1, color: '#2BD460' },
+  { offset: 0, color: '#FFFFFF' },
+  { offset: 0.48, color: '#FFFFFF' },
+  { offset: 1, color: '#FFFFFF' },
 ]);
 export const GRADIENT_Y = Object.freeze([320, 950]);
+
+/**
+ * The app-icon tile: deep maroon into orange, top left to bottom right. The
+ * same colours as the balance card (index.css: --v-card-a/b/c) and Android's
+ * adaptive icon background (res/drawable/ic_launcher_tile.xml).
+ */
+export const TILE_GRADIENT = Object.freeze([
+  { offset: 0, color: '#2E1613' },
+  { offset: 0.46, color: '#A32716' },
+  { offset: 1, color: '#F87000' },
+]);
+/** The warm colour of the launch glow and ripples (the tile's brightest stop). */
+export const GLOW = '#F87000';
 
 /** Android launch screen and web splash background (res/values: splash_background). */
 export const LAUNCH_BACKGROUND = '#000000';

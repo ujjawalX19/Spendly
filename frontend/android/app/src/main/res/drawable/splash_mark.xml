@@ -8,9 +8,8 @@
     inside its central 192 dp circle. The mark is the Vittova pulse, centred in
     a 1728-unit viewport (144 dp wide, well inside the circle).
 
-    The app-icon artwork's background-coloured rim under the rising stroke is
-    left out: the strokes never overlap, and on the launch screen the rim would
-    only show as an outline against the app's glow.
+    The pulse is white on the black launch screen; the app icon sets the same
+    strokes on the maroon-to-orange tile (drawable/ic_launcher_tile.xml).
 
     MUST match frontend/src/lib/brandMark.js (paths, gradient, translate): the
     web splash draws the same frame at the same place, so the hand-off from
@@ -41,9 +40,9 @@
                     android:startY="320"
                     android:endX="0"
                     android:endY="950">
-                    <item android:offset="0" android:color="#FFE6FF4C" />
-                    <item android:offset="0.48" android:color="#FF8FF03A" />
-                    <item android:offset="1" android:color="#FF2BD460" />
+                    <item android:offset="0" android:color="#FFFFFFFF" />
+                    <item android:offset="0.48" android:color="#FFFFFFFF" />
+                    <item android:offset="1" android:color="#FFFFFFFF" />
                 </gradient>
             </aapt:attr>
         </path>
@@ -62,9 +61,9 @@
                     android:startY="320"
                     android:endX="0"
                     android:endY="950">
-                    <item android:offset="0" android:color="#FFE6FF4C" />
-                    <item android:offset="0.48" android:color="#FF8FF03A" />
-                    <item android:offset="1" android:color="#FF2BD460" />
+                    <item android:offset="0" android:color="#FFFFFFFF" />
+                    <item android:offset="0.48" android:color="#FFFFFFFF" />
+                    <item android:offset="1" android:color="#FFFFFFFF" />
                 </gradient>
             </aapt:attr>
         </path>

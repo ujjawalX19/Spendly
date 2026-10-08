@@ -80,7 +80,7 @@ test('the startup pulse: two beats, two ripples, then still', () => {
   const play = Number(/const PLAY_MS = (\d+);/.exec(splash)[1]);
   const exit = Number(/const EXIT_MS = (\d+);/.exec(splash)[1]);
   assert.ok(play + exit >= 1400 && play + exit <= 2200, `total ${play + exit} ms`);
-  assert.match(splash, /your money&rsquo;s <span className="text-lime-300">pulse<\/span>/);
+  assert.match(splash, /your money&rsquo;s <span className="text-warn">pulse<\/span>/);
 });
 
 test('the splash fades onto a screen, never onto a loading spinner', async () => {

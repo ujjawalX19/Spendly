@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive launcher icon background: deep maroon into orange, top left to
+    bottom right. The same colours as the balance card in the app and the logo
+    tile (frontend/src/lib/brandMark.js: TILE_GRADIENT).
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="315"
+        android:startColor="#2E1613"
+        android:centerColor="#A32716"
+        android:endColor="#F87000" />
+</shape>

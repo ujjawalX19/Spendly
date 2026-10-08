@@ -34,7 +34,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { markSplashShown } from '../lib/splash';
 import { whenScreenReady } from '../lib/appReady';
 import {
-  GRADIENT, GRADIENT_Y, LAUNCH, LAUNCH_BACKGROUND, STROKE_DOWN, STROKE_UP, STROKE_WIDTH, launchCenterY,
+  GLOW, GRADIENT, GRADIENT_Y, LAUNCH, LAUNCH_BACKGROUND, STROKE_DOWN, STROKE_UP, STROKE_WIDTH, launchCenterY,
 } from '../lib/brandMark';
 import { launchGeometry, releaseLaunchScreen } from '../plugins/LaunchScreen';
 
@@ -65,8 +65,8 @@ function LaunchMark({ uid, glow = false }) {
           {GRADIENT.map((s) => <stop key={s.offset} offset={s.offset} stopColor={s.color} />)}
         </linearGradient>
         <linearGradient id={`${uid}-light`} x1="0" y1={GRADIENT_Y[0]} x2="0" y2={GRADIENT_Y[1]} gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#FDFFE8" />
-          <stop offset="1" stopColor="#D9FFC2" />
+          <stop offset="0" stopColor="#FFD7A8" />
+          <stop offset="1" stopColor="#FFA94D" />
         </linearGradient>
         {glow && (
           <filter id={`${uid}-blur`} filterUnits="userSpaceOnUse" x="0" y="0" width={viewport} height={viewport}>
@@ -76,7 +76,7 @@ function LaunchMark({ uid, glow = false }) {
       </defs>
       <g transform={`translate(${translateX} ${translateY})`}>
         {glow ? (
-          <g {...common} stroke="#7BEA2F" strokeWidth={STROKE_WIDTH + 24} filter={`url(#${uid}-blur)`}>
+          <g {...common} stroke={GLOW} strokeWidth={STROKE_WIDTH + 24} filter={`url(#${uid}-blur)`}>
             <path d={STROKE_DOWN} />
             <path d={STROKE_UP} />
           </g>
@@ -169,7 +169,7 @@ export default function StartupSplash({ onDone }) {
             <LaunchMark uid={uid} />
           </div>
           <p className="v-launch-tagline absolute inset-x-0 text-center text-[15px] font-medium text-white" style={{ top: `calc(${top} + 84px)` }}>
-            your money&rsquo;s <span className="text-lime-300">pulse</span>
+            your money&rsquo;s <span className="text-warn">pulse</span>
           </p>
         </div>
       )}
