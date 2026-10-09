@@ -1,6 +1,6 @@
 import PulseMark from '../../components/PulseMark';
 import { HomeMock } from './Mocks';
-import { PrimaryCta, SecondaryCta, WRAP } from './shared';
+import { PlayStoreCta, PrimaryCta, WRAP } from './shared';
 
 export default function HeroSection() {
   return (
@@ -18,9 +18,9 @@ export default function HeroSection() {
           </p>
           <div className="l-hero mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start" style={{ animationDelay: '220ms' }}>
             <PrimaryCta>Start free</PrimaryCta>
-            <SecondaryCta href="#how">See how it works</SecondaryCta>
+            <PlayStoreCta />
           </div>
-          <p className="l-hero mt-5 text-xs text-ink-3" style={{ animationDelay: '300ms' }}>Free to start · Android and web · Not investment advice</p>
+          <p className="l-hero mt-5 text-xs text-ink-3" style={{ animationDelay: '300ms' }}>Free to start · Android and web · Not investment advice · <a href="#how" className="l-link">See how it works</a></p>
         </div>
         <div className="l-hero-late">
           <HomeMock />

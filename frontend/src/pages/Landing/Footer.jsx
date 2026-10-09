@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import VittovaLogo from '../../components/VittovaLogo';
 import { SUPPORT_EMAIL } from '../../lib/legal';
-import { PrimaryCta, Reveal, WRAP } from './shared';
+import { PLAY_STORE_URL, PlayStoreCta, PrimaryCta, Reveal, WRAP } from './shared';
 
 const LINK = 'inline-flex min-h-[40px] items-center text-ink-2 transition-colors hover:text-ink';
 
@@ -12,7 +12,10 @@ export default function Footer() {
         <Reveal className="v-hero-card my-16 px-6 py-12 text-center sm:px-10 sm:py-16 lg:my-24">
           <h2 className="mx-auto max-w-2xl text-3xl font-semibold leading-[1.1] tracking-[-0.025em] sm:text-4xl">Your next money decision, made easier.</h2>
           <p className="mx-auto mt-4 max-w-xl text-white/80">Free to start. Add your budget and a few expenses, and Vittova starts answering.</p>
-          <PrimaryCta className="mt-8">Start free</PrimaryCta>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <PrimaryCta className="w-full sm:w-auto">Start free</PrimaryCta>
+            <PlayStoreCta className="w-full bg-white/15 sm:w-auto" />
+          </div>
         </Reveal>
 
         <div className="grid gap-10 border-t border-line py-12 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
@@ -29,6 +32,7 @@ export default function Footer() {
               <li><a className={LINK} href="#features">Features</a></li>
               <li><a className={LINK} href="#pro">Pricing</a></li>
               <li><a className={LINK} href="#faq">FAQ</a></li>
+              <li><a className={LINK} href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">Android app on Google Play</a></li>
               <li><Link className={LINK} to="/login">Sign in</Link></li>
             </ul>
           </nav>

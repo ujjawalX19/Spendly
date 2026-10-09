@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, Download } from 'lucide-react';
 
 /** The page's column: one width and one gutter for every section. */
 export const WRAP = 'mx-auto w-full max-w-6xl px-5 sm:px-8';
@@ -52,6 +52,18 @@ export function PrimaryCta({ children = 'Start free', className = '' }) {
 
 export function SecondaryCta({ href, children, className = '' }) {
   return <a href={href} className={`l-press v-btn-secondary min-h-12 px-6 text-[15px] ${className}`}>{children}</a>;
+}
+
+/** The Android app's Google Play listing. */
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.vittova.app';
+
+/** Opens the Google Play listing in a new tab. */
+export function PlayStoreCta({ className = '' }) {
+  return (
+    <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className={`l-press v-btn-secondary min-h-12 px-6 text-[15px] ${className}`}>
+      <Download className="h-4 w-4" aria-hidden="true" /> Download on Google Play
+    </a>
+  );
 }
 
 /** A short list of plain statements, each with a tick. */
