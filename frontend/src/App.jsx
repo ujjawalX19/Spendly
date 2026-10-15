@@ -16,6 +16,7 @@ import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
 import { onReminderOpened, refreshReminders } from './lib/debitReminders';
+import { startQueueSync } from './lib/missionSync';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 import { releaseLaunchScreen } from './plugins/LaunchScreen';
 import { loaderShown } from './lib/appReady';
@@ -42,6 +43,9 @@ const SubscriptionGraveyard = lazy(() => import('./pages/SubscriptionGraveyard')
 const SubscriptionAudit = lazy(() => import('./pages/SubscriptionAudit'));
 const Challenges = lazy(() => import('./pages/Challenges'));
 const SaveToEarn = lazy(() => import('./pages/SaveToEarn'));
+const Rewards = lazy(() => import('./pages/Rewards'));
+const Goals = lazy(() => import('./pages/Goals'));
+const WeeklyRecap = lazy(() => import('./pages/WeeklyRecap'));
 const PdfImport = lazy(() => import('./pages/PdfImport'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
@@ -111,6 +115,10 @@ function Layout({ children }) {
   // Once per signed-in app start: bring debit reminders up to date.
   const reminderUser = session?.user?.id;
   useEffect(() => { if (reminderUser) refreshReminders(session); }, [reminderUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mission actions saved without signal are sent when the app starts, the
+  // connection returns or the app comes back to the foreground.
+  useEffect(() => startQueueSync(session), [reminderUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     // Mobile spacing lives here only: 16px side gutters, the status-bar inset
@@ -355,6 +363,9 @@ function App() {
                 <Route path="/subscription-audit" element={<ProtectedRoute><Layout><SubscriptionAudit /></Layout></ProtectedRoute>} />
                 <Route path="/challenges" element={<ProtectedRoute><Layout><Challenges /></Layout></ProtectedRoute>} />
                 <Route path="/save-to-earn" element={<ProtectedRoute><Layout><SaveToEarn /></Layout></ProtectedRoute>} />
+                <Route path="/rewards" element={<ProtectedRoute><Layout><Rewards /></Layout></ProtectedRoute>} />
+                <Route path="/rewards/recap" element={<ProtectedRoute><Layout><WeeklyRecap /></Layout></ProtectedRoute>} />
+                <Route path="/goals" element={<ProtectedRoute><Layout><Goals /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />

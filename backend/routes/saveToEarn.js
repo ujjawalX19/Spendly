@@ -10,6 +10,8 @@ const { hasActivePro } = require('../lib/entitlements');
 const { loadFinanceData, ProfileMissingError } = require('../lib/financeData');
 const { buildFacts } = require('../lib/financialInsights');
 const { grant } = require('../lib/moneyXp');
+const { grantPoints } = require('../lib/points');
+const missions = require('../lib/missions');
 const { recordServerEvent } = require('../lib/appEvents');
 const ms = require('../lib/moneyStreak');
 const s2e = require('../lib/saveToEarn');
@@ -76,7 +78,10 @@ async function judgeActive(userId, row, state, now) {
     if (error) throw error;
     if (!data) return { row, progress: result };
     if (data.status === 'completed') {
-        await grant(userId, { reason: 'challenge_completed', ref_key: data.id, xp: s2e.TEMPLATES[data.template].xp });
+        const xp = s2e.TEMPLATES[data.template].xp;
+        await grant(userId, { reason: 'challenge_completed', ref_key: data.id, xp });
+        // v1.14: Vittova Points with the XP (skipped while the Points ledger does not exist).
+        if (flag('rewardsEnabled')) await grantPoints(userId, { reason: 'challenge_completed', ref_key: data.id, points: missions.pointsFor({ reason: 'challenge_completed', xp }) });
         recordServerEvent('challenge_completed', { userId, props: { code: data.template } }).catch(() => {});
     }
     return { row: data, progress: result };

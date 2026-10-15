@@ -152,15 +152,39 @@ test('weekly goal: within the week\'s share of the budget on at least 4 logged d
 // ─── XP and levels ──────────────────────────────────────────────────────────
 
 test('levels are simple thresholds', () => {
-    // Level 5 (Money Pro, 4,000 XP) added with Save-to-Earn.
-    assert.deepEqual([0, 249, 250, 749, 750, 1999, 2000, 3999, 4000, 99999].map((x) => ms.levelFor(x).levelName), [
+    // Level 5 (Money Pro, 4,000 XP) added with Save-to-Earn; levels 6 and 7
+    // (Money Champion 7,000, Money Legend 12,000) added in v1.14. The first
+    // five thresholds and names are unchanged.
+    assert.deepEqual([0, 249, 250, 749, 750, 1999, 2000, 3999, 4000, 6999].map((x) => ms.levelFor(x).levelName), [
         'Money Starter', 'Money Starter', 'Budget Builder', 'Budget Builder', 'Money Smart', 'Money Smart', 'Money Master', 'Money Master', 'Money Pro', 'Money Pro',
     ]);
+    assert.deepEqual([7000, 11999, 12000, 99999].map((x) => ms.levelFor(x).level), [6, 6, 7, 7]);
     const l = ms.levelFor(500);
     assert.deepEqual(l.nextLevel, { level: 3, name: 'Money Smart', at: 750, xpToGo: 250 });
     assert.equal(l.progressPercent, 50);
     assert.equal(ms.levelFor(-50).total, 0);
-    assert.equal(ms.levelFor(5000).nextLevel, null);
+    assert.deepEqual(ms.levelFor(5000).nextLevel, { level: 6, name: 'Money Champion', at: 7000, xpToGo: 2000 });
+    assert.equal(ms.levelFor(12000).nextLevel, null);
+    assert.equal(ms.levelFor(12000).progressPercent, 100);
+});
+
+test('v1.14 levels migration: the original five levels are exactly as before', () => {
+    assert.deepEqual(ms.LEVELS.slice(0, 5), [
+        { level: 1, name: 'Money Starter', minXp: 0 },
+        { level: 2, name: 'Budget Builder', minXp: 250 },
+        { level: 3, name: 'Money Smart', minXp: 750 },
+        { level: 4, name: 'Money Master', minXp: 2000 },
+        { level: 5, name: 'Money Pro', minXp: 4000 },
+    ]);
+    // Thresholds only go up, so no XP total maps to a lower level than before.
+    for (let i = 1; i < ms.LEVELS.length; i++) assert.ok(ms.LEVELS[i].minXp > ms.LEVELS[i - 1].minXp);
+    for (const xp of [0, 1, 249, 250, 251, 749, 750, 1999, 2000, 3999, 4000, 4001, 6999]) {
+        const before = [0, 250, 750, 2000, 4000].filter((t) => xp >= t).length; // the five-level table
+        assert.equal(ms.levelFor(xp).level, before, `${xp} XP`);
+    }
+    for (const [xp, level] of [[6999, 5], [7000, 6], [7001, 6], [11999, 6], [12000, 7], [12001, 7], [1e9, 7]]) {
+        assert.equal(ms.levelFor(xp).level, level, `${xp} XP`);
+    }
 });
 
 test('awards are keyed so each day, week, month and milestone can pay only once', () => {

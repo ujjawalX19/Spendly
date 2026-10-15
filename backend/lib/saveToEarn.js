@@ -24,7 +24,9 @@
 
 const appTime = require('./appTime');
 const rules = require('./challengeRules');
-const { addDays, dayStart } = require('./moneyStreak');
+const { addDays, dayStart, LEVELS } = require('./moneyStreak');
+
+const xpForLevel = (n) => LEVELS.find((l) => l.level === n).minXp;
 
 const HISTORY_DAYS = 56;
 const MIN_HISTORY_DAYS = 28;
@@ -65,12 +67,17 @@ const TEMPLATES = {
 const TEMPLATE_KEYS = Object.keys(TEMPLATES);
 
 const BADGES = {
-    first_challenge: { title: 'First Challenge', icon: '🏅', desc: 'Completed your first money challenge.' },
-    streak_7: { title: '7-Day Streak', icon: '🔥', desc: 'Kept your Money Streak for 7 days.' },
-    saved_500: { title: '₹500 Saved', icon: '💰', desc: 'Your Victory Pot passed an estimated ₹500.' },
-    budget_keeper: { title: 'Budget Keeper', icon: '🎯', desc: 'Finished a month within your budget.' },
-    smart_decision: { title: 'Smart Decision', icon: '🧠', desc: 'Completed a no-impulse-purchase challenge.' },
-    habit_30: { title: '30-Day Habit', icon: '📅', desc: 'Kept your Money Streak for 30 days.' },
+    first_challenge: { title: 'First Challenge', icon: '🏅', desc: 'Completed your first money challenge.', requirement: 'Complete any money challenge.' },
+    streak_7: { title: '7-Day Streak', icon: '🔥', desc: 'Kept your Money Streak for 7 days.', requirement: 'Keep your Money Streak for 7 days in a row.' },
+    saved_500: { title: '₹500 Saved', icon: '💰', desc: 'Your Victory Pot passed an estimated ₹500.', requirement: 'Reach an estimated ₹500 in your Victory Pot.' },
+    budget_keeper: { title: 'Budget Keeper', icon: '🎯', desc: 'Finished a month within your budget.', requirement: 'Finish a month within your budget, with at least 10 logged days.' },
+    smart_decision: { title: 'Smart Decision', icon: '🧠', desc: 'Completed a no-impulse-purchase challenge.', requirement: 'Complete a no-impulse-purchase challenge.' },
+    habit_30: { title: '30-Day Habit', icon: '📅', desc: 'Kept your Money Streak for 30 days.', requirement: 'Keep your Money Streak for 30 days in a row.' },
+    // v1.14
+    first_goal: { title: 'Goal Setter', icon: '🎯', desc: 'Set a savings goal and put the first money towards it.', requirement: 'Create a savings goal and add your first contribution.' },
+    goal_reached: { title: 'Goal Reached', icon: '🏁', desc: 'Reached a savings goal.', requirement: 'Reach 100% of a savings goal.' },
+    level_6: { title: 'Money Champion', icon: '⭐', desc: 'Reached level 6.', requirement: 'Earn 7,000 XP.' },
+    level_7: { title: 'Money Legend', icon: '🌟', desc: 'Reached level 7, the top level.', requirement: 'Earn 12,000 XP.' },
 };
 const BADGE_KEYS = Object.keys(BADGES);
 
@@ -204,7 +211,7 @@ function recommend({ expenses, now = new Date(), isPro }) {
  * Badges earned from server-side facts. Returns badge keys; the caller stores
  * new ones (unique per user and badge).
  */
-function earnedBadges({ completed = [], victoryPot = 0, longestStreak = 0, ledgerReasons = new Set() }) {
+function earnedBadges({ completed = [], victoryPot = 0, longestStreak = 0, ledgerReasons = new Set(), goalsStarted = 0, goalsReached = 0, totalXp = null }) {
     const out = [];
     if (completed.length >= 1) out.push('first_challenge');
     if (longestStreak >= 7) out.push('streak_7');
@@ -212,6 +219,10 @@ function earnedBadges({ completed = [], victoryPot = 0, longestStreak = 0, ledge
     if (ledgerReasons.has('month_within_budget')) out.push('budget_keeper');
     if (completed.some((c) => TEMPLATES[c.template]?.rule === 'no_impulse')) out.push('smart_decision');
     if (longestStreak >= 30) out.push('habit_30');
+    if (goalsStarted >= 1) out.push('first_goal');
+    if (goalsReached >= 1) out.push('goal_reached');
+    if (totalXp !== null && totalXp >= xpForLevel(6)) out.push('level_6');
+    if (totalXp !== null && totalXp >= xpForLevel(7)) out.push('level_7');
     return out;
 }
 

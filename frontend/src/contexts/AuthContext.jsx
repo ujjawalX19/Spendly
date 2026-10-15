@@ -4,6 +4,8 @@ import { isRecoveryReturn, loginRedirectUrl, passwordResetRedirectUrl, RESET_REQ
 import { apiFetch, apiUrl, authHeaders } from '../lib/apiConfig';
 import { flushTelemetry, track, trackAuthFailure, trackLogin } from '../lib/telemetry';
 import { clearRemindersForSignOut } from '../lib/debitReminders';
+import { clearMissionRemindersForSignOut } from '../lib/missionReminders';
+import { clearQueueForSignOut } from '../lib/missionSync';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '../plugins/GoogleAuth';
 import {
@@ -16,7 +18,9 @@ import { authLog } from '../lib/authLog';
 const AuthContext = createContext();
 
 // Local, per-device app state that must not survive into another account.
-const LOCAL_KEYS_TO_CLEAR = ['spendly.seenPayments.v1', 'spendly.notificationPrompt.v1', 'spendly.recovery'];
+// v1.14: the cached mission and any mission actions still waiting to sync
+// belong to the account, not the phone.
+const LOCAL_KEYS_TO_CLEAR = ['spendly.seenPayments.v1', 'spendly.notificationPrompt.v1', 'spendly.recovery', 'vittova.missionCache.v1', 'vittova.offlineQueue.v1'];
 
 function clearLocalAppState() {
   for (const key of LOCAL_KEYS_TO_CLEAR) {
@@ -311,6 +315,8 @@ export function AuthProvider({ children }) {
       await GoogleAuth.signOut().catch(() => {});
     }
     await clearRemindersForSignOut();
+    await clearMissionRemindersForSignOut();
+    clearQueueForSignOut(lastUserId.current);
     clearLocalAppState();
     markPasswordRecovery(false);
     lastUserId.current = null;

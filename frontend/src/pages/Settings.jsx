@@ -12,7 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
   ChevronRight, Loader2, AlertTriangle, Check, LogOut, Download,
-  Users, Repeat, Radar, Gift, Bell, Trophy, Zap, Settings2, MessageSquareText, SunMoon
+  Users, Repeat, Radar, Gift, Bell, Trophy, Zap, Settings2, MessageSquareText, SunMoon,
+  Award, PiggyBank, Moon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -24,6 +25,8 @@ import { useExpenses } from '../hooks/useExpenses';
 import { friendlyError } from '../lib/errors';
 import { API_URL as API_BASE_URL, apiJson } from '../lib/apiConfig';
 import { remindersSupported, remindersWanted, turnRemindersOff, turnRemindersOn } from '../lib/debitReminders';
+import { readPrefs as missionReminderPrefs, turnMissionRemindersOff, turnMissionRemindersOn, updateMissionReminderPrefs } from '../lib/missionReminders';
+import { cachedMissionState } from '../lib/offlineQueue';
 
 const API_URL = API_BASE_URL;
 
@@ -291,6 +294,34 @@ export default function Settings() {
   const [reminders, setReminders] = useState(remindersWanted());
   const [reminderBusy, setReminderBusy] = useState(false);
   const [reminderNote, setReminderNote] = useState('');
+  const [missionPrefs, setMissionPrefs] = useState(missionReminderPrefs());
+  const [missionBusy, setMissionBusy] = useState(false);
+  const rewardsOn = features.rewardsEnabled !== false;
+  const lastStreak = () => cachedMissionState(session?.user?.id);
+
+  // Mission reminders: local notifications planned from today's mission.
+  const toggleMissionReminders = async () => {
+    setReminderNote('');
+    setMissionBusy(true);
+    try {
+      if (missionPrefs.enabled) {
+        await turnMissionRemindersOff();
+        setMissionPrefs(missionReminderPrefs());
+        return;
+      }
+      const outcome = await turnMissionRemindersOn(lastStreak());
+      if (outcome === 'on') setMissionPrefs(missionReminderPrefs());
+      else if (outcome === 'denied') setReminderNote('Notifications are off for Vittova. Turn them on in Android settings to get reminders.');
+      else setReminderNote('Reminders work in the Vittova Android app.');
+    } catch {
+      setReminderNote("Something went wrong. Your settings weren't changed. Try again.");
+    } finally {
+      setMissionBusy(false);
+    }
+  };
+  const setMissionPref = async (patch) => {
+    setMissionPrefs(await updateMissionReminderPrefs(patch, lastStreak()));
+  };
 
   // Debit reminders: the same switch as on the Subscription audit screen.
   const toggleReminders = async () => {
@@ -526,11 +557,57 @@ export default function Settings() {
         ) : (
           <SettingRow icon={Bell} label="Debit reminders" value="Part of Vittova Pro" onClick={() => navigate('/pro')} />
         )}
+        {rewardsOn && (!remindersSupported() ? (
+          <SettingRow icon={Award} label="Mission reminders" value="Available in the Vittova Android app" />
+        ) : (
+          <ToggleRow icon={Award} label="Mission reminders" detail="Your daily mission, a weekly goal check and the Monday recap. Only on this phone."
+            on={missionPrefs.enabled} busy={missionBusy} onToggle={toggleMissionReminders} />
+        ))}
+        {rewardsOn && remindersSupported() && missionPrefs.enabled && (
+          <>
+            <ToggleRow icon={Bell} label="New mission each morning" detail="09:00, India time"
+              on={missionPrefs.daily} onToggle={() => setMissionPref({ daily: !missionPrefs.daily })} />
+            <ToggleRow icon={Bell} label="Evening reminder" detail="20:00, only if today's mission is still open"
+              on={missionPrefs.deadline} onToggle={() => setMissionPref({ deadline: !missionPrefs.deadline })} />
+            <ToggleRow icon={Bell} label="Weekly goal check" detail="Only when a few more logged days would reach it"
+              on={missionPrefs.weekly} onToggle={() => setMissionPref({ weekly: !missionPrefs.weekly })} />
+            <ToggleRow icon={Bell} label="Weekly recap" detail="Monday 10:00"
+              on={missionPrefs.recap} onToggle={() => setMissionPref({ recap: !missionPrefs.recap })} />
+            <div className="flex min-h-[56px] items-center justify-between gap-3 px-4 py-2.5">
+              <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                <Moon className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.75} aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-ink">Quiet hours</p>
+                  <p className="text-xs leading-snug text-ink-3">No mission reminders in this window</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1 text-sm">
+                <input type="time" aria-label="Quiet hours start" value={missionPrefs.quietStart} className="v-input w-[6.5rem] px-2 py-1.5"
+                  onChange={(e) => e.target.value && setMissionPref({ quietStart: e.target.value })} />
+                <span className="text-ink-3">–</span>
+                <input type="time" aria-label="Quiet hours end" value={missionPrefs.quietEnd} className="v-input w-[6.5rem] px-2 py-1.5"
+                  onChange={(e) => e.target.value && setMissionPref({ quietEnd: e.target.value })} />
+              </div>
+            </div>
+          </>
+        )}
       </SettingsGroup>
 
       <SettingsGroup title="Tools">
+        {rewardsOn && (
+          <SettingRow
+            icon={Award} label="Rewards" value="Level, XP, Vittova Points and badges"
+            onClick={() => navigate('/rewards')}
+          />
+        )}
+        {rewardsOn && (
+          <SettingRow
+            icon={PiggyBank} label="Savings goals" value="Targets, progress and milestones"
+            onClick={() => navigate('/goals')}
+          />
+        )}
         <SettingRow
-          icon={Trophy} label="Save-to-Earn" value="Challenges, Victory Pot and badges"
+          icon={Trophy} label="Save-to-Earn" value={rewardsOn ? 'Challenges and Victory Pot' : 'Challenges, Victory Pot and badges'}
           onClick={() => navigate('/save-to-earn')}
         />
         <SettingRow

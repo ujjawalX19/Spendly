@@ -455,6 +455,9 @@ export default function Wealth() {
                 </summary>
                 <div className="pb-3 pt-1"><Illustration illustration={wealth.illustration} /></div>
               </details>
+              <Link to="/goals" className="v-press flex min-h-[52px] items-center justify-between px-4 text-sm font-medium">
+                Savings goals <ChevronRight className="h-4 w-4 text-ink-3" aria-hidden="true" />
+              </Link>
               <Link to="/bot" className="v-press flex min-h-[52px] items-center justify-between px-4 text-sm font-medium">
                 Ask Vittova about your plan <ChevronRight className="h-4 w-4 text-ink-3" aria-hidden="true" />
               </Link>
