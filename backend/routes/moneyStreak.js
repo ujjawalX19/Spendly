@@ -138,6 +138,7 @@ function signalsFor(s, todayLimit) {
         contributions: s.rewards.contributions,
         checkins: s.rewards.checkins,
         dailyLimit: todayLimit,
+        budgetSet: Number(s.profile?.monthly_budget) > 0,
     });
 }
 

@@ -82,7 +82,17 @@ test('otherwise: stay under today\'s Safe-to-Spend, at a share set by difficulty
     const byLevel = Object.fromEntries(m.DIFFICULTY_KEYS.map((d) => [d, m.choose({ signals: s, difficulty: d })]));
     for (const d of m.DIFFICULTY_KEYS) assert.equal(byLevel[d].mission, 'under_limit');
     assert.deepEqual(m.DIFFICULTY_KEYS.map((d) => byLevel[d].params.limit), [600, 540, 480]);
-    assert.match(byLevel.easy.reason, /Safe-to-Spend today is ₹600/);
+    assert.match(byLevel.easy.reason, /Today's limit is ₹600: your Safe-to-Spend as the day began/);
+    assert.match(m.describe(byLevel.balanced).detail, /fixed for the day \(the Safe-to-Spend on Home updates as you spend\)/);
+});
+
+test('no budget set: no spending target from the fallback budget', () => {
+    const s = signals({ budgetSet: false });
+    const list = m.candidates(s, 'advanced').map((c) => c.mission);
+    assert.ok(!list.includes('under_limit'));
+    const c = m.choose({ signals: s, difficulty: 'balanced' });
+    assert.equal(c.mission, 'log_today');
+    assert.match(c.reason, /Set a monthly budget/);
 });
 
 test('when this month\'s Safe-to-Spend is used up: Easy, and never a no-spend demand', () => {

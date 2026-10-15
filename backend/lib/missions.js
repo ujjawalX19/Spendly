@@ -37,19 +37,19 @@ const PREFERENCE_KEYS = ['auto', ...DIFFICULTY_KEYS];
 const DIFFICULTIES = {
     easy: {
         label: 'Easy',
-        summary: 'Small everyday steps: log your spending and stay within today\'s Safe-to-Spend.',
+        summary: 'Small everyday steps: log your spending and stay within today\'s limit.',
         limitShare: 1.0,
         impulseAllowance: 300,
     },
     balanced: {
         label: 'Balanced',
-        summary: 'A steady stretch from your own habits: 90% of today\'s Safe-to-Spend, no impulse buys.',
+        summary: 'A steady stretch from your own habits: 90% of today\'s limit, no impulse buys.',
         limitShare: 0.9,
         impulseAllowance: 0,
     },
     advanced: {
         label: 'Advanced',
-        summary: 'Tighter targets from your own numbers: 80% of today\'s Safe-to-Spend, no food delivery. Never asks you to skip essentials.',
+        summary: 'Tighter targets from your own numbers: 80% of today\'s limit, no food delivery. Never asks you to skip essentials.',
         limitShare: 0.8,
         impulseAllowance: 0,
     },
@@ -164,7 +164,7 @@ function dailyStep(goal, saved, today) {
  * Everything the engine looks at, from days before today only (today's own
  * spending never changes which mission today is).
  */
-function buildSignals({ today, expenses = [], noSpendDays = new Set(), bills = [], goals = [], contributions = [], checkins = [], dailyLimit = 0 }) {
+function buildSignals({ today, expenses = [], noSpendDays = new Set(), bills = [], goals = [], contributions = [], checkins = [], dailyLimit = 0, budgetSet = true }) {
     const before = (n) => ms.dayStart(ms.addDays(today, -n)).getTime();
     const todayStart = ms.dayStart(today).getTime();
     const within = (fromDaysAgo, toDaysAgo) => expenses.filter((e) => {
@@ -203,6 +203,7 @@ function buildSignals({ today, expenses = [], noSpendDays = new Set(), bills = [
         today,
         dailyLimit: Math.max(0, Math.round(Number(dailyLimit) || 0)),
         stretched: !(Number(dailyLimit) > 0),
+        budgetSet: Boolean(budgetSet),
         loggedDays7: loggedKeys(last7, 7),
         loggedDays28: loggedKeys(last28, 28),
         delivery: {
@@ -295,7 +296,10 @@ function candidates(s, difficulty) {
         const g = s.staleGoal;
         add('goal_step', g.lastAdded ? `Nothing added to "${g.name}" for ${ms.daysBetween(g.lastAdded, s.today)} days.` : `"${g.name}" has nothing in it yet.`);
     }
-    if (!s.stretched) add('under_limit', `Your Safe-to-Spend today is ${inr(s.dailyLimit)}.`);
+    // A spending target needs a budget the user actually set: the ₹5,000
+    // fallback budget is not theirs, so it never becomes a mission.
+    if (!s.budgetSet) add('log_today', 'Set a monthly budget in Profile to get spending missions. Until then, logging builds your picture.');
+    if (!s.stretched && s.budgetSet) add('under_limit', `Today's limit is ${inr(s.dailyLimit)}: your Safe-to-Spend as the day began.`);
     if (s.recurringActive >= 2 && (s.daysSinceReview === null || s.daysSinceReview >= 30)) {
         add('review_recurring', `You have ${s.recurringActive} recurring payments. A quick look catches ones you no longer use.`);
     }
@@ -430,8 +434,8 @@ function describe({ mission, difficulty, params = {} }) {
             return { title: "Log today's spending", detail: 'Add at least one expense today, or mark today as a no-spend day.', criteria: ['At least one expense logged for today, or today marked as a no-spend day'] };
         case 'under_limit': {
             const share = Number(p.share) || 1;
-            const of = share >= 1 ? "today's full Safe-to-Spend" : `${Math.round(share * 100)}% of today's Safe-to-Spend`;
-            return { title: `Stay under ${inr(p.limit)} today`, detail: `That's ${of}. Rent and recharges don't count. Log what you spend so it counts.`, criteria: [`Spending logged today (not counting rent and recharges) stays at or under ${inr(p.limit)}`, 'At least one expense logged, or today marked as a no-spend day'] };
+            const of = share >= 1 ? 'your Safe-to-Spend as today began' : `${Math.round(share * 100)}% of your Safe-to-Spend as today began`;
+            return { title: `Stay under ${inr(p.limit)} today`, detail: `That's ${of}, fixed for the day (the Safe-to-Spend on Home updates as you spend). Rent and recharges don't count. Log what you spend so it counts.`, criteria: [`Spending logged today (not counting rent and recharges) stays at or under ${inr(p.limit)}`, 'At least one expense logged, or today marked as a no-spend day'] };
         }
         case 'no_impulse':
             if (p.noDelivery) return { title: 'No impulse buys or delivery today', detail: 'No Shopping, Entertainment or food-delivery orders today. Groceries and essentials are fine.', criteria: ['No Shopping or Entertainment logged today', 'No food-delivery order logged today', 'At least one expense logged, or today marked as a no-spend day'] };
