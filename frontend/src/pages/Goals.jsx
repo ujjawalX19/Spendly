@@ -194,10 +194,11 @@ function GoalCard({ goal, waiting, onAdd, onEdit, onArchive, onRestore, onRemove
         <p className="mt-2 text-[11px] text-ink-3">The 100% reward is paid once the goal is a week old ({goal.rewards.completionWaitDays} day{goal.rewards.completionWaitDays === 1 ? '' : 's'} to go).</p>
       )}
 
-      <div className={`mt-3 grid gap-2 ${archived ? 'grid-cols-1' : 'grid-cols-[1.4fr_1fr_1fr]'}`}>
-        {!archived && <SecondaryButton className="px-2 text-[13px]" onClick={onAdd} disabled={busy}><Plus className="h-4 w-4" aria-hidden="true" /> Add money</SecondaryButton>}
-        {!archived && <SecondaryButton className="px-2 text-[13px]" onClick={onEdit} disabled={busy} aria-label={`Edit ${goal.name}`}><Pencil className="h-4 w-4" aria-hidden="true" /> Edit</SecondaryButton>}
-        {!archived && <SecondaryButton className="px-2 text-[13px]" onClick={onArchive} disabled={busy} aria-label={`Archive ${goal.name}`}><Archive className="h-4 w-4" aria-hidden="true" /> Archive</SecondaryButton>}
+      {/* Wraps instead of overflowing on narrow phones and with large text. */}
+      <div className="mt-3 flex flex-wrap gap-2 [&>button]:min-w-[6.5rem] [&>button]:flex-1 [&>button]:whitespace-nowrap [&>button]:px-2 [&>button]:text-[13px]">
+        {!archived && <SecondaryButton onClick={onAdd} disabled={busy}><Plus className="h-4 w-4" aria-hidden="true" /> Add money</SecondaryButton>}
+        {!archived && <SecondaryButton onClick={onEdit} disabled={busy} aria-label={`Edit ${goal.name}`}><Pencil className="h-4 w-4" aria-hidden="true" /> Edit</SecondaryButton>}
+        {!archived && <SecondaryButton onClick={onArchive} disabled={busy} aria-label={`Archive ${goal.name}`}><Archive className="h-4 w-4" aria-hidden="true" /> Archive</SecondaryButton>}
         {archived && <SecondaryButton onClick={onRestore} disabled={busy}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Restore</SecondaryButton>}
       </div>
 

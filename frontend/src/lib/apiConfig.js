@@ -94,6 +94,9 @@ export async function apiFetch(url, options = {}, { retries, timeoutMs = 25000, 
       lastError = err?.name === 'AbortError'
         ? Object.assign(new Error('Request timed out'), { code: 'ECONNABORTED' })
         : err;
+      // The phone says it has no connection: waiting out the cold-start
+      // retries only delays the offline view (cached mission, queued actions).
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) break;
     } finally {
       clearTimeout(timer);
       options.signal?.removeEventListener?.('abort', onAbort);

@@ -107,10 +107,25 @@ export default function Rewards() {
 
   if (disabled) return <div className="pt-10 text-center text-sm text-ink-2">Rewards aren&apos;t available right now.</div>;
   if (error && !data) {
+    // Offline: today's mission is still on the phone, and its actions queue.
     return (
       <div className="space-y-4 pt-4">
-        <PendingSync items={pending} session={session} />
         <ErrorState onRetry={load} message={error} />
+        <PendingSync items={pending} session={session} />
+        {streak?.today && (
+          <section>
+            <SectionLabel className="mb-2">Today&apos;s mission (saved on this phone)</SectionLabel>
+            <button type="button" onClick={() => setSheet(true)} className="v-press v-block flex w-full items-center gap-3 p-4 text-left">
+              <CloudOff className="h-5 w-5 shrink-0 text-ink-2" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{streak.today.mission.title}</span>
+                <span className="mt-0.5 block text-xs text-ink-2">{rewardLine(streak.today.mission.reward)} · as last loaded</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
+            </button>
+          </section>
+        )}
+        <AnimatePresence>{sheet && streak && <StreakSheet streak={streak} onClose={() => setSheet(false)} onChanged={load} />}</AnimatePresence>
       </div>
     );
   }
@@ -133,7 +148,7 @@ export default function Rewards() {
 
   return (
     <div className="space-y-6 pb-6 text-ink">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Rewards</h1>
           <p className="mt-1 text-sm text-ink-2">XP, Vittova Points, missions and badges.</p>
@@ -207,7 +222,7 @@ export default function Rewards() {
                     <span className="block truncate text-sm font-medium">{d.title}</span>
                     <span className="block text-xs text-ink-3">{fmtDay(d.day)} · {d.difficultyLabel}{d.selfReported ? ' · self-reported' : ''}</span>
                   </span>
-                  <span className="shrink-0 text-right">
+                  <span className="min-w-0 max-w-[45%] shrink-0 text-right">
                     <StatusPill tone={st.tone}>{st.label}</StatusPill>
                     <span className={`block text-xs ${d.status === 'earned' ? 'text-ink' : 'text-ink-3'}`}>{rewardLine(d.reward)}</span>
                   </span>
@@ -295,7 +310,7 @@ export default function Rewards() {
                       <span className="block text-sm font-medium">{e.title}</span>
                       <span className="block truncate text-xs text-ink-3">{e.detail}</span>
                     </span>
-                    <span className="shrink-0 text-right">
+                    <span className="min-w-0 max-w-[45%] shrink-0 text-right">
                       <span className={`block text-sm font-semibold tabular-nums ${e.points < 0 ? 'text-warn' : 'text-ink'}`}>{rewardLine({ xp: e.xp, points: e.points })}</span>
                       <span className="block text-[11px] text-ink-3">{st.label !== 'Confirmed' ? `${st.label} · ` : ''}{fmtDate(e.at)}</span>
                     </span>

@@ -110,12 +110,13 @@ export default function WeeklyRecap() {
           <Stat label="XP earned" value={`+${recap.xp.earned}`} />
           <Stat label="Points earned" value={recap.pointsAvailable ? `+${recap.points.earned}` : '–'} hint={recap.points.reversed ? `${recap.points.reversed} reversed` : null} />
         </div>
-        <ol className="mt-4 flex justify-between border-t border-line pt-4" aria-label="Days">
+        {/* Seven equal columns: the circles shrink to fit narrow phones and large text. */}
+        <ol className="mt-4 grid grid-cols-7 gap-1 border-t border-line pt-4" aria-label="Days">
           {recap.missions.days.map((d) => {
             const st = STATUS[d.status] || STATUS.missed;
             return (
-              <li key={d.dateKey} className="flex flex-col items-center gap-1">
-                <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${d.status === 'kept' ? 'bg-flame text-on-fill' : 'bg-surface-3 text-ink-3'}`} aria-label={`${dayName(d.dateKey)}: ${st.label}`}>{d.status === 'kept' ? '✓' : '–'}</span>
+              <li key={d.dateKey} className="flex min-w-0 flex-col items-center gap-1">
+                <span className={`flex aspect-square w-full max-w-8 items-center justify-center rounded-full text-xs font-bold ${d.status === 'kept' ? 'bg-flame text-on-fill' : 'bg-surface-3 text-ink-3'}`} aria-label={`${dayName(d.dateKey)}: ${st.label}`}>{d.status === 'kept' ? '✓' : '–'}</span>
                 <span className="text-[10px] font-semibold text-ink-3">{dayName(d.dateKey)}</span>
               </li>
             );
