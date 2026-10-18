@@ -72,7 +72,7 @@ signs a build people run**, with package `com.vittova.app`:
 
 | Build | Signing certificate (SHA-1) |
 |---|---|
-| Installed from Google Play | the Play **app signing** key (Play Console → App integrity) |
+| Installed from Google Play | the Play **app signing** key `E7:90:69:CA:B5:17:BD:E6:06:4C:DB:71:E1:77:B7:F5:82:69:2A:B0` (Play Console → App integrity; registered 18 Oct 2026 after Play-installed copies showed "Google sign-in isn't available"). Play's hybrid signing certificates `B0:18:FC:18:2E:A6:FA:73:F0:9E:8F:C3:B5:ED:2E:E0:73:3D:99:BD` and `D8:E7:82:0F:5F:96:E3:10:12:4D:9D:EF:62:33:55:B4:4A:02:D4:83` should be registered too |
 | Sideloaded release APK / AAB test | the **upload** key `3B:AE:EA:F4:06:E1:17:8C:2A:8B:81:C5:8B:75:39:8A:39:7F:8D:46` |
 | Debug build | that computer's debug keystore |
 

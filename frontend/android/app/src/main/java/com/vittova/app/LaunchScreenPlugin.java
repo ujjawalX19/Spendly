@@ -18,6 +18,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.lang.ref.WeakReference;
+
 /**
  * LaunchScreen — a seamless hand-off from Android's launch screen to the app.
  *
@@ -56,11 +58,12 @@ public class LaunchScreenPlugin extends Plugin {
     private static volatile boolean gone;
     private static volatile PluginCall waitingForGone;
     private static volatile long startedAt;
-    private static volatile Activity activity;
+    /** Weak: a static field must not keep a finished activity (and its views) alive. */
+    private static volatile WeakReference<Activity> activity = new WeakReference<>(null);
 
     /** Hold the launch screen until ready() (or MAX_HOLD_MS), then fade it out. */
     static void install(Activity host, SplashScreen splash) {
-        activity = host;
+        activity = new WeakReference<>(host);
         webReady = false;
         gone = false;
         waitingForGone = null;
@@ -87,8 +90,8 @@ public class LaunchScreenPlugin extends Plugin {
     }
 
     private static void redraw() {
-        Activity a = activity;
-        if (a == null) return;
+        Activity a = activity.get();
+        if (a == null || a.isFinishing()) return;
         a.runOnUiThread(() -> {
             View content = a.findViewById(android.R.id.content);
             if (content != null) content.invalidate();

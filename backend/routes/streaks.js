@@ -64,7 +64,7 @@ router.get('/', protect, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Streak Error:', error);
+        console.error('Streak Error:', error?.code || error?.message || 'Error');
         res.status(500).json({ success: false, message: 'Failed to load streak data' });
     }
 });
@@ -109,7 +109,7 @@ router.post('/check-in', protect, async (req, res) => {
 
         res.json({ success: true, message: 'Activity recorded!', activity });
     } catch (error) {
-        console.error('Streak check-in error:', error);
+        console.error('Streak check-in error:', error?.code || error?.message || 'Error');
         res.status(500).json({ success: false, message: 'Failed to record activity' });
     }
 });
@@ -172,7 +172,7 @@ router.post('/freeze', protect, async (req, res) => {
             freezesRemaining: updated[0].streak_freezes_remaining,
         });
     } catch (error) {
-        console.error('Streak freeze error:', error);
+        console.error('Streak freeze error:', error?.code || error?.message || 'Error');
         res.status(500).json({ success: false, message: 'Failed to use streak freeze' });
     }
 });
