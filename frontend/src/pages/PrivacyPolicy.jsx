@@ -24,7 +24,7 @@ export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-bg px-6 py-12 text-ink-soft">
       <div className="mx-auto max-w-3xl">
-        <Link to="/" className="text-sm text-zinc-500 hover:text-zinc-300">← Vittova</Link>
+        <Link to="/" className="-ml-2 inline-flex min-h-[44px] items-center px-2 text-sm text-ink-3 hover:text-ink-2">← Vittova</Link>
         <h1 className="mt-6 text-3xl font-black text-white">Privacy Policy</h1>
         <p className="mt-2 text-sm text-zinc-500">Last updated: {POLICY_LAST_UPDATED}</p>
 

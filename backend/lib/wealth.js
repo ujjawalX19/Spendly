@@ -47,7 +47,9 @@ function computeWealth({ profile = {}, expenses = [], bills = [], now = new Date
     // The same bills-still-due rule as Safe-to-Spend (lib/safeToSpend): a bill
     // due today is still to pay. This used `> day`, so on a bill's due day the
     // Wealth screen showed more left than the dashboard.
-    const sts = computeSafeToSpend({ monthlyBudget: budget, totalSpent: current.spent, bills, investmentTarget: target, now });
+    const monthStart = appTime.startOfMonth(now).getTime();
+    const thisMonth = expenses.filter((e) => t(e) >= monthStart);
+    const sts = computeSafeToSpend({ monthlyBudget: budget, totalSpent: current.spent, bills, investmentTarget: target, now, expenses: thisMonth });
     const upcomingBills = sts.upcomingBills;
     const left = budget - current.spent - upcomingBills - target;
 

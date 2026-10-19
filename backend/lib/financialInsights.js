@@ -155,7 +155,7 @@ function buildFacts({ profile = {}, expenses = [], bills = [], groupPool = null,
     const spentLastSoFar = sum(lastMonthSoFar);
 
     // The dashboard's Safe-to-Spend, exactly (lib/safeToSpend).
-    const sts = computeSafeToSpend({ monthlyBudget: budget, totalSpent: spent, bills, investmentTarget: target, now });
+    const sts = computeSafeToSpend({ monthlyBudget: budget, totalSpent: spent, bills, investmentTarget: target, now, expenses: thisMonth });
     const leftAfterCommitments = budget - spent - sts.upcomingBills - target;
 
     const projected = day > 0 ? (spent / day) * daysInMonth : spent;

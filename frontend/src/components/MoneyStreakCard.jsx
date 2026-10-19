@@ -69,7 +69,7 @@ export function StreakSheet({ streak, onClose, onChanged }) {
             <h2 id="streak-title" className="flex items-center gap-2 text-2xl font-bold text-ink">{streak.current} day{streak.current === 1 ? '' : 's'} <Flame className="h-5 w-5 text-flame" aria-hidden="true" /></h2>
             {streak.longest > streak.current && <p className="text-xs text-ink-3">Best: {streak.longest} days</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-xl bg-zinc-800 p-2 text-zinc-400"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2"><X className="h-4 w-4" /></button>
         </div>
 
         <WeekDots week={streak.week} size="lg" />
@@ -116,7 +116,7 @@ export function StreakSheet({ streak, onClose, onChanged }) {
         </section>
 
         <details className="mt-2 px-1 py-2 text-xs text-ink-2">
-          <summary className="cursor-pointer list-none font-semibold text-zinc-300">How XP works</summary>
+          <summary className="flex min-h-[44px] cursor-pointer list-none items-center font-semibold text-ink-2">How XP works</summary>
           <ul className="mt-2 space-y-1">
             <li>Log an expense: +{streak.rules.expenseLogged} XP (up to {streak.rules.expenseLoggedDailyCap} a day)</li>
             <li>Complete the daily mission: +{streak.rules.dailyMission} XP</li>

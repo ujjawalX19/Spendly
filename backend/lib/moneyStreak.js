@@ -134,13 +134,16 @@ function evaluateDay({ dateKey, expenses, noSpendDays, profile, bills }) {
     const monthStart = appTime.startOfMonth(new Date(start + 12 * 3600 * 1000)).getTime();
     const t = (e) => new Date(e.occurred_at).getTime();
 
-    const spentBefore = expenses.filter((e) => t(e) >= monthStart && t(e) < start).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const before = expenses.filter((e) => t(e) >= monthStart && t(e) < start);
+    const spentBefore = before.reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const limit = computeSafeToSpend({
         monthlyBudget: effectiveMonthlyBudget(profile),
         totalSpent: spentBefore,
         bills,
         investmentTarget: Number(profile?.investment_target) || 0,
         now: new Date(start + 12 * 3600 * 1000),
+        // Only payments before the day: the same ones counted in spentBefore.
+        expenses: before,
     }).daily;
 
     const rows = expenses.filter((e) => t(e) >= start && t(e) < end);

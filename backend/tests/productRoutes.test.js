@@ -220,3 +220,17 @@ test('expense search, filters and sort are applied server-side', async () => {
     assert.equal(patched.status, 200);
     assert.equal(patched.body.expense.amount, 499);
 });
+
+test('editing an expense date: a real calendar date is kept as that IST day; impossible dates are refused', async () => {
+    const u = t.db.addUser();
+    const row = addExpense(u.id, { description: 'Groceries', amount: 300, category: 'Food', occurred_at: daysAgo(1) });
+    const ok = await t.request('PATCH', `/api/expenses/${row.id}`, { token: u.token, body: { occurred_at: '2026-02-28' } });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.expense.occurred_at, '2026-02-28T06:30:00.000Z', 'noon IST on the chosen day');
+    // Previously these were silently moved to another day (Feb 31 → 3 March).
+    for (const bad of ['2026-02-31', '2026-13-01', '2026-00-10', '2026-04-31', '2025-02-29']) {
+        const r = await t.request('PATCH', `/api/expenses/${row.id}`, { token: u.token, body: { occurred_at: bad } });
+        assert.equal(r.status, 400, bad);
+    }
+    assert.equal((await t.request('PATCH', `/api/expenses/${row.id}`, { token: u.token, body: { occurred_at: '2024-02-29' } })).status, 200, 'a real leap day');
+});

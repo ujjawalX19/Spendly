@@ -391,7 +391,10 @@ router.patch('/:id', protect, async (req, res) => {
         const when = updates.occurred_at.length === 10
             ? appTime.zonedTimeToUtc(...updates.occurred_at.split('-').map(Number), 12, 0, 0)
             : new Date(updates.occurred_at);
-        if (Number.isNaN(new Date(when).getTime())) {
+        // A date-only value must be a real calendar day: Date maths would
+        // otherwise move "2026-02-31" to 3 March without saying so.
+        if (Number.isNaN(new Date(when).getTime())
+            || (updates.occurred_at.length === 10 && appTime.localDateKey(new Date(when)) !== updates.occurred_at)) {
             return res.status(400).json({ success: false, message: 'Invalid date' });
         }
         if (new Date(when) > new Date(Date.now() + 24 * 60 * 60 * 1000)) {
