@@ -9,8 +9,9 @@ Tick each box yourself. Items marked ✅ were verified in the 19 Oct audit (see 
 - ✅ Emulator launch, no crash
 
 ## Before uploading
+- [ ] **Launch blocker (22 Oct audit A1):** Google sign-in fails on Android (`native_oauth_client_mismatch`). In Google Cloud project Spendly, check Android clients 1–3 for the upload-key SHA-1 `3B:AE:EA:F4:…:8D:46`; if it's registered in another project, move it to Spendly; add Play's hybrid certificate SHA-1s (see PRODUCTION_AUDIT.md §A1)
 - [ ] Confirm which version is live on Play (Play Console → Releases overview)
-- [ ] On the Play-installed copy: **Continue with Google** works
+- [ ] On a Play-installed copy (testing track): **Continue with Google** works
 - [ ] Data safety, Financial features, App access and SMS permission declarations show as approved in Play Console
 - [ ] Decide on the backend deploy (recommended, see below)
 

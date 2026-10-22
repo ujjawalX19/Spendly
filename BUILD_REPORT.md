@@ -30,3 +30,10 @@ Contents checked: permissions identical to vc29–vc31 (INTERNET, RECEIVE_SMS, R
 Emulator (Pixel 7 AVD): installed, cold start 4.8 s, no crash or fatal exception, sign-in screen correct, correct at 1.3× font scale.
 
 `release-final/vc31/` is superseded by vc32 (same source plus the audit fixes). Upload vc32 only.
+
+## Re-check, 22 Oct 2026
+
+- `sha256sum -c SHA256SUMS.txt` in `release-final/vc32/`: AAB OK, APK OK (artifacts unchanged).
+- Release branch now `7354f13`: after `6a8e9ff` only documentation and a lockfile patch (Vite 7.3.7, follow-redirects 1.16.1). The app's web bundle rebuilt with the patch is **byte-identical** to the 90 web files inside the vc32 AAB, so vc32 corresponds to the current source; no rebuild needed.
+- Clean install + tests at `7354f13`: backend 465/465, database 97/97, frontend 163/163, lint 0, `build:web` exit 0, production `npm audit` 0 (backend and frontend).
+- Android build and JUnit not re-run today (no Android or app-code change since 19 Oct).
