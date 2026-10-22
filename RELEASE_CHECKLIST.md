@@ -10,7 +10,7 @@ Tick each box yourself. Items marked ✅ were verified in the 19 Oct audit (see 
 
 ## Before uploading
 - [x] **A1 root cause fixed 22 Oct:** the Play-signing Android client had package `com.vittova.in`; it is now corrected to `com.vittova.app`.
-- [ ] **A1 verification (BLOCKED, needs a phone):** on a Play-installed copy, tap Continue with Google and confirm it signs in. Then fix Android client 2's package to `com.vittova.app` as well.
+- [x] **A1 verified 22 Oct:** the owner reported that Continue with Google works on the phone; Android client 2 package corrected to `com.vittova.app`.
 - [ ] ~~Launch blocker (22 Oct audit A1):~~ (superseded) Google sign-in fails on Android (`native_oauth_client_mismatch`). In Google Cloud project Spendly, check Android clients 1–3 for the upload-key SHA-1 `3B:AE:EA:F4:…:8D:46`; if it's registered in another project, move it to Spendly; add Play's hybrid certificate SHA-1s (see PRODUCTION_AUDIT.md §A1)
 - [ ] Confirm which version is live on Play (Play Console → Releases overview)
 - [ ] On a Play-installed copy (testing track): **Continue with Google** works
