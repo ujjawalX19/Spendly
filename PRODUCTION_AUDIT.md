@@ -1,6 +1,21 @@
 # Vittova — pre-launch production audit and live-system verification (22 Oct 2026)
 
-**Decision: NO-GO** — one authentication blocker: Google sign-in fails on Android copies in circulation (evidence below). It becomes **CONDITIONAL GO** as soon as a Play-installed copy signs in with Google (and the backend deploy is decided). Everything else checked is either healthy or minor.
+**Decision (updated 22 Oct, after the Google Cloud fix): CONDITIONAL GO.** The Google sign-in cause was found and corrected (§A1 update). Before launch, the fix still has to be proven by a successful **Continue with Google** on a Play-installed copy. That test is **BLOCKED** until someone runs it on a phone. The backend deploy also still has to be decided. Everything else checked is either healthy or minor.
+
+### A1 update — root cause and fix (22 Oct)
+
+The Android OAuth clients in project Spendly (`spendly-505616`), inspected in the Cloud console:
+
+| Client | Package | SHA-1 | Verdict |
+|---|---|---|---|
+| Vittova Android (Play signing), `-479m…` | **`com.vittova.in`** → changed to `com.vittova.app` | `E7:90:…:2A:B0` (Play app-signing) | **Root cause.** The package was wrong, so every Play-installed copy was refused. Fixed and saved; the change was confirmed after a reload |
+| Android client 3, `-m0us…` | `com.vittova.app` | `3B:AE:…:8D:46` (upload key) | Correct (this is why "already in use" appeared on 18 Oct) |
+| Android client 1, `-iri9…` | `com.vittova.app` | `B0:18:…:99:BD` (Play hybrid, classical) | Correct |
+| Android client 2, `-jp8f…` | **`com.vittova.in`** | `D8:E7:…:02:D4:83` (Play hybrid, pqc) | Same typo, **not fixed yet** (my edit was blocked by a permission check). Owner: change the package to `com.vittova.app`. Low impact |
+
+- **No code or build change was needed.** vc32 stays unchanged.
+- Google says a change can take five minutes to a few hours to take effect.
+- Failures logged on the upload-key build 1.1.1 are **not** explained by this fix, because the upload-key client was already correct. Retest a sideloaded APK too. If it still fails, collect the device's Google Play services error code.
 
 Previous report (19 Oct, vc32 build audit) is superseded by this one; its findings are carried forward below. Companion reports: SECURITY_AUDIT.md, DATA_INTEGRITY_AUDIT.md, BUILD_REPORT.md, REGRESSION_TEST_REPORT.md, RELEASE_CHECKLIST.md, ROLLBACK_PLAN.md.
 
