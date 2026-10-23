@@ -105,22 +105,17 @@ async function readSubscription(purchaseToken) {
     }
 }
 
-/** Set profiles.is_pro / pro_expires_at from the user's Play entitlements. Manual grants are left alone. */
+/**
+ * Set profiles.is_pro / pro_expires_at from every paid source (Play and
+ * Razorpay), so a Play cancellation never removes a paid Razorpay pass.
+ * Manual grants are left alone. See lib/proEntitlement.js.
+ */
 async function recomputeProfile(userId, now = new Date()) {
-    const [{ data: profile, error: pErr }, { data: rows, error: rErr }] = await Promise.all([
-        supabase.from('profiles').select('is_pro, pro_expires_at, pro_source').eq('id', userId).maybeSingle(),
-        supabase.from('play_purchases').select('entitled, expires_at').eq('user_id', userId).eq('entitled', true),
-    ]);
-    if (pErr || rErr) throw new BillingError('DB_UNAVAILABLE', 503, 'Could not update your Pro status.');
-    if (!profile || profile.pro_source === 'manual') return;
-
-    const active = (rows || []).map((r) => Date.parse(r.expires_at)).filter((t) => Number.isFinite(t) && t > now.getTime());
-    const update = active.length
-        ? { is_pro: true, pro_expires_at: new Date(Math.max(...active)).toISOString(), pro_source: 'play' }
-        : { is_pro: false, pro_source: profile.pro_source === 'play' ? 'play' : null };
-    if (!active.length && profile.pro_source !== 'play') return; // never touched by billing
-    const { error } = await supabase.from('profiles').update(update).eq('id', userId);
-    if (error) throw new BillingError('DB_UNAVAILABLE', 503, 'Could not update your Pro status.');
+    try {
+        await require('./proEntitlement').recomputePro(userId, now);
+    } catch {
+        throw new BillingError('DB_UNAVAILABLE', 503, 'Could not update your Pro status.');
+    }
 }
 
 async function saveRow(userId, token, result, now) {

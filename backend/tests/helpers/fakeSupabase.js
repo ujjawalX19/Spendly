@@ -21,6 +21,7 @@ const UNIQUE_KEYS = {
     money_streak_days: ['user_id', 'day'],
     money_xp_ledger: ['user_id', 'reason', 'ref_key'],
     play_purchases: ['token_hash'],
+    razorpay_payments: ['order_id'],
     recurring_decisions: ['user_id', 'merchant_key'],
     recurring_expectations: ['user_id', 'merchant_key', 'expected_date'],
     challenge_enrollments: ['user_id', 'campaign_id'],
@@ -43,7 +44,7 @@ const CASCADE = [
     ['paisa_scores', 'user_id'], ['pdf_imports', 'user_id'], ['ai_chat_history', 'user_id'],
     ['group_members', 'user_id'], ['groups', 'created_by'],
     ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['play_purchases', 'user_id'],
-    ['recurring_decisions', 'user_id'], ['recurring_expectations', 'user_id'],
+    ['razorpay_payments', 'user_id'], ['recurring_decisions', 'user_id'], ['recurring_expectations', 'user_id'],
     ['challenge_enrollments', 'user_id'], ['money_challenges', 'user_id'], ['user_badges', 'user_id'],
     ['campaign_members', 'user_id'], ['guardian_consents', 'user_id'], ['profiles', 'id'],
 ];

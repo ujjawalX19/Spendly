@@ -132,6 +132,7 @@ const CURRENT = [
     'v1_11_save_to_earn.sql',
     'v1_12_age_awareness.sql',
     'v1_13_notification_expenses.sql',
+    'v1_15_razorpay_passes.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -486,6 +487,53 @@ test('v1_8 Google Play purchases (app v1.1)', async (t) => {
     });
 
     await t.test('verify_production.sql reports only PASS with v1_8 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+        assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_15 Razorpay Pro passes', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_15_razorpay_passes.sql'));
+    });
+
+    await t.test('an order is created, then paid once with a period; a payment id belongs to one order', async () => {
+        assert.ok((await svc(`insert into public.razorpay_payments (order_id, user_id, plan, amount_paise) values ('order_AAAAAAAAAAAAAA', '${USERS.alice}', 'yearly', 44900)`)).ok);
+        const paidWithoutPeriod = await svc(`update public.razorpay_payments set status = 'paid', payment_id = 'pay_BBBBBBBBBBBBBB' where order_id = 'order_AAAAAAAAAAAAAA'`);
+        assert.ok(!paidWithoutPeriod.ok && /check constraint/i.test(paidWithoutPeriod.error));
+        const paid = await svc(`update public.razorpay_payments set status = 'paid', payment_id = 'pay_BBBBBBBBBBBBBB', period_start = now(), period_end = now() + interval '365 days', paid_at = now() where order_id = 'order_AAAAAAAAAAAAAA'`);
+        assert.ok(paid.ok, paid.error);
+        assert.ok((await svc(`insert into public.razorpay_payments (order_id, user_id, plan, amount_paise) values ('order_CCCCCCCCCCCCCC', '${USERS.carol}', 'monthly', 4900)`)).ok);
+        const reused = await svc(`update public.razorpay_payments set status = 'paid', payment_id = 'pay_BBBBBBBBBBBBBB', period_start = now(), period_end = now() + interval '30 days' where order_id = 'order_CCCCCCCCCCCCCC'`);
+        assert.ok(!reused.ok && /duplicate key/i.test(reused.error));
+        const badPlan = await svc(`insert into public.razorpay_payments (order_id, user_id, plan, amount_paise) values ('order_DDDDDDDDDDDDDD', '${USERS.carol}', 'lifetime', 1)`);
+        assert.ok(!badPlan.ok && /check constraint/i.test(badPlan.error));
+        assert.ok((await svc(`update public.profiles set pro_source = 'razorpay' where id = '${USERS.alice}'`)).ok);
+    });
+
+    await t.test('clients can neither read nor write passes', async () => {
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.alice, 'select * from public.razorpay_payments')), `${role} select`);
+            assert.ok(denied(await as(db, role, USERS.carol, `insert into public.razorpay_payments (order_id, user_id, plan, amount_paise) values ('order_EEEEEEEEEEEEEE', '${USERS.carol}', 'yearly', 1)`)), `${role} insert`);
+            assert.ok(denied(await as(db, role, USERS.carol, `update public.razorpay_payments set status = 'paid'`)), `${role} update`);
+            assert.ok(denied(await as(db, role, USERS.carol, `update public.profiles set pro_source = 'razorpay' where id = '${USERS.carol}'`)), `${role} pro_source`);
+        }
+    });
+
+    await t.test('deleting the account removes its pass records', async () => {
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        const r = await db.query(`select count(*)::int as n from public.razorpay_payments where user_id = '${USERS.alice}'`);
+        assert.equal(r.rows[0].n, 0);
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_15 applied', async () => {
         await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
         const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
         assert.deepEqual(r.rows.filter((row) => row.result !== 'PASS'), []);

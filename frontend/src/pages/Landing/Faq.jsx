@@ -24,12 +24,12 @@ const QUESTIONS = [
     a: 'No. Vittova offers general financial education. It does not recommend any security, fund, broker or platform, and it is not a SEBI-registered investment adviser. Illustrations use assumed rates and are not predictions.',
   },
   {
-    q: 'How will Pro be billed, and can I buy it on this website?',
-    a: 'Pro will be sold only through Google Play in the Vittova Android app, billed to your Google account. It cannot be bought on this website. Google Play shows the price and renewal terms before you pay.',
+    q: 'How is Pro billed, and can I buy it on this website?',
+    a: 'Yes. On this website, Pro is a pass: one payment of ₹49 for 30 days or ₹449 for a year, paid through Razorpay with UPI, a card or net banking. It never renews. In the Vittova app from Google Play, Pro is a Google Play subscription instead.',
   },
   {
     q: 'How do I cancel Pro or get a refund?',
-    a: "You cancel in Google Play → Payments & subscriptions, and Pro stays on until the end of the period you paid for. Refunds are handled under Google Play's refund policies.",
+    a: "A pass doesn't renew, so there is nothing to cancel. If you were charged but Pro didn't turn on, or were charged twice, write to support@vittova.in within 7 days for a refund. Google Play subscriptions are cancelled in Google Play → Payments & subscriptions, and refunds follow Google Play's policies.",
   },
   {
     q: 'Can I export or delete my data?',

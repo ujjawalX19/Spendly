@@ -43,7 +43,11 @@ function createApp() {
 
     // Small default body limit. The receipt scan route raises its own limit
     // for the image; everything else is small JSON.
-    const smallJson = express.json({ limit: '100kb' });
+    // The Razorpay webhook signs the exact bytes it sent, so keep them.
+    const smallJson = express.json({
+        limit: '100kb',
+        verify: (req, res, buf) => { if (req.originalUrl === '/api/pro/razorpay/webhook') req.rawBody = buf; },
+    });
     const receiptJson = express.json({ limit: '8mb' });
     app.use((req, res, next) => (
         req.method === 'POST' && req.path === '/api/expenses/scan' ? receiptJson : smallJson

@@ -1,7 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { Capacitor } from '@capacitor/core';
 import { API_URL } from '../lib/apiConfig';
-import { isAndroidApp, restorePurchases } from '../lib/billing';
+import { restorePurchases } from '../lib/billing';
+import { paymentChannel } from '../lib/distribution';
+
+// How Pro is bought in this build: Google Play (Play build), Razorpay (website
+// and Indus build), or not here.
+const CHANNEL = paymentChannel({ native: Capacitor.isNativePlatform(), platform: Capacitor.getPlatform() });
 
 const ProContext = createContext();
 
@@ -61,7 +67,9 @@ export function ProProvider({ children }) {
       if (data.success) {
         setProStatus(data.pro);
         setLimits(data.limits);
-        setPurchasesAvailable(data.purchasesAvailable === true);
+        // "Can Pro be bought here?" depends on this build's channel.
+        setPurchasesAvailable(CHANNEL === 'play' ? data.purchasesAvailable === true
+          : CHANNEL === 'razorpay' ? data.razorpayAvailable === true : false);
       }
     } catch {
       // Keep showing free-plan defaults; the API still enforces real limits.
@@ -79,7 +87,7 @@ export function ProProvider({ children }) {
   const [synced, setSynced] = useState(null);
   useEffect(() => {
     const userId = session?.user?.id;
-    if (!purchasesAvailable || !userId || synced === userId || !isAndroidApp()) return;
+    if (!purchasesAvailable || !userId || synced === userId || CHANNEL !== 'play') return;
     setSynced(userId);
     restorePurchases(session).then((outcome) => { if (outcome !== 'none') fetchProStatus(); }).catch(() => {});
   }, [purchasesAvailable, session, synced, fetchProStatus]);
@@ -126,6 +134,7 @@ export function ProProvider({ children }) {
       limits,
       loading,
       purchasesAvailable,
+      paymentChannel: CHANNEL,
       features,
       canUse,
       getRemaining,

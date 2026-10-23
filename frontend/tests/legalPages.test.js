@@ -99,7 +99,11 @@ test('key commitments are word-for-word the same in both copies', () => {
       'Deleting your Vittova account does not cancel a Google Play subscription.',
       'it is not money, cannot be withdrawn and has no cash value.',
       'You must be 18 or over to create or use a Vittova account.',
-      'Subscriptions renew automatically at the end of each billing period until you cancel.',
+      'Google Play subscriptions renew automatically at the end of each billing period until you cancel.',
+      // Razorpay passes: what razorpayBilling.js does (fixed periods, no renewal, stacking).
+      'one payment of ₹49 for 30 days or ₹449 for 1 year (prices include all taxes), processed by Razorpay.',
+      'A pass does not renew and nothing is charged again unless you buy another; a new pass starts when your current one ends.',
+      'If a pass payment is refunded or reversed, that pass ends.',
       'To the extent permitted by applicable law, we are not liable for any financial losses',
       'These terms are governed by the laws of India.',
     ],

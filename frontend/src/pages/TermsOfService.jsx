@@ -40,13 +40,19 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">4. Vittova Pro</h2>
           <p>
-            Vittova Pro is an optional paid subscription. It may not be available to buy in your app yet; while it is not, no subscription or payment is taken.
+            Vittova Pro is optional and paid. It may not be available to buy where you use Vittova yet; while it is not, no subscription or payment is taken.
           </p>
           <p className="mt-2">
-            When Pro is offered, it is sold only through Google Play in the Vittova Android app and is billed by Google Play to your Google account. Before you buy, Google Play shows the plan, its price, how often you are billed and, for an introductory or limited-time offer, the offer price, how long it lasts and the price it renews at. Offer eligibility is decided by Google Play. A student plan is not currently offered.
+            <strong>In the Vittova app from Google Play,</strong> Pro is a subscription billed by Google Play to your Google account. Before you buy, Google Play shows the plan, its price, how often you are billed and, for an introductory or limited-time offer, the offer price, how long it lasts and the price it renews at. Offer eligibility is decided by Google Play. A student plan is not currently offered.
           </p>
           <p className="mt-2">
-            Subscriptions renew automatically at the end of each billing period until you cancel. You can cancel at any time in Google Play → Payments &amp; subscriptions; Pro then stays on until the end of the period you have already paid for. Refunds are handled under Google Play's refund policies. If a payment is refunded or reversed, Pro ends.
+            Google Play subscriptions renew automatically at the end of each billing period until you cancel. You can cancel at any time in Google Play → Payments &amp; subscriptions; Pro then stays on until the end of the period you have already paid for. Refunds are handled under Google Play's refund policies. If a payment is refunded or reversed, Pro ends.
+          </p>
+          <p className="mt-2">
+            <strong>On vittova.in and in the Vittova app from the Indus Appstore,</strong> Pro is a pass: one payment of ₹49 for 30 days or ₹449 for 1 year (prices include all taxes), processed by Razorpay. A pass does not renew and nothing is charged again unless you buy another; a new pass starts when your current one ends. Vittova never receives your card, UPI or bank details.
+          </p>
+          <p className="mt-2">
+            Refunds for passes: if you were charged but Pro did not turn on, or you were charged twice, write to support@vittova.in within 7 days and we will refund the payment to its original method (Razorpay usually takes 5–7 working days). Otherwise passes are not refundable once Pro is active. If a pass payment is refunded or reversed, that pass ends.
           </p>
           <p className="mt-2">
             Deleting your Vittova account does not cancel a Google Play subscription. Cancel it in Google Play first to stop future charges.
