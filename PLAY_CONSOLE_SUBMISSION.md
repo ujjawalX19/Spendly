@@ -71,6 +71,8 @@ Do not claim: "bank-grade", "SEBI compliant", "reads your bank account",
 ### 3.2 App access
 **All or some functionality is restricted** → add instructions.
 
+> **Superseded 23 Oct 2026.** The block below led reviewers only to Notification Access, never to the declared bank-SMS feature, and contributed to the rejection (PLAY_REJECTION_ROOT_CAUSE.md). Use the instructions in **REVIEW_CREDENTIALS_SETUP.md** instead.
+
 Create a dedicated reviewer account yourself (email + password, confirm the
 email), give it a budget and a few expenses, and enter:
 

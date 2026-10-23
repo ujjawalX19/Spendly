@@ -71,6 +71,30 @@ final class SmsIntake {
         return payment;
     }
 
+    /**
+     * Built-in example messages for "See how it works": what a user (or a Play
+     * reviewer without an Indian bank account) sees the real rules do, without
+     * reading any SMS or needing the permission. {sender, body} pairs.
+     */
+    static final String[][] SAMPLES = {
+        { "VM-HDFCBK", "Sent Rs.250.00\nFrom HDFC Bank A/C *1234\nTo SWIGGY\nOn 29/09/26\nRef 412345678901\nNot You? Call 18002586161/SMS BLOCK UPI to 7308080808" },
+        { "AX-SBIUPI", "Dear UPI user A/C X1234 debited by 120.0 on date 29Sep26 trf to TEA STALL Refno 512345678901. If not u? call 1800111109. -SBI" },
+        { "VM-ICICIB", "123456 is the OTP for your transaction of INR 999.00 at AMAZON. Valid for 5 mins. Do not share it with anyone. -ICICI Bank" },
+        { "+919876543210", "Hey, I paid Rs.500 for dinner, send me your share" },
+    };
+
+    /**
+     * What {@link #process} would decide for a message, without queuing
+     * anything: "debit" (amount, payee, bank filled in), "skipped" (read, not a
+     * completed debit) or "not_read" (a person: the text is never read).
+     */
+    static String[] preview(String sender, String body, long sentAtMs) {
+        if (!SmsSources.isBusinessSender(sender)) return new String[] { "not_read", "", "", "" };
+        PaymentNotificationParser.Result r = PaymentNotificationParser.parseSms(sender, body, sentAtMs);
+        if (r.kind != PaymentNotificationParser.Kind.EXPENSE) return new String[] { "skipped", "", "", "" };
+        return new String[] { "debit", String.valueOf(r.amount), r.merchant, SmsSources.bankName(sender) };
+    }
+
     static boolean smsGranted(Context context) {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
             && ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED;

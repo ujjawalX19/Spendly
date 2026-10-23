@@ -482,9 +482,14 @@ export default function Settings() {
             }} />
           {/* Bank SMS: the main source (payment apps rarely announce a payment). */}
           {tracking.smsGranted ? (
-            <ToggleRow icon={MessageSquareText} label="Bank SMS"
-              detail="Debit alerts from banks and cards. Messages from people are never read."
-              on={tracking.smsEnabled} onToggle={() => tracking.setSmsEnabled(!tracking.smsEnabled)} />
+            <>
+              <ToggleRow icon={MessageSquareText} label="Bank SMS"
+                detail="Debit alerts from banks and cards. Messages from people are never read."
+                on={tracking.smsEnabled} onToggle={() => tracking.setSmsEnabled(!tracking.smsEnabled)} />
+              <SettingRow icon={MessageSquareText} label="How bank SMS tracking works"
+                value="What is read and kept, with sample messages"
+                onClick={() => setShowSmsSheet(true)} />
+            </>
           ) : (
             <SettingRow icon={MessageSquareText} label="Allow bank SMS"
               value={tracking.smsPermission === 'denied' ? 'Allowed only in App info → Permissions → SMS' : 'Debit alerts from banks. Never messages from people.'}

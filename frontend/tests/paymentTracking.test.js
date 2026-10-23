@@ -231,3 +231,13 @@ test('the daily free limit pauses uploads without dropping anything', async () =
   assert.equal(r.stoppedBy, 'stop');
   assert.equal(w.queue.length, 2);
 });
+
+// ── "See how it works" sample labels ────────────────────────────────────────
+
+test('sample preview labels say what the bank-SMS rules decided', async () => {
+  const { sampleOutcomeLabel } = await import('../src/lib/paymentTracking.js');
+  assert.equal(sampleOutcomeLabel({ outcome: 'debit', amount: 250, payee: 'SWIGGY', bank: 'HDFC Bank' }), 'Would be added: ₹250 to SWIGGY (HDFC Bank)');
+  assert.equal(sampleOutcomeLabel({ outcome: 'debit', amount: 1250.5, payee: 'X', bank: 'SBI' }), 'Would be added: ₹1,250.5 to X (SBI)');
+  assert.equal(sampleOutcomeLabel({ outcome: 'skipped' }), 'Skipped: not a completed payment');
+  assert.equal(sampleOutcomeLabel({ outcome: 'not_read' }), 'From a person: never read');
+});

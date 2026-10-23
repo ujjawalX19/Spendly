@@ -28,6 +28,8 @@ import { registerPlugin } from '@capacitor/core';
  *   openAppSettings()                    opens Vittova's App info (restricted settings, battery)
  *   checkPermission() / getAccessInfo()  older names: -> { granted, ... }
  *   addListener('paymentDetected', cb)   a payment was just captured while the app is open
+ *   previewSampleSms()                   -> { samples: [{ sender, body, outcome: 'debit'|'skipped'|'not_read', amount?, payee?, bank? }] }
+ *                                        built-in examples through the real rules; reads no SMS, saves nothing
  *
  * TrackedPayment: { id (32 hex, also the upload's client_ref), kind: 'EXPENSE', amount,
  *                   merchant, app, timestamp, status: 'PENDING_SYNC'|'NEEDS_REVIEW',
