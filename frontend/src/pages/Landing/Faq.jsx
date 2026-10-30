@@ -24,8 +24,8 @@ const QUESTIONS = [
     a: 'No. Vittova offers general financial education. It does not recommend any security, fund, broker or platform, and it is not a SEBI-registered investment adviser. Illustrations use assumed rates and are not predictions.',
   },
   {
-    q: 'How will Pro be billed, and can I buy it on this website?',
-    a: 'Pro will be sold only through Google Play in the Vittova Android app, billed to your Google account. It cannot be bought on this website. Google Play shows the price and renewal terms before you pay.',
+    q: 'How is Pro billed, and can I buy it on this website?',
+    a: 'Pro is sold only through Google Play in the Vittova Android app, billed to your Google account. It cannot be bought on this website. Google Play shows the price and renewal terms before you pay.',
   },
   {
     q: 'How do I cancel Pro or get a refund?',

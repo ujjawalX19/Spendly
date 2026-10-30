@@ -20,7 +20,7 @@ export default function HeroSection() {
             <PrimaryCta>Start free</PrimaryCta>
             <PlayStoreCta />
           </div>
-          <p className="l-hero mt-5 text-xs text-ink-3" style={{ animationDelay: '300ms' }}>Free to start · Android and web · Not investment advice · <a href="#how" className="l-link">See how it works</a></p>
+          <p className="l-hero mt-5 text-xs text-ink-3" style={{ animationDelay: '300ms' }}>Free to start · On Google Play and the web · Not investment advice · <a href="#how" className="l-link">See how it works</a></p>
         </div>
         <div className="l-hero-late">
           <HomeMock />

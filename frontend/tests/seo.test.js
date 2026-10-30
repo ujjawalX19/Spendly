@@ -60,7 +60,7 @@ test('homepage metadata: title, canonical, share image and valid structured data
   assert.ok(existsSync(join(here, '..', 'public/og-image.png')));
   assert.ok(existsSync(join(here, '..', 'public/favicon.ico')));
   const ld = JSON.parse(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)[1]);
-  assert.deepEqual(ld['@graph'].map((n) => n['@type']), ['Organization', 'WebSite', 'WebApplication']);
+  assert.deepEqual(ld['@graph'].map((n) => n['@type']), ['Organization', 'WebSite', 'WebApplication', 'MobileApplication']);
   const raw = JSON.stringify(ld);
   assert.doesNotMatch(raw, /aggregateRating|ratingValue|review|"price"|award|users/i, 'no invented claims');
   assert.match(raw, /support@vittova\.in/);

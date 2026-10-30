@@ -8,7 +8,7 @@ export default function TermsOfService() {
   return (
     <div className="mx-auto min-h-screen max-w-2xl bg-bg p-6 pb-28 text-ink">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
-      <p className="text-zinc-400 mb-8">Last updated: 1 October 2026</p>
+      <p className="text-zinc-400 mb-8">Last updated: 31 October 2026</p>
 
       <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
         <section>
@@ -40,10 +40,10 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-lg font-bold text-white mb-2">4. Vittova Pro</h2>
           <p>
-            Vittova Pro is an optional paid subscription. It may not be available to buy in your app yet; while it is not, no subscription or payment is taken.
+            Vittova Pro is an optional paid subscription.
           </p>
           <p className="mt-2">
-            When Pro is offered, it is sold only through Google Play in the Vittova Android app and is billed by Google Play to your Google account. Before you buy, Google Play shows the plan, its price, how often you are billed and, for an introductory or limited-time offer, the offer price, how long it lasts and the price it renews at. Offer eligibility is decided by Google Play. A student plan is not currently offered.
+            Pro is sold only through Google Play in the Vittova Android app and is billed by Google Play to your Google account. Before you buy, Google Play shows the plan, its price, how often you are billed and, for an introductory or limited-time offer, the offer price, how long it lasts and the price it renews at. Offer eligibility is decided by Google Play. A student plan is not currently offered.
           </p>
           <p className="mt-2">
             Subscriptions renew automatically at the end of each billing period until you cancel. You can cancel at any time in Google Play → Payments &amp; subscriptions; Pro then stays on until the end of the period you have already paid for. Refunds are handled under Google Play's refund policies. If a payment is refunded or reversed, Pro ends.

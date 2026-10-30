@@ -1,23 +1,21 @@
 /**
  * Pricing on the homepage: the free plan next to Vittova Pro.
  *
- * Pro is sold only through Google Play in the Android app, and is not on sale
- * to the public yet, so this shows the PLANNED prices
- * (backend/lib/billingPlans.js), labelled as planned, with no buy button. The
- * launch offer shows what it renews at. Keep the Pro list in line with
- * pages/ProUpgrade.jsx, the free limits with backend/middleware/proGate.js, and
- * the prices with Play Console before billing goes live.
+ * Pro is sold only through Google Play in the Android app, so this shows the
+ * prices (backend/lib/billingPlans.js) and links to the listing; nothing is
+ * paid on this website. Keep the Pro list in line with pages/ProUpgrade.jsx, the
+ * free limits with backend/middleware/proGate.js, and the prices with Play
+ * Console.
  */
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PrimaryCta, Reveal, SectionHeading, WRAP } from './shared';
+import { PlayStoreCta, PrimaryCta, Reveal, SectionHeading, WRAP } from './shared';
 
 const PLANS = {
   monthly: { name: 'Monthly', price: '₹49', per: '/month', note: 'Billed every month. Cancel any time.' },
   yearly: { name: 'Yearly', price: '₹449', per: '/year', note: 'About ₹37 a month: ₹139 less than twelve monthly payments.' },
 };
-const OFFER = { price: '₹199', terms: 'for the first year. Then ₹449/year.' };
 
 const FREE = [
   'Expense tracking, budgets and Safe-to-Spend',
@@ -88,16 +86,13 @@ export default function ProSection() {
             <p className="mt-4 flex flex-wrap items-baseline gap-x-2" aria-live="polite">
               <span className="text-4xl font-semibold tracking-[-0.03em] tabular-nums text-ink">{plan.price}</span>
               <span className="text-sm text-ink-2">{plan.per}</span>
-              <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-2">Planned pricing</span>
             </p>
             <p className="mt-2 text-sm text-ink-2">{plan.note}</p>
-            {period === 'yearly' && (
-              <p className="mt-2 text-sm text-ink-2">Launch offer for eligible new subscribers: <span className="font-semibold text-ink">{OFFER.price}</span> {OFFER.terms}</p>
-            )}
             <Includes items={PRO} />
             <p className="mt-8 rounded-xl bg-surface-2 p-4 text-sm leading-relaxed text-ink-soft">
-              <b className="font-semibold text-ink">Coming soon: not available to buy yet.</b> Pro will be sold through Google Play in the Vittova Android app, not on this website. Google Play shows the final price and renewal terms before you pay.
+              <b className="font-semibold text-ink">Available in the Android app.</b> Pro is sold through Google Play in the Vittova Android app, not on this website. Google Play shows the final price and renewal terms before you pay.
             </p>
+            <PlayStoreCta className="mt-4 w-full" />
           </Reveal>
         </div>
 

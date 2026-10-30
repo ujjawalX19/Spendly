@@ -1,8 +1,11 @@
-# Vittova — Google Play listing (draft)
+# Vittova — Google Play listing
 
-Prepared content only. **Nothing has been published.** Every item below needs
-to be entered manually in Play Console. Package: `com.vittova.app`
-(permanent once published; users never see it).
+**Live on Google Play since October 2026:**
+https://play.google.com/store/apps/details?id=com.vittova.app
+
+This is the source draft of the listing; Play Console holds the published text,
+and parts of this draft (screenshots, the note on Pro below) predate launch.
+Package: `com.vittova.app` (permanent; users never see it).
 
 | Field | Value | Limit |
 |---|---|---|
