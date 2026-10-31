@@ -22,6 +22,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(DebitRemindersPlugin.class);
         registerPlugin(LaunchScreenPlugin.class);
         registerPlugin(AppUpdatePlugin.class);
+        registerPlugin(HomeWidgetPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

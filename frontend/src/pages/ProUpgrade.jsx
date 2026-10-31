@@ -20,6 +20,7 @@ import { usePro } from '../contexts/ProContext';
 import { useAuth } from '../contexts/AuthContext';
 import { friendlyError } from '../lib/errors';
 import { track } from '../lib/telemetry';
+import { markStep } from '../lib/homePrefs';
 import { isAndroidApp, loadPlans, subscribe, restorePurchases, MANAGE_SUBSCRIPTIONS_URL, plansFailureCode, plansFailureMessage } from '../lib/billing';
 
 const PLANS_TIMEOUT_MS = 15000;
@@ -33,6 +34,8 @@ const INCLUDES = [
   { title: 'Debit reminders and price-rise alerts', desc: 'The day before an expected debit' },
   { title: 'More Ask Vittova questions', desc: 'Free plan: 10 a day' },
   { title: 'More receipt scans and statement import' },
+  { title: 'Month Calendar', desc: 'Spending, bills and goal dates by day' },
+  { title: 'Split a receipt item by item', desc: 'In your groups' },
   { title: 'Advanced Save-to-Earn challenges', desc: 'Savings sprints, weekend and no-cab challenges, full history' },
   { title: 'Sponsored money challenges', desc: 'Optional, with fixed voucher rewards', sponsored: true },
 ];
@@ -51,7 +54,7 @@ export default function ProUpgrade() {
   const [plans, setPlans] = useState('loading');
   const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => { track('pro_paywall_viewed'); }, []);
+  useEffect(() => { track('pro_paywall_viewed'); markStep('pro'); }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +66,8 @@ export default function ProUpgrade() {
       if (cancelled) return;
       if (!p) { setPlans({ failed: 'off' }); return; }
       setOffer(p);
-      setSelected(p.cards.find((c) => c.key === 'yearly')?.key || p.cards[0]?.key || null);
+      // The launch offer leads when Google Play offers it to this account.
+      setSelected(p.cards.find((c) => c.key === 'limited_yearly')?.key || p.cards.find((c) => c.key === 'yearly')?.key || p.cards[0]?.key || null);
       setPlans('ready');
     }).catch((err) => {
       if (cancelled) return;
@@ -137,7 +141,7 @@ export default function ProUpgrade() {
                     {selected === c.key && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-ink-2">{c.title}</span>
+                    <span className="block text-[13px] font-medium text-ink-2">{c.key === 'limited_yearly' ? 'Launch offer · Yearly' : c.title}</span>
                     <span className="mt-0.5 block font-display text-xl font-bold tabular-nums">{c.price}</span>
                     <span className="mt-0.5 block text-xs text-ink-3">{c.renewal}</span>
                   </span>
@@ -160,6 +164,11 @@ export default function ProUpgrade() {
         {purchasesAvailable && !isPro && !isAndroidApp() && (
           <p className="mb-7 text-sm text-ink-2">Vittova Pro can be bought in the Vittova Android app.</p>
         )}
+
+        <h2 className="v-label mb-2">Always free</h2>
+        <p className="v-block mb-7 p-4 text-sm leading-relaxed text-ink-soft">
+          Expense tracking, budgets, reports, income, CSV export, Safe-to-Spend, groups and your account and data controls.
+        </p>
 
         <h2 className="v-label mb-2">{purchasesAvailable ? 'Pro includes' : 'Planned for Pro'}</h2>
         <ul className="v-block v-rows mb-3 px-4">

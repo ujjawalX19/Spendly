@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Copy, Share2, Plus, Loader2, ArrowRight, LogOut, Check } from 'lucide-react';
+import { ArrowLeft, Copy, Share2, Plus, Loader2, ArrowRight, LogOut, Check, ScanLine } from 'lucide-react';
+import ReceiptSplitSheet from '../components/ReceiptSplitSheet';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
@@ -289,6 +290,10 @@ export default function GroupDetail() {
                 <LogOut className="h-4 w-4" aria-hidden="true" /> Leave group
             </button>
 
+            <button type="button" onClick={() => setSheet({ type: 'receipt' })} className="v-press v-btn-secondary mt-3 min-h-[44px] w-full">
+                <ScanLine className="h-4 w-4" aria-hidden="true" /> Split a receipt
+            </button>
+
             <button type="button" onClick={() => setSheet({ type: 'expense' })} aria-label="Add shared expense"
                 className="v-press fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-ink text-bg shadow-[var(--v-shadow-pop)] md:bottom-8">
                 <Plus className="h-6 w-6" strokeWidth={2.5} />
@@ -297,6 +302,9 @@ export default function GroupDetail() {
             <AnimatePresence>
                 {sheet?.type === 'expense' && (
                     <AddExpenseSheet group={data.group} members={data.members} me={me} session={session} onClose={() => setSheet(null)} onSaved={saved} />
+                )}
+                {sheet?.type === 'receipt' && (
+                    <ReceiptSplitSheet group={data.group} members={data.members} me={me} session={session} onClose={() => setSheet(null)} onSaved={saved} />
                 )}
                 {sheet?.type === 'settle' && (
                     <SettleSheet group={data.group} suggestion={sheet.suggestion} me={me} session={session} onClose={() => setSheet(null)} onSaved={saved} />

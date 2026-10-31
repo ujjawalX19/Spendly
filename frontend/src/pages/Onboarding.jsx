@@ -24,6 +24,7 @@ import { usePaymentNotifications } from '../hooks/usePaymentNotifications';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import { recordNotificationPromptDismissed } from '../lib/notificationPrompt';
 import { SMS_DISCLOSURE } from '../components/SmsAccessSheet';
+import { GOALS, getHomePrefs, setGoal } from '../lib/homePrefs';
 
 export const ONBOARDING_KEY = 'spendly.onboarded.v1';
 
@@ -73,9 +74,11 @@ export default function Onboarding() {
   const tracking = usePaymentTracking();
   const [asking, setAsking] = useState(false);
   const [declined, setDeclined] = useState(false);
+  const [goal, setChosenGoal] = useState(() => getHomePrefs().goal);
 
-  // The permission screen is Android-only; on web the third slide is the last.
-  const showPermissionStep = isSupported && Capacitor.isNativePlatform() && !tracking.smsGranted;
+  // The permission screen is Android-only, and only for someone who came to
+  // track expenses. Everyone else can turn it on later from Profile.
+  const showPermissionStep = goal === 'track' && isSupported && Capacitor.isNativePlatform() && !tracking.smsGranted;
   const lastStep = showPermissionStep ? SLIDES.length : SLIDES.length - 1;
 
   const finish = () => {
@@ -87,6 +90,29 @@ export default function Onboarding() {
 
   const onPermissionScreen = step === SLIDES.length;
   const slide = SLIDES[step];
+
+  if (!goal) {
+    return (
+      <div className="flex min-h-screen flex-col bg-bg px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(2.5rem+env(safe-area-inset-top))] text-ink">
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
+          <div className="mb-12 flex items-center gap-2.5">
+            <VittovaLogo size={28} />
+            <span className="font-display text-base font-bold">Vittova</span>
+          </div>
+          <h1 className="text-[28px] font-bold leading-tight">Welcome. What brings you here?</h1>
+          <p className="mt-3 text-base text-ink-2">We'll start you in the right place. Everything stays available.</p>
+          <div className="mt-6 space-y-2">
+            {GOALS.map((g) => (
+              <button key={g.id} type="button" onClick={() => { setGoal(g.id); setChosenGoal(g.id); }} className="v-press v-block flex min-h-[64px] w-full items-center justify-between gap-3 p-4 text-left">
+                <span><span className="block text-[15px] font-semibold text-ink">{g.label}</span><span className="block text-xs text-ink-3">{g.hint}</span></span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-bg px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(2.5rem+env(safe-area-inset-top))] text-ink">

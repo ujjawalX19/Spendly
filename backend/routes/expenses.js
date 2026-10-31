@@ -364,6 +364,43 @@ Return ONLY raw JSON, no markdown:
 });
 
 // ---------------------------------------------------------------------------
+// @route   POST /api/expenses/scan-items — read a receipt for splitting (Pro).
+//          Saves nothing: the receipt becomes a group expense only if the user
+//          confirms the split. The image is not stored.
+// ---------------------------------------------------------------------------
+router.post('/scan-items', protect, receiptScanLimiter, proGate('receipt_split'), async (req, res) => {
+    const parsed = scanSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    if (!gemini.isConfigured()) {
+        return res.status(503).json({ success: false, message: 'Receipt scanning is temporarily unavailable.' });
+    }
+    const input = parsed.data.imageBase64;
+    const match = IMAGE_DATA_URI.exec(input);
+    const mimeType = match ? match[1] : 'image/jpeg';
+    const base64Data = match ? input.slice(match[0].length) : input;
+    if (!/^[A-Za-z0-9+/=\s]+$/.test(base64Data) || Buffer.byteLength(base64Data, 'base64') > MAX_IMAGE_BYTES) {
+        return res.status(400).json({ success: false, message: 'Please upload a JPEG, PNG or WebP image under 5 MB.' });
+    }
+    const prompt = `You are a receipt parser. Extract only the merchant name, the purchased items with prices, and the total amount in INR from this receipt image.
+"scannedTotal" is the final amount paid (grand total, after tax and discounts), as a plain number with no currency symbol or commas.
+List at most 30 items. Never include card numbers, account numbers, UPI IDs, phone numbers or other identifiers.
+Return ONLY raw JSON, no markdown:
+{"merchantName": "Store", "items": [{"itemName": "Item", "price": 10.5}], "scannedTotal": 10.5}`;
+    try {
+        const replyText = await gemini.generateText(
+            [prompt, { inlineData: { data: base64Data, mimeType } }],
+            { maxOutputTokens: 4096, temperature: 0 }
+        );
+        const receipt = receiptFromReply(replyText);
+        if (!receipt) return res.status(422).json({ success: false, message: "We couldn't read that receipt. Try a clearer photo." });
+        res.json({ success: true, receipt: { merchant: receipt.merchant, total: receipt.amount, items: receipt.items } });
+    } catch (error) {
+        telemetry.recordEvent('receipt_scan_failed', { route: 'POST /api/expenses/scan-items', code: error.code || 'ERROR' });
+        res.status(502).json({ success: false, message: "We couldn't read that receipt. Try a clearer photo." });
+    }
+});
+
+// ---------------------------------------------------------------------------
 // @route   PATCH /api/expenses/:id — edit amount, category, description or date
 //
 // Does NOT retroactively adjust round-up chillar or streaks: those are earned

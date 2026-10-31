@@ -30,7 +30,41 @@ function Fact({ label, value, sub }) {
   );
 }
 
-function Result({ check, quota, onAgain, onClose }) {
+/** What the person decided. Recording is optional; only "skipped" counts as saved. */
+function Decision({ amount, label }) {
+  const { session } = useAuth();
+  const [saved, setSaved] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const record = async (decision) => {
+    setBusy(true);
+    setError('');
+    try {
+      await apiJson('/planning/purchases', { session, method: 'POST', body: { amount, decision, ...(label ? { label } : {}) } });
+      setSaved(decision);
+    } catch (err) {
+      setError(friendlyError(err, "We couldn't save that."));
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (saved) {
+    return <p role="status" className="text-center text-sm text-ink-soft">{saved === 'skipped' ? 'Added to Money-Saved.' : 'Noted.'}</p>;
+  }
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-ink-2">What did you decide?</p>
+      <div className="grid grid-cols-3 gap-2">
+        {[['bought', 'Bought'], ['deferred', 'Later'], ['skipped', 'Skipped']].map(([id, text]) => (
+          <button key={id} type="button" disabled={busy} onClick={() => record(id)} className="v-press v-btn-secondary min-h-[44px] disabled:opacity-60">{text}</button>
+        ))}
+      </div>
+      {error && <p role="alert" className="mt-2 text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+function Result({ check, quota, amount, label, onAgain, onClose }) {
   const badge = verdictBadge(check.verdict);
   const quotaText = quotaLine(quota);
   const bill = check.nextBill;
@@ -62,6 +96,8 @@ function Result({ check, quota, onAgain, onClose }) {
         </ul>
       </details>
 
+      <Decision amount={amount} label={label} />
+
       {quotaText && <p className="text-center text-[11px] text-zinc-500">{quotaText}</p>}
 
       <div className="flex gap-2">
@@ -89,7 +125,7 @@ export function AffordItSheet({ onClose }) {
     try {
       const body = { amount: parsed.amount, ...(label.trim() ? { label: label.trim().slice(0, 60) } : {}) };
       const data = await apiJson('/decisions/afford', { session, method: 'POST', body });
-      setResult({ check: data.check, quota: data.quota });
+      setResult({ check: data.check, quota: data.quota, amount: body.amount, label: body.label });
     } catch (err) {
       setError(friendlyError(err, "We couldn't check that just now. Please try again."));
     } finally {
@@ -114,7 +150,7 @@ export function AffordItSheet({ onClose }) {
         </div>
 
         {result ? (
-          <Result check={result.check} quota={result.quota} onAgain={again} onClose={onClose} />
+          <Result check={result.check} quota={result.quota} amount={result.amount} label={result.label} onAgain={again} onClose={onClose} />
         ) : (
           <form onSubmit={submit} className="space-y-4" noValidate>
             <div>

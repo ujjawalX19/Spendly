@@ -68,4 +68,10 @@ function toCsv(rows) {
     return lines.join('\r\n') + '\r\n';
 }
 
-module.exports = { toCsv, escapeCell, formatDate };
+/** Render plain rows (arrays of cells) with the same quoting and injection rules. */
+function toCsvRows(rows) {
+    return rows.map((row) => row.map(escapeCell).join(',')).join('\r\n') + '\r\n';
+}
+
+module.exports = {
+    toCsvRows, toCsv, escapeCell, formatDate };

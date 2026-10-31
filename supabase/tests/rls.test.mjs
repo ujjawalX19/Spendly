@@ -133,6 +133,8 @@ const CURRENT = [
     'v1_12_age_awareness.sql',
     'v1_13_notification_expenses.sql',
     'v1_14_rewards.sql',
+    'v1_16_budgets_income.sql',
+    'v1_17_financial_features.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -974,6 +976,28 @@ test('verify_production.sql flags a database where v1_13 has not been applied', 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_16 and v1_17: budgets, income, Money-Saved and receipts are private and server-written', async () => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    assert.ok((await svc(`insert into public.category_budgets (user_id, category, limit_inr) values ('${USERS.alice}', 'Food', 500)`)).ok);
+    assert.ok((await svc(`insert into public.income_entries (user_id, amount_inr, received_on) values ('${USERS.alice}', 500, '2026-01-01')`)).ok);
+    assert.ok((await svc(`insert into public.savings_events (user_id, kind, amount) values ('${USERS.alice}', 'price_difference', 5)`)).ok);
+    assert.ok((await svc(`insert into public.planned_purchases (user_id, amount, decision) values ('${USERS.alice}', 5, 'skipped')`)).ok);
+    for (const table of ['category_budgets', 'income_entries', 'savings_events', 'planned_purchases']) {
+        assert.equal((await asUser(db, USERS.alice, `select * from public.${table}`)).rows.length, 1, table);
+        assert.equal((await asUser(db, USERS.bob, `select * from public.${table}`)).rows.length, 0, table);
+        assert.ok(denied(await as(db, 'anon', null, `select * from public.${table}`)), `anon ${table}`);
+        assert.ok(denied(await asUser(db, USERS.alice, `delete from public.${table}`)), `delete ${table}`);
+    }
+    assert.ok(denied(await asUser(db, USERS.alice, `insert into public.income_entries (user_id, amount_inr, received_on) values ('${USERS.alice}', 1, '2026-01-01')`)));
+    const made = await svc(`insert into public.group_expenses (group_id, description, amount, paid_by) values ('${GROUP}', 'Dinner', 100, '${USERS.alice}') returning id`);
+    assert.ok(made.ok);
+    assert.ok((await svc(`insert into public.group_expense_receipts (group_expense_id, group_id, created_by, client_ref, total, allocation) values ('${made.rows[0].id}', '${GROUP}', '${USERS.alice}', 'ref-12345', 100, '{}')`)).ok);
+    assert.equal((await asUser(db, USERS.alice, 'select * from public.group_expense_receipts')).rows.length, 1);
+    assert.equal((await asUser(db, USERS.carol, 'select * from public.group_expense_receipts')).rows.length, 0);
+    await db.close();
+});
+
 test('v1_14 rewards: missions, Points, savings goals (app v1.2)', async (t) => {
     const db = await buildDatabase(CURRENT);
     const svc = (statement) => as(db, 'service_role', null, statement);

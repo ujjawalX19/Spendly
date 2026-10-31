@@ -45,6 +45,11 @@ const Challenges = lazy(() => import('./pages/Challenges'));
 const SaveToEarn = lazy(() => import('./pages/SaveToEarn'));
 const Rewards = lazy(() => import('./pages/Rewards'));
 const Goals = lazy(() => import('./pages/Goals'));
+const Budgets = lazy(() => import('./pages/Budgets'));
+const Reports = lazy(() => import('./pages/Reports'));
+const MonthCalendar = lazy(() => import('./pages/MonthCalendar'));
+const Wrapped = lazy(() => import('./pages/Wrapped'));
+const MoneySaved = lazy(() => import('./pages/MoneySaved'));
 const WeeklyRecap = lazy(() => import('./pages/WeeklyRecap'));
 const PdfImport = lazy(() => import('./pages/PdfImport'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -366,6 +371,11 @@ function App() {
                 <Route path="/rewards" element={<ProtectedRoute><Layout><Rewards /></Layout></ProtectedRoute>} />
                 <Route path="/rewards/recap" element={<ProtectedRoute><Layout><WeeklyRecap /></Layout></ProtectedRoute>} />
                 <Route path="/goals" element={<ProtectedRoute><Layout><Goals /></Layout></ProtectedRoute>} />
+                <Route path="/budgets" element={<ProtectedRoute><Layout><Budgets /></Layout></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+                <Route path="/calendar" element={<ProtectedRoute><Layout><MonthCalendar /></Layout></ProtectedRoute>} />
+                <Route path="/wrapped" element={<ProtectedRoute><Layout><Wrapped /></Layout></ProtectedRoute>} />
+                <Route path="/money-saved" element={<ProtectedRoute><Layout><MoneySaved /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />

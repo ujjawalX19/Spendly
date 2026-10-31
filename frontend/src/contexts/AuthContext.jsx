@@ -12,6 +12,7 @@ import {
   GOOGLE_WEB_CLIENT_ID, makeNonce, nativeFailureAction, nativeFailureCode, nativeFailureMessage,
 } from '../lib/googleSignIn';
 import { singleFlight } from '../lib/singleFlight';
+import { clearHomeWidget } from '../lib/homeWidget';
 import { authErrorKind, authErrorMessage } from '../lib/authMessages';
 import { authLog } from '../lib/authLog';
 
@@ -316,6 +317,7 @@ export function AuthProvider({ children }) {
     }
     await clearRemindersForSignOut();
     await clearMissionRemindersForSignOut();
+    await clearHomeWidget();
     clearQueueForSignOut(lastUserId.current);
     clearLocalAppState();
     markPasswordRecovery(false);

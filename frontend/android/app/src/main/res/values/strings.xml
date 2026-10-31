@@ -4,4 +4,5 @@
     <string name="title_activity_main">Vittova</string>
     <string name="package_name">com.vittova.app</string>
     <string name="custom_url_scheme">com.vittova.app</string>
+    <string name="widget_home_description">What is safe to spend today. The amount stays hidden unless you turn it on in Vittova.</string>
 </resources>

@@ -20,6 +20,9 @@ const { splitEqually, computeNetBalances, suggestSettlements, toPaise, toRupees 
  */
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const { allocateReceipt, ReceiptSplitError } = require('../lib/receiptSplit');
+const { proGate } = require('../middleware/proGate');
+
 const uuid = z.string().regex(UUID_RE, 'Invalid id');
 const money = z.coerce.number().positive('Amount must be positive').max(10_000_000, 'Amount too large')
     .refine((n) => Math.round(n * 100) === Number((n * 100).toFixed(6)), 'At most 2 decimal places');
@@ -379,6 +382,79 @@ router.post('/:id/expenses', protect, async (req, res) => {
         expense,
         shares: [...shares].map(([id, paise]) => ({ id, share: toRupees(paise) })),
     });
+});
+
+// ─── Split a receipt item by item (Pro) ────────────────────────────────────
+const receiptSplitSchema = z.object({
+    description: z.string().trim().min(1, 'Description is required').max(200),
+    total: money,
+    paidBy: uuid.optional(),
+    clientRef: z.string().regex(/^[A-Za-z0-9-]{8,64}$/, 'Invalid reference'),
+    items: z.array(z.object({
+        name: z.string().trim().min(1, 'Name every item').max(80),
+        price: money,
+        participants: z.array(uuid).min(1, 'Choose who had each item').max(MAX_MEMBERS),
+    }).strict()).min(1, 'Add at least one item').max(60),
+}).strict();
+
+router.post('/:id/receipt-split', protect, proGate('receipt_split'), async (req, res) => {
+    const parsed = receiptSplitSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const groupId = req.params.id;
+    if (!(await requireMembership(groupId, req.user.id, res))) return;
+
+    // A retry after a lost response returns the first result, never a second expense.
+    const { data: existing, error: existingError } = await supabase.from('group_expense_receipts')
+        .select('group_expense_id').eq('group_id', groupId).eq('client_ref', parsed.data.clientRef).maybeSingle();
+    if (existingError) return res.status(503).json({ success: false, message: 'Receipt splitting is not available yet.' });
+    if (existing) return res.json({ success: true, duplicate: true, expenseId: existing.group_expense_id });
+
+    let members;
+    try {
+        members = await loadMembers(groupId);
+    } catch {
+        return res.status(500).json({ success: false, message: 'Could not load group members' });
+    }
+    const memberIds = new Set(members.map((m) => m.id));
+    const paidBy = parsed.data.paidBy || req.user.id;
+    const everyone = parsed.data.items.flatMap((i) => i.participants);
+    if (!memberIds.has(paidBy) || everyone.some((id) => !memberIds.has(id))) {
+        return res.status(400).json({ success: false, message: 'Everyone in the split must be a member of this group' });
+    }
+
+    let shares;
+    try {
+        shares = allocateReceipt(
+            parsed.data.items.map((i) => ({ name: i.name, pricePaise: toPaise(i.price), participants: [...new Set(i.participants)] })),
+            toPaise(parsed.data.total)
+        );
+    } catch (err) {
+        if (err instanceof ReceiptSplitError) return res.status(400).json({ success: false, message: err.message });
+        throw err;
+    }
+
+    const { data: expense, error } = await supabase.from('group_expenses')
+        .insert({ group_id: groupId, description: parsed.data.description, amount: parsed.data.total, paid_by: paidBy })
+        .select('id, description, amount, paid_by, created_at')
+        .single();
+    if (error) return res.status(500).json({ success: false, message: 'Could not add the expense' });
+
+    const rollback = () => supabase.from('group_expenses').delete().eq('id', expense.id);
+    const { error: splitError } = await supabase.from('group_expense_splits')
+        .insert([...shares].map(([userId, paise]) => ({ group_expense_id: expense.id, user_id: userId, share_amount: toRupees(paise) })));
+    if (splitError) {
+        await rollback();
+        return res.status(500).json({ success: false, message: 'Could not add the expense' });
+    }
+    const { error: receiptError } = await supabase.from('group_expense_receipts').insert({
+        group_expense_id: expense.id, group_id: groupId, created_by: req.user.id, client_ref: parsed.data.clientRef,
+        total: parsed.data.total, allocation: { items: parsed.data.items },
+    });
+    if (receiptError) {
+        await rollback();
+        return res.status(503).json({ success: false, message: 'Receipt splitting is not available yet.' });
+    }
+    res.status(201).json({ success: true, expense, shares: [...shares].map(([id, paise]) => ({ id, share: toRupees(paise) })) });
 });
 
 // ─── Delete a shared expense (who added it paid it, or admin) ───────────────

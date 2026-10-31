@@ -8,6 +8,8 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { setWidgetShowsAmount, widgetShowsAmount } from '../lib/homeWidget';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, Target, Trash2, Shield, FileText, Crown,
@@ -288,6 +290,7 @@ export default function Settings() {
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [banner, setBanner] = useState(null); // { type, message }
+  const [widgetAmount, setWidgetAmount] = useState(widgetShowsAmount);
   const [exportState, setExportState] = useState('idle'); // idle | working | done | error
   const [exportError, setExportError] = useState('');
   const { exportCsv } = useExpenses();
@@ -599,6 +602,15 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup title="Tools">
+        <SettingRow icon={PiggyBank} label="Budgets" value="Monthly limits by category" onClick={() => navigate('/budgets')} />
+        <SettingRow icon={FileText} label="Reports" value="Week, month, year, income and CSV export" onClick={() => navigate('/reports')} />
+        <SettingRow icon={FileText} label="Month calendar" value={isPro ? 'Spending, bills and goal dates by day' : 'Part of Vittova Pro'} onClick={() => navigate('/calendar')} />
+        <SettingRow icon={Award} label="Money wrapped" value="Your month or year in plain figures" onClick={() => navigate('/wrapped')} />
+        <SettingRow icon={PiggyBank} label="Money-Saved" value="Skipped purchases and lower prices" onClick={() => navigate('/money-saved')} />
+        {Capacitor.isNativePlatform() && (
+          <SettingRow icon={Settings2} label="Show amount on the widget" value={widgetAmount ? 'On: anyone who sees your phone can read it' : 'Off: the amount stays hidden'}
+            onClick={() => { const next = !widgetAmount; setWidgetAmount(next); setWidgetShowsAmount(next); }} />
+        )}
         {rewardsOn && (
           <SettingRow
             icon={Award} label="Rewards" value="Level, XP, Vittova Points and badges"

@@ -26,6 +26,10 @@ import PermissionBanner from '../components/PermissionBanner';
 import SmsAccessSheet from '../components/SmsAccessSheet';
 import { AffordItSheet } from '../components/AffordItCard';
 import MoneyStreakCard from '../components/MoneyStreakCard';
+import { CustomiseButton, CustomiseHome, GettingStarted, PlanShortcuts, ProRow } from '../components/HomeExtras';
+import { getHomePrefs } from '../lib/homePrefs';
+import { updateHomeWidget } from '../lib/homeWidget';
+import { usePro } from '../contexts/ProContext';
 import { TopBar, BalanceCard, QuickActions, DailyCard, AnalyticsCard, InsightRow, MonthRows, RecentActivity } from '../components/HomeCards';
 import { API_URL, apiFetch } from '../lib/apiConfig';
 import { prepareReceiptImage } from '../lib/receiptImage';
@@ -333,6 +337,13 @@ export default function Dashboard() {
   // ── Derived Values ─────────────────────────────────────────
   const navigate = useNavigate();
   const monthlyBudget = user?.monthly_budget || 5000;
+  const { isPro } = usePro();
+  const [hiddenSections, setHiddenSections] = useState(() => getHomePrefs().hidden);
+  const [customising, setCustomising] = useState(false);
+  const shown = (id) => !hiddenSections.includes(id);
+  useEffect(() => {
+    if (safeToSpend) updateHomeWidget(safeToSpend.isNegative ? 0 : Number(safeToSpend.daily));
+  }, [safeToSpend]);
 
   // This month's spending by category, from the user's own rows (display only).
   const { categories, foodThisMonth, recent } = useMemo(() => {
@@ -576,24 +587,36 @@ export default function Dashboard() {
           onEnable={() => setShowAccessSheet(true)}
         />
 
+        {/* New here: the few steps worth doing first, until done or hidden */}
+        {!loading && !expensesUnavailable && <GettingStarted hasExpense={recent.length > 0} onAddExpense={() => setShowAddModal(true)} />}
+
         {/* 3. Today against the safe daily amount */}
-        <DailyCard spent={todaySpent} daily={safeToSpend && !safeToSpend.isNegative ? safeToSpend.daily : null}
-          parts={expensesUnavailable ? [] : todayParts} loading={loading || expensesUnavailable} />
+        {shown('today') && (
+          <DailyCard spent={todaySpent} daily={safeToSpend && !safeToSpend.isNegative ? safeToSpend.daily : null}
+            parts={expensesUnavailable ? [] : todayParts} loading={loading || expensesUnavailable} />
+        )}
 
         {/* 4. The one thing that needs attention, if there is one */}
-        <InsightRow burn={burnRate} foodThisMonth={foodThisMonth} />
+        {shown('insight') && <InsightRow burn={burnRate} foodThisMonth={foodThisMonth} />}
+
+        <PlanShortcuts />
 
         {/* 5. The last seven days */}
-        <AnalyticsCard days={week} limit={safeToSpend && !safeToSpend.isNegative ? safeToSpend.daily : null} loading={loading || expensesUnavailable} />
+        {shown('week') && <AnalyticsCard days={week} limit={safeToSpend && !safeToSpend.isNegative ? safeToSpend.daily : null} loading={loading || expensesUnavailable} />}
 
         {/* 6. Still to come this month */}
-        <MonthRows safe={safeToSpend} categories={expensesUnavailable ? [] : categories} />
+        {shown('month') && <MonthRows safe={safeToSpend} categories={expensesUnavailable ? [] : categories} />}
 
         {/* 7. What just happened */}
-        <RecentActivity items={expensesUnavailable ? [] : recent} loading={loading} />
+        {shown('recent') && <RecentActivity items={expensesUnavailable ? [] : recent} loading={loading} />}
 
         {/* 8. The streak and today's mission */}
-        <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} />
+        {shown('streak') && <MoneyStreakCard streak={moneyStreak} onChanged={reloadMoneyStreak} />}
+
+        {!isPro && <ProRow />}
+
+        <CustomiseButton onClick={() => setCustomising(true)} />
+        {customising && <CustomiseHome hidden={hiddenSections} onChange={setHiddenSections} onClose={() => setCustomising(false)} />}
 
         <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleScanFile} />
       </div>
