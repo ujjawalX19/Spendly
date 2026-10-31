@@ -33,6 +33,13 @@ const USER_TABLES = [
     ['user_badges', 'user_id'],
     ['campaign_members', 'user_id'],
     ['guardian_consents', 'user_id'],
+    // v1_14 rewards. The Points ledger refuses deletes except through the
+    // account cascade, which has already emptied it by the time this runs.
+    ['money_daily_missions', 'user_id'],
+    ['money_mission_checkins', 'user_id'],
+    ['money_points_ledger', 'user_id'],
+    ['savings_contributions', 'user_id'],
+    ['savings_goals', 'user_id'],
     ['profiles', 'id'],
 ];
 

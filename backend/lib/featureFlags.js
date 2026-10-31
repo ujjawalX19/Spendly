@@ -11,6 +11,9 @@
  *   REWARD_REDEMPTION_ENABLED      default on   (revealing an earned sponsor voucher; only
  *                                                reachable while sponsored challenges are on)
  *   SPONSOR_DASHBOARD_ENABLED      default off  (partner accounts' aggregated campaign reports)
+ *   REWARDS_ENABLED                default on   (personalised missions, Vittova Points, savings
+ *                                                goals, weekly recap; off = the fixed daily
+ *                                                mission rotation, as before v1.14)
  *   STUDENT_PLAN_ENABLED           forced off   (no safe student verification exists yet)
  *
  * The app reads them from GET /api/features and hides what is off. Every
@@ -26,6 +29,7 @@ const DEFAULTS = {
     proChallengesEnabled: ['PRO_CHALLENGES_ENABLED', true],
     rewardRedemptionEnabled: ['REWARD_REDEMPTION_ENABLED', true],
     sponsorDashboardEnabled: ['SPONSOR_DASHBOARD_ENABLED', false],
+    rewardsEnabled: ['REWARDS_ENABLED', true],
 };
 
 /**
@@ -60,6 +64,7 @@ function allFlags() {
         proChallengesEnabled: flag('proChallengesEnabled'),
         rewardRedemptionEnabled: flag('rewardRedemptionEnabled'),
         sponsorDashboardEnabled: flag('sponsorDashboardEnabled'),
+        rewardsEnabled: flag('rewardsEnabled'),
     };
 }
 

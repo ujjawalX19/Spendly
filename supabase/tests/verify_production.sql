@@ -253,6 +253,47 @@ checks as (
     select 'expenses: unique (user_id, client_ref)',
            exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'expenses' and indexname = 'expenses_client_ref_once'),
            'run v1_13_notification_expenses.sql'
+
+    union all
+    -- v1.14 (app v1.2): rewards — owners read their own rows, only the backend writes
+    select 'RLS enabled on ' || o,
+           coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.' || o)), false),
+           case when to_regclass('public.' || o) is null then 'missing — run v1_14_rewards.sql' else '' end
+    from unnest(array['money_daily_missions', 'money_mission_checkins', 'money_points_ledger', 'savings_goals', 'savings_contributions']) as o
+    union all
+    select r || ' cannot INSERT/UPDATE/DELETE ' || o,
+           case when to_regclass('public.' || o) is null then false
+                else not (has_table_privilege(r, 'public.' || o, 'INSERT') or has_table_privilege(r, 'public.' || o, 'UPDATE')
+                          or has_table_privilege(r, 'public.' || o, 'DELETE')) end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_14_rewards.sql' else '' end
+    from unnest(array['money_daily_missions', 'money_mission_checkins', 'money_points_ledger', 'savings_goals', 'savings_contributions']) as o,
+         unnest(array['anon', 'authenticated']) as r
+    union all
+    select 'anon cannot SELECT ' || o,
+           case when to_regclass('public.' || o) is null then false else not has_table_privilege('anon', 'public.' || o, 'SELECT') end,
+           case when to_regclass('public.' || o) is null then 'missing — run v1_14_rewards.sql' else '' end
+    from unnest(array['money_daily_missions', 'money_mission_checkins', 'money_points_ledger', 'savings_goals', 'savings_contributions']) as o
+    union all
+    select 'authenticated cannot UPDATE profiles.mission_difficulty',
+           exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'mission_difficulty')
+             and not has_column_privilege('authenticated', 'public.profiles', 'mission_difficulty', 'UPDATE'),
+           'run v1_14_rewards.sql'
+    union all
+    select 'Points are paid once per (user, reason, ref_key)',
+           exists (select 1 from pg_constraint where conname = 'money_points_ledger_once'),
+           'run v1_14_rewards.sql'
+    union all
+    select 'Points history is append-only and never below zero (trigger)',
+           exists (select 1 from pg_trigger where tgname = 'trg_money_points_guard'),
+           'run v1_14_rewards.sql'
+    union all
+    select 'A savings contribution is stored once per client reference',
+           exists (select 1 from pg_constraint where conname = 'savings_contributions_once'),
+           'run v1_14_rewards.sql'
+    union all
+    select 'XP ledger accepts goal_milestone',
+           exists (select 1 from pg_constraint where conname = 'money_xp_ledger_reason_check' and pg_get_constraintdef(oid) like '%goal_milestone%'),
+           'run v1_14_rewards.sql'
     union all
     select r || ' cannot INSERT/UPDATE expenses',
            not (has_table_privilege(r, 'public.expenses', 'INSERT') or has_table_privilege(r, 'public.expenses', 'UPDATE')),

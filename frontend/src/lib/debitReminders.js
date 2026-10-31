@@ -82,12 +82,15 @@ export async function clearRemindersForSignOut() {
   if (remindersSupported()) await DebitReminders.cancelAll().catch(() => {});
 }
 
-/** When a reminder is tapped, open the audit. Returns an unsubscribe function. */
+/**
+ * When a reminder is tapped, open its screen: the audit for a debit reminder,
+ * Rewards for a mission reminder (v1.14). Returns an unsubscribe function.
+ */
 export function onReminderOpened(open) {
   if (!remindersSupported()) return () => {};
   const handle = DebitReminders.addListener('reminderOpened', ({ route }) => {
-    track('debit_reminder_opened');
-    open(route);
+    if (route === '/subscription-audit') track('debit_reminder_opened');
+    if (route === '/subscription-audit' || route === '/rewards') open(route);
   });
   return () => { Promise.resolve(handle).then((h) => h?.remove?.()).catch(() => {}); };
 }

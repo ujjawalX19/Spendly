@@ -46,12 +46,20 @@ const BACKFILL_DAYS = 30;
 const WEEKLY_GOAL_MIN_ACTIVE_DAYS = 4;
 const MONTH_GOAL_MIN_ACTIVE_DAYS = 10;
 
+/**
+ * Levels are worked out from total XP every time; nothing stores a level. So
+ * adding a level only changes what very high XP totals are called: thresholds
+ * and names below a new level never change, and nobody's level goes down.
+ * Levels 6 and 7 were added in v1.14 (see supabase/v1_14_rewards.sql).
+ */
 const LEVELS = [
     { level: 1, name: 'Money Starter', minXp: 0 },
     { level: 2, name: 'Budget Builder', minXp: 250 },
     { level: 3, name: 'Money Smart', minXp: 750 },
     { level: 4, name: 'Money Master', minXp: 2000 },
     { level: 5, name: 'Money Pro', minXp: 4000 },
+    { level: 6, name: 'Money Champion', minXp: 7000 },
+    { level: 7, name: 'Money Legend', minXp: 12000 },
 ];
 
 const IMPULSE_CATEGORIES = new Set(['Shopping', 'Entertainment']);
@@ -278,7 +286,9 @@ function levelFor(totalXp) {
  */
 function awardsDue({ endedDays, completedRun, lastWeek, lastMonth }) {
     const awards = [];
-    for (const d of endedDays) if (d.kept) awards.push({ reason: 'daily_mission', ref_key: d.dateKey, xp: XP.daily_mission });
+    // A day with a personalised mission carries its own reward (lib/missions);
+    // a day from the fixed rotation pays the standard daily XP.
+    for (const d of endedDays) if (d.kept) awards.push({ reason: 'daily_mission', ref_key: d.dateKey, xp: d.reward?.xp || XP.daily_mission, points: d.reward?.points || 0 });
     if (completedRun.length >= STREAK_MILESTONE_DAYS) {
         for (let n = STREAK_MILESTONE_DAYS; n <= completedRun.length; n += STREAK_MILESTONE_DAYS) {
             awards.push({ reason: 'streak_milestone', ref_key: `${completedRun.startKey}:${n}`, xp: XP.streak_milestone });

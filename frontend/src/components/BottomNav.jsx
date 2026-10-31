@@ -17,9 +17,9 @@ import { Home, Receipt, BarChart2, Users, UserRound } from 'lucide-react';
 // Five destinations. Everything else (Ask Vittova, subscription audit,
 // challenges, import, Pro) is one tap deeper, from Home, Wealth or Profile.
 const tabs = [
-  { id: '/dash',         label: 'Home',     icon: Home,      match: ['/dash', '/save-to-earn'] },
+  { id: '/dash',         label: 'Home',     icon: Home,      match: ['/dash', '/save-to-earn', '/rewards'] },
   { id: '/transactions', label: 'Activity', icon: Receipt,   match: ['/transactions'] },
-  { id: '/wealth',       label: 'Wealth',   icon: BarChart2, match: ['/wealth'] },
+  { id: '/wealth',       label: 'Wealth',   icon: BarChart2, match: ['/wealth', '/goals'] },
   { id: '/pool',         label: 'Groups',   icon: Users,     match: ['/pool'] },
   { id: '/settings',     label: 'Profile',  icon: UserRound, match: ['/settings', '/subscription-audit', '/challenges', '/graveyard', '/import'] },
 ];

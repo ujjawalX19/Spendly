@@ -15,6 +15,7 @@ import { Award, Flame, Trophy, ChevronDown, ChevronRight, Lock, Info, Gift, X, S
 import { Capacitor } from '@capacitor/core';
 import { shareText, shareProgress } from '../lib/shareProgress';
 import { useAuth } from '../contexts/AuthContext';
+import { usePro } from '../contexts/ProContext';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { track } from '../lib/telemetry';
@@ -51,6 +52,8 @@ function PotValue({ value }) {
 
 export default function SaveToEarn() {
   const { session } = useAuth();
+  const { features } = usePro();
+  const rewardsOn = features.rewardsEnabled === true;
   const [hub, setHub] = useState(null);
   const [streak, setStreak] = useState(null);
   const [error, setError] = useState('');
@@ -289,11 +292,21 @@ export default function SaveToEarn() {
         </section>
       )}
 
-      {/* Rewards */}
+      {/* Rewards: with v1.14 rewards on, badges, Points and history live on the Rewards screen. */}
       <section>
-        <SectionLabel className="mb-2">Badges</SectionLabel>
+        <SectionLabel className="mb-2">{rewardsOn ? 'Rewards' : 'Badges'}</SectionLabel>
         <ul className="v-block v-rows">
-          {hub.badges.map((b) => (
+          {rewardsOn && (
+            <li>
+              <Link to="/rewards" className="v-press flex min-h-[56px] items-center gap-3 px-4 text-sm font-medium">
+                <Award className="h-5 w-5 shrink-0 text-warn" aria-hidden="true" />
+                <span className="flex-1">Badges, Vittova Points and reward history</span>
+                <span className="text-xs text-ink-3">{hub.badges.filter((b) => b.earned).length} of {hub.badges.length} badges</span>
+                <ChevronRight className="h-4 w-4 text-ink-3" aria-hidden="true" />
+              </Link>
+            </li>
+          )}
+          {!rewardsOn && hub.badges.map((b) => (
             <li key={b.key} className={`flex min-h-[56px] items-center gap-3 px-4 py-2.5 ${b.earned ? '' : 'opacity-55'}`}>
               <Award className={`h-5 w-5 shrink-0 ${b.earned ? 'text-warn' : 'text-ink-3'}`} aria-hidden="true" />
               <span className="min-w-0 flex-1">

@@ -13,8 +13,10 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Zap, AlertCircle, Bell, MessageCircle, Plus, ScanLine, ShoppingBag, X, Check, CheckCircle } from 'lucide-react';
+import { cacheMissionState, cachedMissionState } from '../lib/offlineQueue';
+import { syncMissionReminders } from '../lib/missionReminders';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
@@ -251,6 +253,23 @@ export default function Dashboard() {
   const [scanToast, setScanToast]           = useState(null); // { type: 'success'|'error', message: string }
   const fileInputRef = useRef(null);
 
+  // A mission's "Log an expense" opens the add form here (/dash?add=1).
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('add') !== '1') return;
+    setShowAddModal(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Today's mission: kept on the phone so it still shows without signal, and
+  // used to plan mission reminders (if the user turned them on).
+  const userId = session?.user?.id;
+  const applyMoneyStreak = useCallback((s) => {
+    setMoneyStreak(s);
+    cacheMissionState(userId, s);
+    syncMissionReminders(s).catch(() => {});
+  }, [userId]);
+
 
   // ── UPI Notifications ──────────────────────────────────────
   // Android Notification Access is only ever requested from an explicit tap on
@@ -285,17 +304,21 @@ export default function Dashboard() {
     setSafeError(false);
     load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend), () => setSafeError(true));
     load('/burn-rate', (d) => setBurnRate(d.burnRate));
-    load('/money-streak', (d) => setMoneyStreak(d.moneyStreak));
+    load('/money-streak', (d) => applyMoneyStreak(d.moneyStreak), () => setMoneyStreak((s) => s || cachedMissionState(userId)));
     return () => { cancelled = true; };
-  }, [token, expensesVersion, reloadKey]);
+  }, [token, expensesVersion, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // After marking a no-spend day, refresh the streak on its own.
+  // After a mission action, refresh the streak on its own.
   const reloadMoneyStreak = useCallback(async () => {
     if (!token) return;
-    const response = await apiFetch(`${API_URL}/money-streak`, { headers: { Authorization: `Bearer ${token}` } });
-    const d = await response.json().catch(() => ({}));
-    if (response.ok && d.success) setMoneyStreak(d.moneyStreak);
-  }, [token]);
+    try {
+      const response = await apiFetch(`${API_URL}/money-streak`, { headers: { Authorization: `Bearer ${token}` } });
+      const d = await response.json().catch(() => ({}));
+      if (response.ok && d.success) applyMoneyStreak(d.moneyStreak);
+    } catch {
+      setMoneyStreak((s) => s || cachedMissionState(userId));
+    }
+  }, [token, applyMoneyStreak, userId]);
 
   // Record the streak check-in for viewing Safe-to-Spend, once per session.
   useEffect(() => {

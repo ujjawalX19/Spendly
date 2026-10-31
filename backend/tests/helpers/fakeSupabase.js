@@ -29,12 +29,19 @@ const UNIQUE_KEYS = {
     user_badges: ['user_id', 'badge'],
     campaign_members: ['user_id', 'sponsor_id'],
     guardian_consents: ['user_id'],
+    // v1_14 rewards
+    money_daily_missions: ['user_id', 'day'],
+    money_mission_checkins: ['user_id', 'day', 'mission'],
+    money_points_ledger: ['user_id', 'reason', 'ref_key'],
+    savings_contributions: ['user_id', 'client_ref'],
 };
 
 // Partial unique indexes (v1_11): one active personal challenge per user.
+// Also used for a table's second unique constraint.
 const PARTIAL_UNIQUE = {
     money_challenges: { keys: ['user_id'], where: (r) => r.status === 'active' },
     expenses: { keys: ['user_id', 'client_ref'], where: (r) => r.client_ref != null },
+    money_mission_checkins: { keys: ['user_id', 'event_id'], where: () => true },
 };
 
 // Rows that belong to a user and cascade when the auth user is deleted.
@@ -45,7 +52,10 @@ const CASCADE = [
     ['money_streak_days', 'user_id'], ['money_xp_ledger', 'user_id'], ['play_purchases', 'user_id'],
     ['recurring_decisions', 'user_id'], ['recurring_expectations', 'user_id'],
     ['challenge_enrollments', 'user_id'], ['money_challenges', 'user_id'], ['user_badges', 'user_id'],
-    ['campaign_members', 'user_id'], ['guardian_consents', 'user_id'], ['profiles', 'id'],
+    ['campaign_members', 'user_id'], ['guardian_consents', 'user_id'],
+    ['money_daily_missions', 'user_id'], ['money_mission_checkins', 'user_id'], ['money_points_ledger', 'user_id'],
+    ['savings_contributions', 'user_id'], ['savings_goals', 'user_id'],
+    ['profiles', 'id'],
 ];
 
 function ilikeTest(c, pattern) {

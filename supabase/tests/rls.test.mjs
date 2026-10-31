@@ -132,6 +132,7 @@ const CURRENT = [
     'v1_11_save_to_earn.sql',
     'v1_12_age_awareness.sql',
     'v1_13_notification_expenses.sql',
+    'v1_14_rewards.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -440,7 +441,7 @@ test('v1_7 Money Streak and money checks (app v1.1)', async (t) => {
 });
 
 test('verify_production.sql flags a database where v1_7 has not been applied', async () => {
-    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql'].includes(f)));
+    const db = await buildDatabase(CURRENT.filter((f) => !['v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql', 'v1_14_rewards.sql'].includes(f)));
     await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
     const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
     const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
@@ -650,7 +651,7 @@ test('production-like database: partial v1 extension, v1_1 applied, no v1_2', as
     // Mirrors the read-only production check of 2026-09-13: ai_chat_history
     // and groups.pool_state missing; expense_source lacks upi_auto/pdf_import.
     const db = await buildDatabase(
-        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql', 'v1_13_notification_expenses.sql'],
+        ['schema.sql', 'v1_schema_extension.sql', 'v1_1_launch_hardening.sql', 'v1_2_security_p0.sql', 'v1_3_product_core.sql', 'v1_4_admin_ops.sql', 'v1_6_owner_console.sql', 'v1_7_money_decisions.sql', 'v1_8_play_billing.sql', 'v1_9_subscription_audit.sql', 'v1_10_sponsored_challenges.sql', 'v1_11_save_to_earn.sql', 'v1_12_age_awareness.sql', 'v1_13_notification_expenses.sql', 'v1_14_rewards.sql'],
         { afterEach: { 'v1_schema_extension.sql': 'drop table public.ai_chat_history; alter table public.groups drop column pool_state;' } }
     );
 
@@ -800,6 +801,9 @@ test('v1_11 Save-to-Earn (app v1.1)', async (t) => {
 
     await t.test('the migration is idempotent', async () => {
         await db.exec(sql('v1_11_save_to_earn.sql'));
+        // v1_11 redefines the XP reasons; a later migration widens them again.
+        // Re-running one migration means re-running every later one, in order.
+        for (const later of CURRENT.slice(CURRENT.indexOf('v1_11_save_to_earn.sql') + 1)) await db.exec(sql(later));
     });
 
     await t.test('one active challenge per user; values are constrained', async () => {
@@ -966,5 +970,189 @@ test('verify_production.sql flags a database where v1_13 has not been applied', 
     const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
     const failing = r.rows.filter((row) => row.result !== 'PASS').map((row) => row.check_name);
     assert.deepEqual(failing.sort(), ['expenses.client_ref exists (detected-payment id)', 'expenses: unique (user_id, client_ref)'].sort());
+    await db.close();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+test('v1_14 rewards: missions, Points, savings goals (app v1.2)', async (t) => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    const TODAY = "(now() at time zone 'Asia/Kolkata')::date";
+    const points = (user, reason, ref, pts) => svc(`insert into public.money_points_ledger (user_id, reason, ref_key, points) values ('${user}', '${reason}', '${ref}', ${pts})`);
+    const balance = async (user) => (await db.query(`select coalesce(sum(points), 0)::int as n from public.money_points_ledger where user_id = '${user}'`)).rows[0].n;
+    const goal = (user) => svc(`insert into public.savings_goals (user_id, name, target_inr, target_date) values ('${user}', 'Laptop', 60000, '2027-03-01') returning id`);
+
+    await t.test('the migration is idempotent', async () => {
+        await db.exec(sql('v1_14_rewards.sql'));
+    });
+
+    await t.test('existing users keep their data and get the automatic difficulty', async () => {
+        const r = await db.query(`select mission_difficulty from public.profiles where id = '${USERS.alice}'`);
+        assert.equal(r.rows[0].mission_difficulty, 'auto');
+        assert.ok((await svc(`update public.profiles set mission_difficulty = 'advanced' where id = '${USERS.bob}'`)).ok);
+        const bad = await svc(`update public.profiles set mission_difficulty = 'impossible' where id = '${USERS.bob}'`);
+        assert.ok(!bad.ok && /check constraint/i.test(bad.error));
+    });
+
+    await t.test('one mission per user and day; only today\'s can be replaced, and never backwards', async () => {
+        const assign = (user, day, mission = 'under_limit') => svc(`insert into public.money_daily_missions (user_id, day, mission, difficulty, reason, source) values ('${user}', ${day}, '${mission}', 'balanced', 'Your usual daily spend', 'personalised')`);
+        assert.ok((await assign(USERS.alice, TODAY)).ok);
+        assert.ok(!(await assign(USERS.alice, TODAY)).ok, 'a second mission for the same day is refused');
+        assert.ok((await assign(USERS.alice, `${TODAY} - 1`, 'log_today')).ok);
+
+        const replace = await svc(`update public.money_daily_missions set mission = 'delivery_cap', source = 'replacement', replacements = 1, previous = array['under_limit'] where user_id = '${USERS.alice}' and day = ${TODAY}`);
+        assert.ok(replace.ok, JSON.stringify(replace));
+        const back = await svc(`update public.money_daily_missions set replacements = 0 where user_id = '${USERS.alice}' and day = ${TODAY}`);
+        assert.ok(!back.ok && /cannot go down/.test(back.error));
+        const third = await svc(`update public.money_daily_missions set replacements = 3 where user_id = '${USERS.alice}' and day = ${TODAY}`);
+        assert.ok(!third.ok && /check constraint/i.test(third.error), 'at most two replacements a day');
+        const past = await svc(`update public.money_daily_missions set mission = 'no_spend' where user_id = '${USERS.alice}' and day = ${TODAY} - 1`);
+        assert.ok(!past.ok && /only today/.test(past.error), 'a finished day\'s mission is fixed');
+        const moved = await svc(`update public.money_daily_missions set day = ${TODAY} + 1 where user_id = '${USERS.alice}' and day = ${TODAY}`);
+        assert.ok(!moved.ok && /cannot move/.test(moved.error));
+        for (const bad of [
+            `insert into public.money_daily_missions (user_id, day, mission, difficulty, reason, source) values ('${USERS.bob}', ${TODAY}, 'buy_something', 'easy', 'x', 'personalised')`,
+            `insert into public.money_daily_missions (user_id, day, mission, difficulty, reason, source) values ('${USERS.bob}', ${TODAY}, 'log_today', 'extreme', 'x', 'personalised')`,
+            `insert into public.money_daily_missions (user_id, day, mission, difficulty, reason, source) values ('${USERS.bob}', ${TODAY}, 'log_today', 'easy', '', 'personalised')`,
+        ]) {
+            const r = await svc(bad);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), bad);
+        }
+    });
+
+    await t.test('a check-in is stored once, by day and by event id', async () => {
+        const E1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+        const checkin = (mission, eventId, day = TODAY) => svc(`insert into public.money_mission_checkins (user_id, day, mission, event_id) values ('${USERS.bob}', ${day}, '${mission}', '${eventId}')`);
+        assert.ok((await checkin('bill_ready', E1)).ok);
+        assert.ok(!(await checkin('bill_ready', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')).ok, 'same mission, same day');
+        assert.ok(!(await checkin('review_recurring', E1)).ok, 'same event replayed');
+        const bad = await checkin('under_limit', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+        assert.ok(!bad.ok && /check constraint/i.test(bad.error), 'verified missions cannot be checked in');
+    });
+
+    await t.test('Points: paid once, signed by reason, append-only, never below zero', async () => {
+        assert.ok((await points(USERS.bob, 'daily_mission', '2026-10-15', 8)).ok);
+        const twice = await points(USERS.bob, 'daily_mission', '2026-10-15', 8);
+        assert.ok(!twice.ok && /duplicate key|unique/i.test(twice.error), 'the same award twice is refused');
+        assert.ok((await points(USERS.bob, 'goal_milestone', 'g1:25', 5)).ok);
+        assert.equal(await balance(USERS.bob), 13);
+
+        for (const [reason, pts] of [['daily_mission', -8], ['reversal', 5], ['redemption', 10], ['daily_mission', 5000], ['adjustment', 0], ['spin_the_wheel', 5]]) {
+            const r = await points(USERS.bob, reason, `bad-${reason}-${pts}`, pts);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), `${reason} ${pts}: ${JSON.stringify(r)}`);
+        }
+        const overdraw = await points(USERS.bob, 'redemption', 'r1', -14);
+        assert.ok(!overdraw.ok && /not enough points/.test(overdraw.error));
+        assert.ok((await points(USERS.bob, 'reversal', 'daily_mission:2026-10-15', -8)).ok, 'a reversal is its own row');
+        assert.equal(await balance(USERS.bob), 5);
+
+        const edit = await svc(`update public.money_points_ledger set points = 1000 where user_id = '${USERS.bob}'`);
+        assert.ok(!edit.ok && /cannot be changed/.test(edit.error), 'even the backend cannot rewrite history');
+        const remove = await svc(`delete from public.money_points_ledger where user_id = '${USERS.bob}'`);
+        assert.ok(!remove.ok && /cannot be changed/.test(remove.error));
+        assert.equal(await balance(USERS.bob), 5);
+    });
+
+    await t.test('a second debit sees the first and cannot overdraw', async () => {
+        assert.ok((await points(USERS.carol, 'weekly_goal', '2026-W41', 15)).ok);
+        // PGlite is a single connection, so two debits are run in one transaction:
+        // the second sees the first and is refused.
+        await db.exec('begin');
+        await db.exec(`insert into public.money_points_ledger (user_id, reason, ref_key, points) values ('${USERS.carol}', 'redemption', 'r-a', -10)`);
+        await assert.rejects(db.exec(`insert into public.money_points_ledger (user_id, reason, ref_key, points) values ('${USERS.carol}', 'redemption', 'r-b', -10)`), /not enough points/);
+        await db.exec('rollback');
+        assert.equal(await balance(USERS.carol), 15);
+    });
+
+    await t.test('savings goals and contributions: constrained, owned, once per client reference', async () => {
+        const g = (await goal(USERS.alice)).rows[0].id;
+        const REF = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+        const add = (user, goalId, amount, ref) => svc(`insert into public.savings_contributions (goal_id, user_id, amount_inr, contributed_on, client_ref) values ('${goalId}', '${user}', ${amount}, ${TODAY}, '${ref}')`);
+        assert.ok((await add(USERS.alice, g, 2000, REF)).ok);
+        const again = await add(USERS.alice, g, 2000, REF);
+        assert.ok(!again.ok && /duplicate key|unique/i.test(again.error), 'a retried contribution is stored once');
+        const stolen = await add(USERS.bob, g, 500, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+        assert.ok(!stolen.ok && /goal's owner/.test(stolen.error), 'nobody adds to someone else\'s goal');
+        for (const bad of [
+            `insert into public.savings_goals (user_id, name, target_inr, target_date) values ('${USERS.alice}', '   ', 5000, '2027-01-01')`,
+            `insert into public.savings_goals (user_id, name, target_inr, target_date) values ('${USERS.alice}', 'Tiny', 10, '2027-01-01')`,
+            `insert into public.savings_goals (user_id, name, target_inr, target_date, status) values ('${USERS.alice}', 'Trip', 5000, '2027-01-01', 'deleted')`,
+            `insert into public.savings_contributions (goal_id, user_id, amount_inr, contributed_on, client_ref) values ('${g}', '${USERS.alice}', 0, ${TODAY}, gen_random_uuid())`,
+            `insert into public.savings_contributions (goal_id, user_id, amount_inr, contributed_on, client_ref, source) values ('${g}', '${USERS.alice}', 100, ${TODAY}, gen_random_uuid(), 'bank_verified')`,
+        ]) {
+            const r = await svc(bad);
+            assert.ok(!r.ok && /check constraint/i.test(r.error), bad);
+        }
+    });
+
+    await t.test('older tables accept the new values; existing rows still pass', async () => {
+        assert.ok((await svc(`insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.carol}', '2026-10-01', 'delivery_cap', true)`)).ok);
+        assert.ok((await svc(`insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.carol}', '2026-10-02', 'under_limit', true)`)).ok);
+        assert.ok((await svc(`insert into public.money_xp_ledger (user_id, reason, ref_key, xp) values ('${USERS.carol}', 'goal_milestone', 'g:50', 10)`)).ok);
+        assert.ok((await svc(`insert into public.user_badges (user_id, badge) values ('${USERS.carol}', 'level_6')`)).ok);
+        const bad = await svc(`insert into public.user_badges (user_id, badge) values ('${USERS.carol}', 'level_99')`);
+        assert.ok(!bad.ok && /check constraint/i.test(bad.error));
+    });
+
+    await t.test('users read only their own rows and write none', async () => {
+        const tables = ['money_daily_missions', 'money_mission_checkins', 'money_points_ledger', 'savings_goals', 'savings_contributions'];
+        for (const table of tables) {
+            const r = await asUser(db, USERS.alice, `select user_id from public.${table}`);
+            assert.ok(r.ok, table);
+            assert.ok(r.rows.every((row) => row.user_id === USERS.alice), table);
+            assert.ok(denied(await as(db, 'anon', null, `select * from public.${table}`)), `anon ${table}`);
+            for (const role of ['anon', 'authenticated']) {
+                assert.ok(denied(await as(db, role, USERS.alice, `delete from public.${table}`)), `${role} delete ${table}`);
+                assert.ok(denied(await as(db, role, USERS.alice, `update public.${table} set user_id = user_id`)), `${role} update ${table}`);
+            }
+        }
+        assert.equal((await asUser(db, USERS.bob, 'select * from public.savings_goals')).rows.length, 0, 'Bob cannot see Alice\'s goal');
+        for (const role of ['anon', 'authenticated']) {
+            assert.ok(denied(await as(db, role, USERS.alice, `insert into public.money_points_ledger (user_id, reason, ref_key, points) values ('${USERS.alice}', 'adjustment', 'gift', 1000)`)), role);
+            assert.ok(denied(await as(db, role, USERS.alice, `insert into public.savings_goals (user_id, name, target_inr, target_date) values ('${USERS.alice}', 'x', 500, '2027-01-01')`)), role);
+            assert.ok(denied(await as(db, role, USERS.alice, `insert into public.money_daily_missions (user_id, day, mission, difficulty, reason, source) values ('${USERS.alice}', ${TODAY} + 1, 'log_today', 'easy', 'x', 'personalised')`)), role);
+        }
+        assert.ok(denied(await asUser(db, USERS.alice, `update public.profiles set mission_difficulty = 'advanced' where id = '${USERS.alice}'`)), 'difficulty is set through the backend');
+    });
+
+    await t.test('deleting the account removes missions, check-ins, Points, goals and contributions', async () => {
+        assert.ok((await points(USERS.alice, 'daily_mission', 'del-test', 5)).ok);
+        await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+        for (const table of ['money_daily_missions', 'money_mission_checkins', 'money_points_ledger', 'savings_goals', 'savings_contributions']) {
+            const r = await db.query(`select count(*)::int as n from public.${table} where user_id = '${USERS.alice}'`);
+            assert.equal(r.rows[0].n, 0, table);
+        }
+    });
+
+    await t.test('verify_production.sql reports only PASS with v1_14 applied', async () => {
+        await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.bob}'`);
+        const res = await db.query(sql('tests/verify_production.sql'));
+        assert.deepEqual(res.rows.filter((r) => r.result !== 'PASS'), []);
+    });
+
+    await t.test('the rollback removes v1.14, keeps older rows, and v1.14 applies again', async () => {
+        await db.exec(sql('v1_14_rewards_rollback.sql'));
+        await db.exec(sql('v1_14_rewards_rollback.sql')); // idempotent
+        assert.equal((await db.query("select to_regclass('public.money_points_ledger') as t")).rows[0].t, null);
+        const kept = await db.query(`select mission from public.money_streak_days where user_id = '${USERS.carol}' order by day`);
+        assert.deepEqual(kept.rows.map((r) => r.mission), ['delivery_cap', 'under_limit'], 'locked days survive the rollback');
+        const refused = await svc(`insert into public.money_streak_days (user_id, day, mission, kept) values ('${USERS.carol}', '2026-10-03', 'goal_step', true)`);
+        assert.ok(!refused.ok && /check constraint/i.test(refused.error), 'the old rules apply to new writes');
+
+        await db.exec(sql('v1_14_rewards.sql'));
+        const res = await db.query(sql('tests/verify_production.sql'));
+        assert.deepEqual(res.rows.filter((r) => r.result !== 'PASS'), []);
+    });
+
+    await db.close();
+});
+
+test('verify_production.sql flags a database where v1_14 has not been applied', async () => {
+    const db = await buildDatabase(CURRENT.filter((f) => f !== 'v1_14_rewards.sql'));
+    await db.exec(`update public.profiles set role = 'admin' where id = '${USERS.alice}'`);
+    const r = await db.query(readFileSync(join(here, 'verify_production.sql'), 'utf8'));
+    const failing = r.rows.filter((row) => row.result !== 'PASS');
+    assert.equal(failing.length, 25, failing.map((row) => row.check_name).join('\n'));
+    assert.ok(failing.every((row) => /v1_14_rewards\.sql/.test(row.detail)), 'every failure points at v1_14');
     await db.close();
 });
