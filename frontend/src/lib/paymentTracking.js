@@ -219,3 +219,13 @@ export function summarize(payments, { mode }) {
 
 /** Fired after detected payments were saved, so History and Home reload. */
 export const EXPENSES_CHANGED_EVENT = 'vittova:expenses-changed';
+
+/** One line for a "See how it works" sample: what the bank-SMS rules decided. */
+export function sampleOutcomeLabel(sample) {
+  if (sample?.outcome === 'debit') {
+    const amount = Number(sample.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    return `Would be added: ₹${amount} to ${sample.payee} (${sample.bank})`;
+  }
+  if (sample?.outcome === 'not_read') return 'From a person: never read';
+  return 'Skipped: not a completed payment';
+}

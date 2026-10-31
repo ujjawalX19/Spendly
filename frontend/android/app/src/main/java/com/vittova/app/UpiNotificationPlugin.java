@@ -267,6 +267,32 @@ public class UpiNotificationPlugin extends Plugin {
         }, "vittova-sms-scan").start();
     }
 
+    /**
+     * Run the bank-SMS rules on {@link SmsIntake#SAMPLES}. Reads no SMS, needs
+     * no permission and queues nothing.
+     */
+    @PluginMethod
+    public void previewSampleSms(PluginCall call) {
+        com.getcapacitor.JSArray samples = new com.getcapacitor.JSArray();
+        long now = System.currentTimeMillis();
+        for (String[] s : SmsIntake.SAMPLES) {
+            String[] r = SmsIntake.preview(s[0], s[1], now);
+            JSObject o = new JSObject();
+            o.put("sender", s[0]);
+            o.put("body", s[1]);
+            o.put("outcome", r[0]);
+            if ("debit".equals(r[0])) {
+                o.put("amount", Double.parseDouble(r[1]));
+                o.put("payee", r[2]);
+                o.put("bank", r[3]);
+            }
+            samples.put(o);
+        }
+        JSObject result = new JSObject();
+        result.put("samples", samples);
+        call.resolve(result);
+    }
+
     private JSObject trackingInfo() {
         JSObject result = new JSObject();
         boolean smsGranted = SmsIntake.smsGranted(getContext());

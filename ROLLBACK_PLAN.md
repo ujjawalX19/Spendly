@@ -1,5 +1,14 @@
 # Rollback plan
 
+**vc33 (23 Oct 2026):** app-only change: the SMS sample preview and Profile row, plus versionCode 33. There is no backend, database or permission change.
+
+- **If vc33 misbehaves after release:** halt the staged rollout and ship vc34 from `main` without commit `fix/play-review-vc33`.
+- **If Google rejects the SMS declaration again:** appeal with the evidence in PERMISSIONS_AND_PRIVACY_AUDIT.md.
+
+  The fallback, only by the owner's decision, is a build without `RECEIVE_SMS`/`READ_SMS`. It would keep manual entry, statement import and Notification Access, but remove automatic SMS tracking, which is the core feature. That would also mean changing the listing.
+
+The vc32 section below still applies to the backend.
+
 | Component | Change in this release | How to roll back | Data impact |
 |---|---|---|---|
 | Android app (vc32) | New build on Play | Play Console → Production → **Halt rollout** (staged rollout keeps the previous version for everyone not yet updated). A Play build cannot be "downgraded" for users who already installed it; ship a fixed vc33 instead | None |

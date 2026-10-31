@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, MessageSquareText, ShieldAlert, ShieldCheck, X } from 'lucide-react';
+import { UpiNotification } from '../plugins/UpiNotification';
+import { sampleOutcomeLabel } from '../lib/paymentTracking';
 
 /**
  * The explanation shown immediately before Android's SMS permission dialog
@@ -17,6 +19,46 @@ export const SMS_DISCLOSURE = [
   "Clear payments are added to your expenses automatically, even when Vittova is closed; unclear ones wait for you. Messages from before you allow this aren't imported.",
   'Turn it off any time in Profile → Payment tracking, or remove the SMS permission in Android settings.',
 ];
+
+/**
+ * "See how it works": the phone's real bank-SMS rules run on built-in sample
+ * messages (UpiNotificationPlugin.previewSampleSms). Reads no SMS, needs no
+ * permission and adds nothing, so anyone can check what would be kept.
+ */
+function SamplePreview() {
+  const [samples, setSamples] = useState(null);
+  const [failed, setFailed] = useState(false);
+
+  const load = async () => {
+    try {
+      const res = await UpiNotification.previewSampleSms();
+      setSamples(res?.samples || []);
+    } catch {
+      setFailed(true);
+    }
+  };
+
+  if (failed) return <p className="mt-3 text-xs text-ink-3">The example isn't available on this device.</p>;
+  if (!samples) {
+    return (
+      <button type="button" onClick={load} className="min-h-11 w-full text-sm font-medium text-accent">
+        See how it works (sample messages)
+      </button>
+    );
+  }
+  return (
+    <div className="mt-3 space-y-2" aria-live="polite">
+      <p className="text-xs text-ink-3">Example messages, checked on this phone by the same rules. Nothing is read from your inbox or saved.</p>
+      {samples.map((s) => (
+        <div key={s.sender + s.body} className="rounded-xl bg-surface-2 px-3 py-2.5">
+          <p className="text-xs font-semibold text-ink-2">{s.sender}</p>
+          <p className="mt-0.5 whitespace-pre-line break-words text-xs text-ink-3">{s.body}</p>
+          <p className="mt-1.5 text-sm font-medium text-ink">{sampleOutcomeLabel(s)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function SmsAccessSheet({ smsGranted, smsPermission, requestSms, openAppSettings, onClose }) {
   // explain → asking → granted | declined
@@ -63,6 +105,7 @@ export default function SmsAccessSheet({ smsGranted, smsPermission, requestSms, 
               New debit alerts from your bank are added to your expenses automatically. Unclear ones wait for you on Home.
             </p>
             <button type="button" onClick={onClose} className="v-press v-btn-primary mt-5 w-full">Done</button>
+            <SamplePreview />
           </>
         ) : (
           <>
@@ -91,6 +134,7 @@ export default function SmsAccessSheet({ smsGranted, smsPermission, requestSms, 
               )}
               <button type="button" onClick={onClose} className="min-h-11 w-full text-sm font-medium text-ink-2">Not now</button>
             </div>
+            <SamplePreview />
           </>
         )}
       </motion.section>
