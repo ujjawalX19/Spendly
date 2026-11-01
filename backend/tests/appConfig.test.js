@@ -12,7 +12,7 @@ test('the minimum version is public, off by default and set from the environment
         delete process.env.MIN_SUPPORTED_ANDROID_VERSION_CODE;
         let res = await t.request('GET', '/api/app-config');
         assert.equal(res.status, 200);
-        assert.deepEqual(res.body, { success: true, android: { minSupportedVersionCode: 0 }, launchOffer: false });
+        assert.deepEqual(res.body, { success: true, android: { minSupportedVersionCode: 0 }, launchOffer: false, webPasses: false });
 
         process.env.MIN_SUPPORTED_ANDROID_VERSION_CODE = '26';
         res = await t.request('GET', '/api/app-config');

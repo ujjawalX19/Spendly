@@ -14,8 +14,12 @@ import { Download } from 'lucide-react';
 import { apiUrl } from '../lib/apiConfig';
 import { AppUpdate } from '../plugins/AppUpdate';
 import { MIN_VERSION_KEY, effectiveMinimum, updateRequired } from '../lib/appUpdate';
+import { distribution } from '../lib/distribution';
 
 const isAndroidApp = () => Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+// The Indus build is signed differently from Google Play's copy, so Google
+// Play cannot update it: the person updates it in the Indus Appstore.
+const FROM_INDUS = distribution() === 'indus';
 const CONFIG_TIMEOUT_MS = 8000;
 
 async function fetchConfig() {
@@ -57,6 +61,10 @@ export default function UpdateGate() {
   }, []);
 
   const update = useCallback(async (fromTap) => {
+    if (FROM_INDUS) {
+      setNote('Open the Indus Appstore, find Vittova and tap Update.');
+      return;
+    }
     setBusy(true);
     setNote('');
     try {
@@ -98,7 +106,7 @@ export default function UpdateGate() {
           disabled={busy}
           className="v-press v-btn-primary mt-6 w-full"
         >
-          <Download className="h-4 w-4" aria-hidden="true" /> {busy ? 'Opening Google Play…' : 'Update now'}
+          <Download className="h-4 w-4" aria-hidden="true" /> {busy ? 'Opening Google Play…' : FROM_INDUS ? 'How to update' : 'Update now'}
         </button>
         {note && <p role="status" className="mt-4 text-sm text-ink-2">{note}</p>}
       </div>

@@ -25,11 +25,11 @@ const QUESTIONS = [
   },
   {
     q: 'How is Pro billed, and can I buy it on this website?',
-    a: 'Pro is sold only through Google Play in the Vittova Android app, billed to your Google account. It cannot be bought on this website. Google Play shows the price and renewal terms before you pay.',
+    a: 'In the Vittova app from Google Play, Pro is a subscription billed to your Google account. Where the pricing section above offers it, you can also buy a pass on this website: one payment through Razorpay with UPI, a card or net banking, which never renews.',
   },
   {
     q: 'How do I cancel Pro or get a refund?',
-    a: "You cancel in Google Play → Payments & subscriptions, and Pro stays on until the end of the period you paid for. Refunds are handled under Google Play's refund policies.",
+    a: "A pass doesn't renew, so there is nothing to cancel. If you were charged but Pro didn't turn on, or were charged twice, write to support@vittova.in within 7 days for a refund. Google Play subscriptions are cancelled in Google Play → Payments & subscriptions, and refunds follow Google Play's policies.",
   },
   {
     q: 'Can I export or delete my data?',

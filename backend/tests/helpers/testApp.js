@@ -65,6 +65,42 @@ async function startTestApp({ env = {} } = {}) {
     };
     inject(path.join(__dirname, '../../lib/playDeveloperApi.js'), play);
 
+    // A stand-in for Razorpay's Orders/Payments API: orders are created here
+    // and tests put payments in `razorpay.payments` (payment id -> entity).
+    // The key secret and webhook secret come from process.env, as in production.
+    const razorpay = {
+        configured: true,
+        down: false,
+        orders: new Map(),
+        payments: new Map(),
+        captures: [],
+        isConfigured() { return this.configured; },
+        keyId: () => 'rzp_test_vittova',
+        keySecret: () => process.env.RAZORPAY_KEY_SECRET || '',
+        webhookSecret: () => process.env.RAZORPAY_WEBHOOK_SECRET || '',
+        RazorpayError: class extends Error {},
+        async createOrder(order) {
+            if (this.down) throw Object.assign(new Error('unavailable'), { code: 'RAZORPAY_UNAVAILABLE' });
+            const id = `order_${Math.random().toString(36).slice(2, 16).padEnd(14, 'x')}`;
+            const created = { id, entity: 'order', status: 'created', ...order };
+            this.orders.set(id, created);
+            return created;
+        },
+        async getPayment(id) {
+            if (this.down) throw Object.assign(new Error('unavailable'), { code: 'RAZORPAY_UNAVAILABLE' });
+            const p = this.payments.get(id);
+            if (!p) throw Object.assign(new Error('not found'), { code: 'RAZORPAY_NOT_FOUND' });
+            return { ...p };
+        },
+        async capturePayment(id) {
+            this.captures.push(id);
+            const p = this.payments.get(id);
+            p.status = 'captured';
+            return { ...p };
+        },
+    };
+    inject(path.join(__dirname, '../../lib/razorpayApi.js'), razorpay);
+
     const { createApp } = require('../../app');
     const { resetRateLimits } = require('../../middleware/rateLimits');
     const app = createApp();
@@ -95,6 +131,7 @@ async function startTestApp({ env = {} } = {}) {
         db,
         gemini,
         play,
+        razorpay,
         request,
         resetRateLimits,
         close: () => new Promise((resolve) => server.close(resolve)),

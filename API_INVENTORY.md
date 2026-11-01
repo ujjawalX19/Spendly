@@ -54,6 +54,9 @@ test account (manual).
 | GET | /api/pdf-import/history | — | routes/pdfImport.js | Yes | ✅ |
 | GET | /api/pro/status | contexts/ProContext.jsx | routes/pro.js | Yes | ✅ tested |
 | POST | /api/pro/activate, /api/pro/add-freezes | — | routes/pro.js (501 until billing) | Yes | ✅ 501 by design |
+| GET | /api/pro/razorpay/config | pages/ProUpgrade.jsx (website, Indus build) | routes/pro.js | Yes | ✅ tested |
+| POST | /api/pro/razorpay/order, /api/pro/razorpay/verify | lib/razorpayCheckout.js | routes/pro.js, lib/razorpayBilling.js | Yes | ✅ tested |
+| POST | /api/pro/razorpay/webhook | Razorpay (signed) | routes/pro.js | Razorpay signature | ✅ tested |
 | DELETE | /api/account | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
 | PUT | /api/account/budget, /api/account/investment-target | pages/Settings.jsx | routes/account.js | Yes | ✅ tested |
 

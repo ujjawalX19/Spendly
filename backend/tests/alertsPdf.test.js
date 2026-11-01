@@ -71,3 +71,13 @@ test('the public config names the offer only while it is on', async () => {
     process.env.LIMITED_OFFER_ENABLED = 'true';
     assert.equal((await t.request('GET', '/api/app-config', {})).body.launchOffer, true);
 });
+
+test('the website pass costs ₹199 only while the offer is on', () => {
+    const razorpay = require('../lib/razorpayBilling');
+    const yearly = () => razorpay.publicPlans().find((p) => p.key === 'yearly');
+    delete process.env.LIMITED_OFFER_ENABLED;
+    assert.deepEqual([yearly().amount, yearly().offer], [44900, false]);
+    process.env.LIMITED_OFFER_ENABLED = 'true';
+    assert.deepEqual([yearly().amount, yearly().offer], [19900, true]);
+    assert.equal(razorpay.publicPlans().find((p) => p.key === 'monthly').amount, 4900);
+});

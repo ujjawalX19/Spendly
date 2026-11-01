@@ -82,7 +82,7 @@ test('public routes are the documented few and leak nothing personal', async () 
     // /api/health is declared in app.js itself, so discovery lists only these.
     assert.deepEqual(pub.sort(), ['GET /api/app-config', 'POST /api/pro/rtdn', 'POST /api/telemetry/events']);
     const config = await t.request('GET', '/api/app-config');
-    assert.deepEqual(Object.keys(config.body).sort(), ['android', 'launchOffer', 'success']);
+    assert.deepEqual(Object.keys(config.body).sort(), ['android', 'launchOffer', 'success', 'webPasses']);
     assert.equal(typeof config.body.launchOffer, 'boolean');
     assert.deepEqual(Object.keys(config.body.android), ['minSupportedVersionCode']);
     const health = await t.request('GET', '/api/health');

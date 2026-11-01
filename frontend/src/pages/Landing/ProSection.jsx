@@ -1,11 +1,13 @@
 /**
  * Pricing on the homepage: the free plan next to Vittova Pro.
  *
- * Pro is sold only through Google Play in the Android app, so this shows the
- * prices (backend/lib/billingPlans.js) and links to the listing; nothing is
- * paid on this website. Keep the Pro list in line with pages/ProUpgrade.jsx, the
- * free limits with backend/middleware/proGate.js, and the prices with Play
- * Console.
+ * While Razorpay is switched on, the website sells one-time passes on /pro
+ * (backend/lib/razorpayBilling.js). Otherwise this links to the Android app,
+ * which sells the same plans as Google Play subscriptions (billingPlans.js).
+ * GET /api/app-config says which, and whether the offer is on. No timers or
+ * invented discounts. Keep the Pro list in line with pages/ProUpgrade.jsx, the
+ * free limits with backend/middleware/proGate.js, and the prices with
+ * razorpayBilling.js and Play Console.
  */
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/apiConfig';
@@ -14,8 +16,8 @@ import { Link } from 'react-router-dom';
 import { PlayStoreCta, PrimaryCta, Reveal, SectionHeading, WRAP } from './shared';
 
 const PLANS = {
-  monthly: { name: 'Monthly', price: '₹49', per: '/month', note: 'Billed every month. Cancel any time.' },
-  yearly: { name: 'Yearly', price: '₹449', per: '/year', note: 'About ₹37 a month: ₹139 less than twelve monthly payments.' },
+  monthly: { name: 'Monthly', price: '₹49', per: 'for 30 days', note: 'One payment. Does not renew.', playPer: '/month', playNote: 'Billed every month. Cancel any time.' },
+  yearly: { name: 'Yearly', price: '₹449', per: 'for 1 year', note: 'One payment, about ₹37 a month. Does not renew.', playPer: '/year', playNote: 'About ₹37 a month: ₹139 less than twelve monthly payments.' },
 };
 
 const FREE = [
@@ -62,8 +64,12 @@ export default function ProSection() {
   const [period, setPeriod] = useState('yearly');
   // Named only while the server says the offer is on, with no invented end date.
   const [offerOn, setOfferOn] = useState(false);
+  const [webPasses, setWebPasses] = useState(false);
   useEffect(() => {
-    fetch(apiUrl('/app-config')).then((r) => r.json()).then((c) => setOfferOn(c.launchOffer === true)).catch(() => {});
+    fetch(apiUrl('/app-config')).then((r) => r.json()).then((c) => {
+      setOfferOn(c.launchOffer === true);
+      setWebPasses(c.webPasses === true);
+    }).catch(() => {});
   }, []);
   const plan = PLANS[period];
   return (
@@ -93,22 +99,36 @@ export default function ProSection() {
             </div>
             <p className="mt-4 flex flex-wrap items-baseline gap-x-2" aria-live="polite">
               <span className="text-4xl font-semibold tracking-[-0.03em] tabular-nums text-ink">{plan.price}</span>
-              <span className="text-sm text-ink-2">{plan.per}</span>
+              <span className="text-sm text-ink-2">{webPasses ? plan.per : plan.playPer}</span>
             </p>
-            <p className="mt-2 text-sm text-ink-2">{plan.note}</p>
+            <p className="mt-2 text-sm text-ink-2">{webPasses ? `${plan.note} Prices include all taxes.` : plan.playNote}</p>
             {offerOn && period === 'yearly' && (
-              <p className="mt-2 text-sm text-ink-2"><span className="font-semibold text-ink">Diwali and launch offer: ₹199</span> for the first year, then ₹449/year. For eligible new subscribers in the Android app.</p>
+              <p className="mt-2 text-sm text-ink-2">
+                <span className="font-semibold text-ink">Diwali and launch offer: ₹199</span> for the first year, then ₹449/year, for eligible new subscribers in the Android app.
+                {webPasses && ' On this website, a 1-year pass is ₹199 while the offer runs.'}
+              </p>
             )}
             <Includes items={PRO} />
-            <p className="mt-8 rounded-xl bg-surface-2 p-4 text-sm leading-relaxed text-ink-soft">
-              <b className="font-semibold text-ink">Available in the Android app.</b> Pro is sold through Google Play in the Vittova Android app, not on this website. Google Play shows the final price and renewal terms before you pay.
-            </p>
-            <PlayStoreCta className="mt-4 w-full" />
+            {webPasses ? (
+              <>
+                <p className="mt-8 rounded-xl bg-surface-2 p-4 text-sm leading-relaxed text-ink-soft">
+                  Buy a Pro pass here after you sign in, paid securely through Razorpay with UPI, a card or net banking. Pro then works in the app too.
+                </p>
+                <div className="mt-6"><Link to="/pro" className="v-press v-btn-primary inline-flex w-full items-center justify-center sm:w-auto">Get Pro</Link></div>
+              </>
+            ) : (
+              <>
+                <p className="mt-8 rounded-xl bg-surface-2 p-4 text-sm leading-relaxed text-ink-soft">
+                  <b className="font-semibold text-ink">Available in the Android app.</b> Google Play shows the final price and renewal terms before you pay.
+                </p>
+                <PlayStoreCta className="mt-4 w-full" />
+              </>
+            )}
           </Reveal>
         </div>
 
         <Reveal className="mt-6 max-w-3xl text-sm leading-relaxed text-ink-3">
-          Pro renews automatically until you cancel in Google Play → Payments &amp; subscriptions, and stays on until the end of the period you paid for. Refunds follow Google Play&apos;s policies. Offer eligibility is decided by Google Play. Full details are in the <Link to="/terms" className="l-link">Terms of Service</Link>.
+          In the Vittova app from Google Play, Pro is a subscription that renews until you cancel it in Google Play. {webPasses && 'A pass is a single payment and never renews; a new pass starts when your current one ends. '}Refunds and full details are in the <Link to="/terms" className="l-link">Terms of Service</Link>.
         </Reveal>
       </div>
     </section>

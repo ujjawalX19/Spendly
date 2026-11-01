@@ -19,7 +19,12 @@ export default defineConfig(({ command, mode }) => {
   return {
   plugins: [react(), tailwindcss()],
   // Reported by web telemetry as the app version (Android reports its versionName).
-  define: { __APP_VERSION__: JSON.stringify(version) },
+  // `npm run build:indus` (--mode indus) makes the Indus Appstore bundle, which
+  // sells Pro through Razorpay instead of Google Play (src/lib/distribution.js).
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    ...(mode === 'indus' ? { 'import.meta.env.VITE_DISTRIBUTION': JSON.stringify('indus') } : {}),
+  },
   server: {
     proxy: {
       '/api': {

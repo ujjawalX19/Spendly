@@ -23,7 +23,7 @@ function minSupportedAndroidVersionCode() {
 router.get('/', (req, res) => {
     res.set('Cache-Control', 'no-store');
     // The website names the offer only while it is really on.
-    res.json({ success: true, android: { minSupportedVersionCode: minSupportedAndroidVersionCode() }, launchOffer: flag('limitedOfferEnabled') });
+    res.json({ success: true, android: { minSupportedVersionCode: minSupportedAndroidVersionCode() }, launchOffer: flag('limitedOfferEnabled'), webPasses: require('../lib/razorpayBilling').enabled() });
 });
 
 module.exports = router;

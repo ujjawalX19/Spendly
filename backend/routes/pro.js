@@ -56,6 +56,7 @@ router.get('/status', protect, async (req, res) => {
     res.json({
         success: true,
         purchasesAvailable: purchasesEnabled(),
+        razorpayAvailable: require('../lib/razorpayBilling').enabled(),
         pro: {
             isPro,
             expiresAt: isPro ? profile.pro_expires_at : null,
@@ -154,6 +155,78 @@ router.post('/rtdn', async (req, res) => {
     } catch (e) {
         // Google or the database is unavailable: ask Pub/Sub to retry.
         console.error('RTDN processing failed:', e.code || e.message);
+        return res.status(503).json({ success: false });
+    }
+});
+
+// ── Razorpay Pro passes (website and the Indus Appstore build) ─────────────
+// See lib/razorpayBilling.js. Never offered by the Google Play build.
+
+const razorpay = require('../lib/razorpayBilling');
+
+function sendRazorpayError(res, e) {
+    if (e instanceof razorpay.RazorpayBillingError) return res.status(e.status).json({ success: false, code: e.code, message: e.message });
+    console.error('Razorpay error:', e?.code || e?.message || 'Error');
+    return res.status(503).json({ success: false, code: 'RAZORPAY_UNAVAILABLE', message: "We couldn't confirm your payment just now. It is safe; Pro turns on once Razorpay confirms it." });
+}
+const razorpayOff = (res) => res.status(501).json({ success: false, code: 'RAZORPAY_NOT_AVAILABLE', message: 'Paying with Razorpay is not available yet.' });
+
+// @route GET /api/pro/razorpay/config — plans, prices and this account's passes
+router.get('/razorpay/config', protect, async (req, res) => {
+    if (!razorpay.enabled()) return res.json({ success: true, available: false });
+    res.json({ success: true, available: true, plans: razorpay.publicPlans(), passes: await razorpay.history(req.user.id) });
+});
+
+const orderSchema = z.object({ plan: z.enum(['monthly', 'yearly']) }).strict();
+
+// @route POST /api/pro/razorpay/order — start a payment; the server sets the amount
+router.post('/razorpay/order', protect, adultOnly, userApiLimiter, async (req, res) => {
+    if (!razorpay.enabled()) return razorpayOff(res);
+    const parsed = orderSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    try {
+        res.json({ success: true, order: await razorpay.createOrder(req.user.id, parsed.data.plan) });
+    } catch (e) {
+        sendRazorpayError(res, e);
+    }
+});
+
+const checkoutSchema = z.object({
+    orderId: z.string().trim().regex(/^order_\w{6,40}$/, 'orderId is invalid'),
+    paymentId: z.string().trim().regex(/^pay_\w{6,40}$/, 'paymentId is invalid'),
+    signature: z.string().trim().regex(/^[0-9a-f]{64}$/, 'signature is invalid'),
+}).strict();
+
+// @route POST /api/pro/razorpay/verify — Checkout's result; confirmed with Razorpay before Pro is granted
+router.post('/razorpay/verify', protect, adultOnly, userApiLimiter, async (req, res) => {
+    if (!razorpay.enabled()) return razorpayOff(res);
+    const parsed = checkoutSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    try {
+        const result = await razorpay.verifyCheckout(req.user.id, parsed.data);
+        const { data: profile } = await supabase.from('profiles').select('is_pro, pro_expires_at').eq('id', req.user.id).maybeSingle();
+        res.json({
+            success: true,
+            status: result.status,
+            pro: { isPro: hasActivePro(profile), expiresAt: hasActivePro(profile) ? profile.pro_expires_at : null },
+        });
+    } catch (e) {
+        sendRazorpayError(res, e);
+    }
+});
+
+// @route POST /api/pro/razorpay/webhook — Razorpay webhooks, authenticated by
+// X-Razorpay-Signature over the raw body. No user session.
+router.post('/razorpay/webhook', async (req, res) => {
+    if (!razorpay.validWebhookSignature(req.rawBody, req.headers['x-razorpay-signature'])) {
+        return res.status(401).json({ success: false, code: 'BAD_SIGNATURE' });
+    }
+    try {
+        await razorpay.handleWebhook(req.body);
+        return res.status(200).json({ success: true });
+    } catch (e) {
+        // Razorpay or the database is unavailable: a non-2xx makes Razorpay retry.
+        console.error('Razorpay webhook failed:', e.code || e.message);
         return res.status(503).json({ success: false });
     }
 });
