@@ -21,7 +21,7 @@ The table below was written before this round; where they differ, this section w
 
 **Not done, and cannot be from this computer:** anything on a real phone (widget, notifications, Bank SMS on/off, a real receipt photo, purchases), real Google Play or Razorpay payments, screen-reader and large-font testing.
 
-**Not built:** group notifications (the app has no push service, and a member's phone cannot be told about another's action without one), income on Home and in the AI, voice of a full visual redesign beyond the token fixes: the screens already share one design system, and restyling them further is a judgement for the owner to direct with specifics.
+**Not built:** group notifications (the app has no push service, and a member's phone cannot be told about another's action without one), income on Home and in the AI, and a visual redesign beyond the colour fixes. The screens already share one design system, so further restyling needs specific direction from the owner.
 
 **Migrations to run, in order:** `v1_14`, `v1_15`, `v1_16`, `v1_17`, `v1_18`.
 
