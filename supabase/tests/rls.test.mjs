@@ -1025,6 +1025,51 @@ test('verify_production.sql flags a database where v1_13 has not been applied', 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+test('v1_14 to v1_18 on a database with existing data: nothing is lost, each can re-run, each rolls back', async () => {
+    const LATER = ['v1_14_rewards.sql', 'v1_15_razorpay_passes.sql', 'v1_16_budgets_income.sql', 'v1_17_financial_features.sql', 'v1_18_expense_subcategory.sql'];
+    const db = await buildDatabase(CURRENT.filter((f) => !LATER.includes(f)));
+    await db.exec(`
+        update public.profiles set is_pro = true, pro_source = 'manual' where id = '${USERS.alice}';
+        insert into public.expenses (user_id, amount, category, description) values ('${USERS.alice}', 123.45, 'Food', 'Before migration');
+    `);
+    const snapshot = async () => {
+        const rows = {};
+        for (const t of ['profiles', 'expenses', 'groups', 'group_members']) {
+            rows[t] = (await db.query(`select count(*)::int as n from public.${t}`)).rows[0].n;
+        }
+        rows.amount = (await db.query(`select amount::text as a from public.expenses where description = 'Before migration'`)).rows[0].a;
+        rows.pro = (await db.query(`select pro_source from public.profiles where id = '${USERS.alice}'`)).rows[0].pro_source;
+        return rows;
+    };
+    const before = await snapshot();
+    for (const file of LATER) {
+        await db.exec(sql(file));
+        await db.exec(sql(file)); // a re-run after a partial failure must be safe
+        assert.deepEqual(await snapshot(), before, file);
+    }
+    for (const file of [...LATER].reverse()) {
+        await db.exec(sql(file.replace('.sql', '_rollback.sql')));
+        assert.deepEqual(await snapshot(), before, `rollback ${file}`);
+    }
+    await db.exec(sql('v1_18_expense_subcategory.sql'));
+    await db.close();
+});
+
+test('v1_16 and v1_17: new rows go with the account when it is deleted', async () => {
+    const db = await buildDatabase(CURRENT);
+    await db.exec(`
+        insert into public.category_budgets (user_id, category, limit_inr) values ('${USERS.alice}', 'Food', 500);
+        insert into public.income_entries (user_id, amount_inr, received_on) values ('${USERS.alice}', 500, '2026-01-01');
+        insert into public.savings_events (user_id, kind, amount) values ('${USERS.alice}', 'price_difference', 5);
+        insert into public.planned_purchases (user_id, amount, decision) values ('${USERS.alice}', 5, 'skipped');
+        delete from auth.users where id = '${USERS.alice}';
+    `);
+    for (const t of ['category_budgets', 'income_entries', 'savings_events', 'planned_purchases']) {
+        assert.equal((await db.query(`select count(*)::int as n from public.${t}`)).rows[0].n, 0, t);
+    }
+    await db.close();
+});
+
 test('v1_16 and v1_17: budgets, income, Money-Saved and receipts are private and server-written', async () => {
     const db = await buildDatabase(CURRENT);
     const svc = (statement) => as(db, 'service_role', null, statement);

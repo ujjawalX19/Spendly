@@ -9,6 +9,7 @@
  *
  * Pro bought one way unlocks everywhere after sign-in; the server decides.
  */
+import { Capacitor } from '@capacitor/core';
 
 /** 'play' | 'indus', fixed when the bundle is built. */
 export function distribution(env = import.meta.env) {
@@ -23,4 +24,9 @@ export function paymentChannel({ native, platform }, dist = distribution()) {
   if (!native) return 'razorpay';
   if (platform !== 'android') return 'none';
   return dist === 'indus' ? 'razorpay' : 'play';
+}
+
+/** True in the running app from Google Play: it must not describe other ways to pay. */
+export function isPlayApp() {
+  return paymentChannel({ native: Capacitor.isNativePlatform(), platform: Capacitor.getPlatform() }) === 'play';
 }

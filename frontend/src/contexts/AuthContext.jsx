@@ -22,7 +22,7 @@ const AuthContext = createContext();
 // Local, per-device app state that must not survive into another account.
 // v1.14: the cached mission and any mission actions still waiting to sync
 // belong to the account, not the phone.
-const LOCAL_KEYS_TO_CLEAR = ['spendly.seenPayments.v1', 'spendly.notificationPrompt.v1', 'spendly.recovery', 'vittova.missionCache.v1', 'vittova.offlineQueue.v1'];
+const LOCAL_KEYS_TO_CLEAR = ['vittova.home.v1', 'vittova.widget.amount', 'spendly.seenPayments.v1', 'spendly.notificationPrompt.v1', 'spendly.recovery', 'vittova.missionCache.v1', 'vittova.offlineQueue.v1'];
 
 function clearLocalAppState() {
   for (const key of LOCAL_KEYS_TO_CLEAR) {

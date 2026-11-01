@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { SUPPORTED_PAYMENT_APPS } from '../lib/supportedPaymentApps';
 import { SUPPORT_EMAIL, POLICY_LAST_UPDATED } from '../lib/legal';
+import { isPlayApp } from '../lib/distribution';
 
 /**
  * Privacy Policy.
@@ -98,7 +99,7 @@ export default function PrivacyPolicy() {
           <Section title="4. AI features and Google Gemini">
             <p>Some features send content to Google's Gemini API, operated by Google LLC, to generate a result:</p>
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong className="text-ink">Receipt scan:</strong> the receipt photo you choose. We save the merchant name, item list and total; we do not store the photo.</li>
+              <li><strong className="text-ink">Receipt scan:</strong> the receipt photo you choose. We save the merchant name, item list and total; we do not store the photo. When you split a receipt in a group, the photo is read the same way and nothing is saved until you confirm the split.</li>
               <li><strong className="text-ink">Money coach:</strong> your question and a summary of your spending figures (for example monthly totals by category, budget and upcoming bills). Your name and email are not included.</li>
               <li><strong className="text-ink">Spending tip:</strong> when you are projected to exceed your budget, your budget, amount spent and top spending category.</li>
               <li><strong className="text-ink">Bank statement import</strong> (when available): the text of the PDF you upload. The file is processed in memory and not stored; the extracted transactions are saved.</li>
@@ -112,7 +113,7 @@ export default function PrivacyPolicy() {
 
           <Section title="5. How we use information">
             <ul className="list-disc space-y-1 pl-5">
-              <li>To provide the app: show your spending, budget, forecasts and score, and answer your questions.</li>
+              <li>To provide the app: show your spending, budget, forecasts and score, and answer your questions. This includes things you choose to enter: category budgets, expense subcategories, income, purchase decisions, money you record as saved, and how a receipt was split in a group, which other members of that group can see.</li>
               <li>To enforce free-plan limits and prevent abuse (for example rate limiting).</li>
               <li>To keep the service secure and fix problems.</li>
             </ul>
@@ -125,11 +126,12 @@ export default function PrivacyPolicy() {
               <li><strong className="text-ink">Render:</strong> hosting for the Vittova API server.</li>
               <li><strong className="text-ink">Vercel:</strong> hosting for the Vittova website.</li>
               <li><strong className="text-ink">Google:</strong> Google Sign-In (if you choose it), the Gemini API (section 4) and Google Play billing for Vittova Pro.</li>
-              <li><strong className="text-ink">Razorpay:</strong> payments for Vittova Pro passes on vittova.in and in the Indus Appstore app.</li>
+              {!isPlayApp() && <li><strong className="text-ink">Razorpay:</strong> payments for Vittova Pro passes on vittova.in and in the Indus Appstore app.</li>}
             </ul>
             <p>These providers process data on our behalf and may store it on servers outside India.</p>
-            <p>Purchases: in the app from Google Play, Vittova Pro is bought through Google Play, which handles the payment; we receive the purchase token, the plan and the subscription status to check the purchase and turn Pro on for your account. On vittova.in and in the app from the Indus Appstore, Pro passes are paid through Razorpay, which handles the payment; we receive the order and payment reference, the amount, the plan and whether it succeeded or was refunded, and Razorpay receives the email you sign in with so it can send a receipt. We never receive your card, UPI or bank details.</p>
-            <p>Notifications: Vittova does not send push notifications from a server. Expected-debit reminders, if you turn them on, are scheduled by the app and shown on your phone only.</p>
+            <p>Purchases: in the app from Google Play, Vittova Pro is bought through Google Play, which handles the payment; we receive the purchase token, the plan and the subscription status to check the purchase and turn Pro on for your account.{!isPlayApp() && ' On vittova.in and in the app from the Indus Appstore, Pro passes are paid through Razorpay, which handles the payment; we receive the order and payment reference, the amount, the plan and whether it succeeded or was refunded, and Razorpay receives the email you sign in with so it can send a receipt.'} We never receive your card, UPI or bank details.</p>
+            <p>Notifications: Vittova does not send push notifications from a server. Expected-debit reminders and money alerts, if you turn them on, are scheduled by the app and shown on your phone only. Alert text contains no amounts.</p>
+            <p>Home screen widget: if you add it, today's safe-to-spend figure is kept on your phone for the widget. The amount is hidden unless you turn it on, and it is removed when you sign out.</p>
           </Section>
 
           <Section title="7. Security">
