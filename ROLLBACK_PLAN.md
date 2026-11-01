@@ -1,22 +1,19 @@
 # Rollback plan
 
-**vc33 (23 Oct 2026):** app-only change: the SMS sample preview and Profile row, plus versionCode 33. There is no backend, database or permission change.
+Untested on real infrastructure. Use the least destructive step that solves the problem.
 
-- **If vc33 misbehaves after release:** halt the staged rollout and ship vc34 from `main` without commit `fix/play-review-vc33`.
-- **If Google rejects the SMS declaration again:** appeal with the evidence in PERMISSIONS_AND_PRIVACY_AUDIT.md.
+| Problem | Action | Data lost |
+|---|---|---|
+| ₹199 offer wrong | `LIMITED_OFFER_ENABLED=false` on Render | None |
+| Razorpay wrong | `RAZORPAY_ENABLED=false` | None |
+| Rewards wrong | `REWARDS_ENABLED=false` | None |
+| Website or server bad | Redeploy `f367204`, the current `main` | None; new tables stay unused |
+| vc34 bad on Play | Halt the staged rollout. Google Play can't downgrade people already updated, so fix forward with vc35. Use a staged rollout from the start | None |
+| Widget or alerts bad | No server switch exists; needs a new app build. Users can remove the widget or turn alerts off | None |
+| Migration failed partway | All re-runnable: fix and re-run | None |
+| Migration must be removed | Run the `_rollback.sql` for it, newest first (v1_18 → v1_14), after exporting the tables | **Yes**, see below |
+| Corruption | Restore the verified backup | Writes since the backup |
 
-  The fallback, only by the owner's decision, is a build without `RECEIVE_SMS`/`READ_SMS`. It would keep manual entry, statement import and Notification Access, but remove automatic SMS tracking, which is the core feature. That would also mean changing the listing.
+**Rollback scripts delete data:** rewards and goals (v1_14), Razorpay payment records (v1_15; keep for accounting), budgets and income (v1_16), decisions, savings and split records (v1_17), subcategory labels (v1_18).
 
-The vc32 section below still applies to the backend.
-
-| Component | Change in this release | How to roll back | Data impact |
-|---|---|---|---|
-| Android app (vc32) | New build on Play | Play Console → Production → **Halt rollout** (staged rollout keeps the previous version for everyone not yet updated). A Play build cannot be "downgraded" for users who already installed it; ship a fixed vc33 instead | None |
-| Backend (Render) | Deploy of `release/vc31` | Render → service → **Rollback** to the deploy of commit `8c8731e` (or redeploy that commit) | None: no migration in this release |
-| Website (Vercel) | Unchanged by this release (already `main` @ `e024cad`) | Vercel → Deployments → promote the previous deployment (previous good: `4cd51a7`) | None |
-| Database | No migration | — | — |
-| Force update | Not used | `MIN_SUPPORTED_ANDROID_VERSION_CODE` stays 0; never raise it as part of a rollback | — |
-| Google sign-in config (A1) | Android OAuth clients in Google Cloud | Deleting a newly added client restores the previous state; never delete the Web client | Users mid-sign-in retry |
-
-Owner: you (Render, Vercel, Google Cloud); Milan (Play Console).
-Signals to watch after release: Owner Console Errors and System Health, `/api/health` version, `login_failed` events by code, Android vitals (crash and ANR rates) in Play Console.
+**Limits:** vc34 expects the new server. vc33 keeps working with the new server by design, but this has not been run end to end. There are no individual off switches for the newer features, because the plan's rollback flags weren't built.
