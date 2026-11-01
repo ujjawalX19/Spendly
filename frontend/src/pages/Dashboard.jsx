@@ -194,19 +194,19 @@ function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
           <Zap className="w-[18px] h-[18px]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-zinc-100">
+          <p className="text-sm font-bold text-ink">
             {uncertain ? `${copy.title}: please check` : copy.title}
-            {queued > 1 && <span className="ml-2 text-[11px] font-semibold text-zinc-500">1 of {queued}</span>}
+            {queued > 1 && <span className="ml-2 text-[11px] font-semibold text-ink-3">1 of {queued}</span>}
           </p>
-          <p className="text-xs text-zinc-400 mt-0.5 truncate">
+          <p className="text-xs text-ink-2 mt-0.5 truncate">
             {payment.merchant && payment.merchant !== 'Unknown' ? payment.merchant : 'Unknown payee'}
             {payment.app ? ` · ${payment.app}` : ''} · {when.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
           </p>
           {isExpense ? (
-            <label className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
+            <label className="mt-2 flex items-center gap-2 text-xs text-ink-2">
               Amount
               <span className="relative flex-1">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-500">{'\u20b9'}</span>
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-ink-3">{'\u20b9'}</span>
                 <input
                   type="number" inputMode="decimal" min="0.01" step="0.01" value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -215,13 +215,13 @@ function PaymentToast({ payment, queued, onAdd, onDismiss, saving }) {
               </span>
             </label>
           ) : (
-            <p className="text-xs text-zinc-400 mt-1">{'\u20b9'}{Number(payment.amount).toLocaleString('en-IN')} {copy.verb}. Income isn't tracked yet, so this won't be added.</p>
+            <p className="text-xs text-ink-2 mt-1">{'\u20b9'}{Number(payment.amount).toLocaleString('en-IN')} {copy.verb}. Income isn't tracked yet, so this won't be added.</p>
           )}
           {uncertain && isExpense && (
-            <p className="text-[11px] text-amber-400/90 mt-1">We couldn't read this one confidently. Check the amount before saving.</p>
+            <p className="text-[11px] text-warn mt-1">We couldn't read this one confidently. Check the amount before saving.</p>
           )}
         </div>
-        <button onClick={onDismiss} aria-label="Dismiss" className="text-zinc-600 hover:text-zinc-400 p-1 transition-colors">
+        <button onClick={onDismiss} aria-label="Dismiss" className="text-ink-3 hover:text-ink-2 p-1 transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>

@@ -1,10 +1,33 @@
 # Vittova 2.0 — status report (1 Nov 2026)
 
-Branch `feat/vittova-2`, from `main` `f367204` + vc33 (`fix/play-review-vc33`) + rewards and the financial-intelligence plan. **Nothing is deployed, migrated or uploaded.** Decision: **NOT READY for release.** The full brief is partly done; see the matrix.
+Branch `feat/vittova-2`, from `main` `f367204` + vc33 + rewards, the financial-intelligence plan and Razorpay passes. **Nothing is deployed, migrated or uploaded.** Decision: **NOT READY for release** until the owner actions and phone tests below are done.
+
+## Update, later on 1 Nov
+
+The table below was written before this round; where they differ, this section wins.
+
+| Item | Now |
+|---|---|
+| Diwali and launch offer | On `LIMITED_OFFER_ENABLED`: Play shows the `launch-199` offer first (₹199 first year, then ₹449/year). The website's 1-year pass is ₹199, one payment, no renewal. No end date or countdown is shown |
+| Money alerts | Built: budget 80%/100%, unusual spending, bills, savings goals, weekly summary. Each off until chosen, no amounts in the text. Checked on app open, so a budget alert follows the next visit, not each payment |
+| Subcategories | Built: add, edit, list (`v1_18`) |
+| Duplicate warning | Built, manual entries, asks and allows "Add anyway" |
+| PDF reports | Built, Pro. Amounts print as "Rs." |
+| Razorpay | Merged. The homepage only offers passes while Razorpay is switched on; otherwise it links to Google Play |
+| Light theme | Fixed unreadable text on Privacy, Terms and Delete Account pages, plus leftovers on Home, Afford-It and Profile |
+| Owner Console | Reviewed, unchanged. It has users, activity, retention, Pro revenue, errors, health. Acquisition sources are stated as not tracked: real numbers need Play Console reports or campaign links |
+
+**Tried in a browser, signed in**, using the real server code with a fake local database and local test accounts: Home, budgets, reports, calendar, Wrapped, Money-Saved, alerts page, Pro, groups, adding an expense, the duplicate warning, a receipt split and an Afford-It decision. Checked at 320 px for sideways scrolling and unlabelled buttons.
+
+**Not done, and cannot be from this computer:** anything on a real phone (widget, notifications, Bank SMS on/off, a real receipt photo, purchases), real Google Play or Razorpay payments, screen-reader and large-font testing.
+
+**Not built:** group notifications (the app has no push service, and a member's phone cannot be told about another's action without one), income on Home and in the AI, voice of a full visual redesign beyond the token fixes: the screens already share one design system, and restyling them further is a judgement for the owner to direct with specifics.
+
+**Migrations to run, in order:** `v1_14`, `v1_15`, `v1_16`, `v1_17`, `v1_18`.
 
 ## Feature completion matrix
 
-"Done" means code and automated tests on this branch. No signed-in screen has been seen running, and nothing has been tested on a phone.
+Written before the update above.
 
 | Feature | State before | State now | Still needed |
 |---|---|---|---|

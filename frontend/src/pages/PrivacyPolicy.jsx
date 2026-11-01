@@ -14,7 +14,7 @@ import { SUPPORT_EMAIL, POLICY_LAST_UPDATED } from '../lib/legal';
 function Section({ title, children }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-bold text-white">{title}</h2>
+      <h2 className="text-lg font-bold text-ink">{title}</h2>
       {children}
     </section>
   );
@@ -25,8 +25,8 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen bg-bg px-6 py-12 text-ink-soft">
       <div className="mx-auto max-w-3xl">
         <Link to="/" className="-ml-2 inline-flex min-h-[44px] items-center px-2 text-sm text-ink-3 hover:text-ink-2">← Vittova</Link>
-        <h1 className="mt-6 text-3xl font-black text-white">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-zinc-500">Last updated: {POLICY_LAST_UPDATED}</p>
+        <h1 className="mt-6 text-3xl font-black text-ink">Privacy Policy</h1>
+        <p className="mt-2 text-sm text-ink-3">Last updated: {POLICY_LAST_UPDATED}</p>
 
         <div className="mt-8 space-y-8 text-sm leading-7">
           <p>
@@ -37,11 +37,11 @@ export default function PrivacyPolicy() {
 
           <Section title="1. Information you give us">
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong className="text-zinc-100">Account:</strong> your email address and name. If you sign in with Google, we receive your name and email address from Google. Passwords are handled by our authentication provider and are never visible to us. Your month and year of birth, to confirm you are 18 or over.</li>
-              <li><strong className="text-zinc-100">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, bank SMS, payment notification, or statement import).</li>
-              <li><strong className="text-zinc-100">Budget settings:</strong> monthly budget, savings target, and recurring bills you add.</li>
-              <li><strong className="text-zinc-100">Afford-It checks and SIP stress tests:</strong> the amount and optional description you enter are used to work out the answer and are not stored. We only count how many checks you used today, for the free-plan limit.</li>
-              <li><strong className="text-zinc-100">Coach conversations:</strong> the questions you ask the money coach and its answers.</li>
+              <li><strong className="text-ink">Account:</strong> your email address and name. If you sign in with Google, we receive your name and email address from Google. Passwords are handled by our authentication provider and are never visible to us. Your month and year of birth, to confirm you are 18 or over.</li>
+              <li><strong className="text-ink">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, bank SMS, payment notification, or statement import).</li>
+              <li><strong className="text-ink">Budget settings:</strong> monthly budget, savings target, and recurring bills you add.</li>
+              <li><strong className="text-ink">Afford-It checks and SIP stress tests:</strong> the amount and optional description you enter are used to work out the answer and are not stored. We only count how many checks you used today, for the free-plan limit.</li>
+              <li><strong className="text-ink">Coach conversations:</strong> the questions you ask the money coach and its answers.</li>
             </ul>
           </Section>
 
@@ -54,7 +54,7 @@ export default function PrivacyPolicy() {
               <li>Rewards: the daily mission given to you each day (which mission, its difficulty and why it was picked), missions you confirm yourself, the mission difficulty you choose, Vittova Points and their history (an in-app reward with no cash value), and your savings goals with the amounts you record as put aside. These are worked out on our server from your own records and are never shared. Mission reminders, if you turn them on, are scheduled on your phone; nothing is sent to a notification service. The weekly recap image is made on your phone and leaves it only if you choose to share it.</li>
               <li>Sponsored challenges (Vittova Pro, when available): which challenges you join, whether you completed them, and the voucher issued to you. The sponsor receives only campaign totals and the voucher codes it supplied, never your transactions, balances, spending categories, scores or other personal data. We count challenge views without linking them to you.</li>
               <li>Basic server logs needed to run and secure the service, such as request time and error type. Logs do not contain expense amounts, descriptions or notification text.</li>
-              <li><strong className="text-zinc-100">App usage and diagnostics:</strong> to understand how Vittova is used and to find problems, we record simple events such as the app being installed or opened, sign-in succeeding or failing (with a short reason category), an expense being added, edited or deleted, an import or receipt scan succeeding or failing, a coach answer being given, and the app showing its error screen (error type only). Each event has a time, the platform (Android or web) and the app version. The app creates a random installation ID on first launch; it is not an advertising ID or device identifier, and a reinstall creates a new one. Events contain no expense amounts, descriptions, payees, coach questions or answers, or notification text. After you sign in, events are linked to your account; if you delete your account, that link is removed.</li>
+              <li><strong className="text-ink">App usage and diagnostics:</strong> to understand how Vittova is used and to find problems, we record simple events such as the app being installed or opened, sign-in succeeding or failing (with a short reason category), an expense being added, edited or deleted, an import or receipt scan succeeding or failing, a coach answer being given, and the app showing its error screen (error type only). Each event has a time, the platform (Android or web) and the app version. The app creates a random installation ID on first launch; it is not an advertising ID or device identifier, and a reinstall creates a new one. Events contain no expense amounts, descriptions, payees, coach questions or answers, or notification text. After you sign in, events are linked to your account; if you delete your account, that link is removed.</li>
             </ul>
             <p>We do not use advertising IDs, third-party analytics or crash-reporting SDKs, or location data, and we do not show ads.</p>
           </Section>
@@ -62,12 +62,12 @@ export default function PrivacyPolicy() {
           <Section title="3. Payment tracking on Android (optional)">
             <p>
               Payment tracking is switched on in Vittova by default, but it only works after you allow it in Android:{' '}
-              <strong className="text-zinc-100">SMS access</strong> for your bank's debit alerts and, optionally,{' '}
-              <strong className="text-zinc-100">Notification Access</strong> for payment-app notifications. Android asks you for
+              <strong className="text-ink">SMS access</strong> for your bank's debit alerts and, optionally,{' '}
+              <strong className="text-ink">Notification Access</strong> for payment-app notifications. Android asks you for
               these; Vittova cannot grant them itself.
             </p>
             <p>
-              <strong className="text-zinc-100">Bank SMS.</strong> Most payment apps do not announce a payment, but your bank sends a
+              <strong className="text-ink">Bank SMS.</strong> Most payment apps do not announce a payment, but your bank sends a
               debit SMS. Vittova uses SMS only to find these alerts (Google Play: SMS-based money management).
             </p>
             <ul className="list-disc space-y-1 pl-5">
@@ -77,7 +77,7 @@ export default function PrivacyPolicy() {
               <li>Vittova does not send SMS and does not request call-log access.</li>
             </ul>
             <p>
-              <strong className="text-zinc-100">Payment-app notifications (optional).</strong> With Notification Access, Vittova also
+              <strong className="text-ink">Payment-app notifications (optional).</strong> With Notification Access, Vittova also
               detects payments from these supported apps only:
             </p>
             <p className="rounded-xl bg-surface p-3 text-xs leading-6 text-ink-2">
@@ -98,10 +98,10 @@ export default function PrivacyPolicy() {
           <Section title="4. AI features and Google Gemini">
             <p>Some features send content to Google's Gemini API, operated by Google LLC, to generate a result:</p>
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong className="text-zinc-100">Receipt scan:</strong> the receipt photo you choose. We save the merchant name, item list and total; we do not store the photo.</li>
-              <li><strong className="text-zinc-100">Money coach:</strong> your question and a summary of your spending figures (for example monthly totals by category, budget and upcoming bills). Your name and email are not included.</li>
-              <li><strong className="text-zinc-100">Spending tip:</strong> when you are projected to exceed your budget, your budget, amount spent and top spending category.</li>
-              <li><strong className="text-zinc-100">Bank statement import</strong> (when available): the text of the PDF you upload. The file is processed in memory and not stored; the extracted transactions are saved.</li>
+              <li><strong className="text-ink">Receipt scan:</strong> the receipt photo you choose. We save the merchant name, item list and total; we do not store the photo.</li>
+              <li><strong className="text-ink">Money coach:</strong> your question and a summary of your spending figures (for example monthly totals by category, budget and upcoming bills). Your name and email are not included.</li>
+              <li><strong className="text-ink">Spending tip:</strong> when you are projected to exceed your budget, your budget, amount spent and top spending category.</li>
+              <li><strong className="text-ink">Bank statement import</strong> (when available): the text of the PDF you upload. The file is processed in memory and not stored; the extracted transactions are saved.</li>
             </ul>
             <p>
               Google processes this content under the{' '}
@@ -121,11 +121,11 @@ export default function PrivacyPolicy() {
 
           <Section title="6. Service providers">
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong className="text-zinc-100">Supabase:</strong> authentication and database hosting.</li>
-              <li><strong className="text-zinc-100">Render:</strong> hosting for the Vittova API server.</li>
-              <li><strong className="text-zinc-100">Vercel:</strong> hosting for the Vittova website.</li>
-              <li><strong className="text-zinc-100">Google:</strong> Google Sign-In (if you choose it), the Gemini API (section 4) and Google Play billing for Vittova Pro.</li>
-              <li><strong className="text-zinc-100">Razorpay:</strong> payments for Vittova Pro passes on vittova.in and in the Indus Appstore app.</li>
+              <li><strong className="text-ink">Supabase:</strong> authentication and database hosting.</li>
+              <li><strong className="text-ink">Render:</strong> hosting for the Vittova API server.</li>
+              <li><strong className="text-ink">Vercel:</strong> hosting for the Vittova website.</li>
+              <li><strong className="text-ink">Google:</strong> Google Sign-In (if you choose it), the Gemini API (section 4) and Google Play billing for Vittova Pro.</li>
+              <li><strong className="text-ink">Razorpay:</strong> payments for Vittova Pro passes on vittova.in and in the Indus Appstore app.</li>
             </ul>
             <p>These providers process data on our behalf and may store it on servers outside India.</p>
             <p>Purchases: in the app from Google Play, Vittova Pro is bought through Google Play, which handles the payment; we receive the purchase token, the plan and the subscription status to check the purchase and turn Pro on for your account. On vittova.in and in the app from the Indus Appstore, Pro passes are paid through Razorpay, which handles the payment; we receive the order and payment reference, the amount, the plan and whether it succeeded or was refunded, and Razorpay receives the email you sign in with so it can send a receipt. We never receive your card, UPI or bank details.</p>
@@ -160,10 +160,10 @@ export default function PrivacyPolicy() {
 
           <Section title="10. Your choices and rights">
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong className="text-zinc-100">Access and portability:</strong> export your expenses as a CSV file from Settings.</li>
-              <li><strong className="text-zinc-100">Correction:</strong> edit or delete any expense in the app.</li>
-              <li><strong className="text-zinc-100">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">Vittova account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score, streak and Money XP history, import history and coach conversations, and the group pools you created.</li>
-              <li><strong className="text-zinc-100">Withdraw consent:</strong> switch off payment tracking in Profile or remove SMS access or Notification Access in Android settings, or stop using AI features.</li>
+              <li><strong className="text-ink">Access and portability:</strong> export your expenses as a CSV file from Settings.</li>
+              <li><strong className="text-ink">Correction:</strong> edit or delete any expense in the app.</li>
+              <li><strong className="text-ink">Deletion:</strong> delete your account in Settings → Delete account, or follow the steps at <Link to="/delete-account" className="text-lime-400 underline">Vittova account deletion</Link>. Deleting your account removes your login, profile, expenses, bills, score, streak and Money XP history, import history and coach conversations, and the group pools you created.</li>
+              <li><strong className="text-ink">Withdraw consent:</strong> switch off payment tracking in Profile or remove SMS access or Notification Access in Android settings, or stop using AI features.</li>
             </ul>
             <p>To exercise any right or raise a grievance, email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
           </Section>

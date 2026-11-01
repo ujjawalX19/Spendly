@@ -8,27 +8,27 @@ export default function TermsOfService() {
   return (
     <div className="mx-auto min-h-screen max-w-2xl bg-bg p-6 pb-28 text-ink">
       <h1 className="text-3xl font-black mb-2">Terms of Service</h1>
-      <p className="text-zinc-400 mb-8">Last updated: 31 October 2026</p>
+      <p className="text-ink-2 mb-8">Last updated: 31 October 2026</p>
 
-      <div className="space-y-8 text-sm text-zinc-300 leading-relaxed">
+      <div className="space-y-8 text-sm text-ink-soft leading-relaxed">
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">1. Acceptance of Terms</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">1. Acceptance of Terms</h2>
           <p>
             By using Vittova, you agree to these Terms of Service. If you do not agree, please do not use the app. We reserve the right to modify these terms at any time, with notification provided through the app.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">2. Not Financial Advice</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">2. Not Financial Advice</h2>
           <p>
             Vittova provides financial education, expense tracking, and spending pattern recognition.{' '}
-            <strong className="text-amber-400">We are not a SEBI-registered financial advisor, bank, NBFC, or any regulated financial entity.</strong>{' '}
+            <strong className="text-warn">We are not a SEBI-registered financial advisor, bank, NBFC, or any regulated financial entity.</strong>{' '}
             Any compounding illustrations use assumed rates chosen for illustration; they are not forecasts, and real investments can lose value. Vittova is not a SEBI-registered investment adviser and does not recommend any security, fund, broker or platform. Consider consulting a SEBI-registered investment adviser before making investment decisions.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">3. User Accounts</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">3. User Accounts</h2>
           <p>
             You must be 18 or over to create or use a Vittova account. We ask for your month and year of birth to check this.
           </p>
@@ -38,7 +38,7 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">4. Vittova Pro</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">4. Vittova Pro</h2>
           <p>
             Vittova Pro is optional and paid.
           </p>
@@ -63,7 +63,7 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">5. Save-to-Earn and sponsored challenges</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">5. Save-to-Earn and sponsored challenges</h2>
           <p>
             Save-to-Earn challenges are optional and free to start, and you can stop one at any time without penalty. The Victory Pot is an estimate of spending you may have avoided, based on your own records; it is not money, cannot be withdrawn and has no cash value. XP, levels and badges have no cash value either. Challenges never ask you to skip essential spending such as bills, medicine, food you need or necessary travel.
           </p>
@@ -73,16 +73,16 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">6. Free plan limits</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">6. Free plan limits</h2>
           <p>
             The free plan includes daily and monthly limits (for example on money-coach questions and receipt scans) and rate limits that protect the service. Limits are shown in the app and may change with notice.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">7. Acceptable Use</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">7. Acceptable Use</h2>
           <p>You agree not to:</p>
-          <ul className="list-disc pl-5 mt-2 space-y-1 text-zinc-400">
+          <ul className="list-disc pl-5 mt-2 space-y-1 text-ink-2">
             <li>Store sensitive data unrelated to expense tracking (credit card numbers, passwords, government IDs)</li>
             <li>Use the app for illegal purposes or money laundering</li>
             <li>Attempt to reverse-engineer, hack, or abuse the service</li>
@@ -92,35 +92,35 @@ export default function TermsOfService() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">8. Data Accuracy</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">8. Data Accuracy</h2>
           <p>
             While we strive for accuracy in AI-powered features (receipt scanning, transaction categorization, subscription detection), automated processing may occasionally produce errors. You are responsible for verifying the accuracy of imported and categorized data.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">9. Limitation of Liability</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">9. Limitation of Liability</h2>
           <p>
             Vittova is provided "as is" without warranties of any kind. To the extent permitted by applicable law, we are not liable for any financial losses resulting from reliance on the app's features, projections, or AI-generated suggestions. Nothing in these terms limits any liability that cannot be limited under the laws of India.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">10. Account Termination</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">10. Account Termination</h2>
           <p>
             We reserve the right to suspend or terminate accounts that violate these terms. You may delete your account at any time from Settings or by following the steps on the account deletion page. Deletion is permanent; see the Privacy Policy for what is removed and what backups may temporarily retain.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">11. Governing Law</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">11. Governing Law</h2>
           <p>
             These terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in New Delhi, India.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-white mb-2">12. Contact</h2>
+          <h2 className="text-lg font-bold text-ink mb-2">12. Contact</h2>
           <p>
             For questions about these terms, contact us at:{' '}
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-lime-400 underline">{SUPPORT_EMAIL}</a>

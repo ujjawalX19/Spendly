@@ -290,7 +290,7 @@ export default function GroupDetail() {
                 <LogOut className="h-4 w-4" aria-hidden="true" /> Leave group
             </button>
 
-            <button type="button" onClick={() => setSheet({ type: 'receipt' })} className="v-press v-btn-secondary mt-3 min-h-[44px] w-full">
+            <button type="button" onClick={() => setSheet({ type: 'receipt' })} className="v-press v-btn-secondary mb-20 mt-3 min-h-[44px] w-full">
                 <ScanLine className="h-4 w-4" aria-hidden="true" /> Split a receipt
             </button>
 

@@ -21,10 +21,10 @@ const VERDICT_TONE = { can_afford: 'text-accent', wait: 'text-warn', not_comfort
 function Fact({ label, value, sub }) {
   return (
     <div className="flex min-h-[44px] items-center justify-between gap-3 py-1.5">
-      <dt className="shrink-0 whitespace-nowrap text-sm text-zinc-400">{label}</dt>
+      <dt className="shrink-0 whitespace-nowrap text-sm text-ink-2">{label}</dt>
       <dd className="text-right">
         <span className="block font-mono-finance text-base font-bold text-white">{value}</span>
-        {sub && <span className="block text-xs text-zinc-500">{sub}</span>}
+        {sub && <span className="block text-xs text-ink-3">{sub}</span>}
       </dd>
     </div>
   );
@@ -85,11 +85,11 @@ function Result({ check, quota, amount, label, onAgain, onClose }) {
         {check.saferDate && <Fact label="Safer date" value={check.saferDate.label} sub="when your new month starts" />}
       </dl>
 
-      <details className="rounded-xl px-1 text-xs text-zinc-400">
-        <summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-1.5 font-semibold text-zinc-300">
+      <details className="rounded-xl px-1 text-xs text-ink-2">
+        <summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-1.5 font-semibold text-ink-soft">
           <Info className="h-3.5 w-3.5" aria-hidden="true" /> {check.confidence === 'low' ? 'Why? (limited data)' : 'Why?'}
         </summary>
-        <p className="mt-1 text-zinc-300">{check.detail}</p>
+        <p className="mt-1 text-ink-soft">{check.detail}</p>
         <ul className="mt-2 list-disc space-y-1 pl-4">
           {check.assumptions.map((x) => <li key={x}>{x}</li>)}
           {check.missing.map((m) => <li key={m}>Not known: {m}</li>)}
@@ -98,7 +98,7 @@ function Result({ check, quota, amount, label, onAgain, onClose }) {
 
       <Decision amount={amount} label={label} />
 
-      {quotaText && <p className="text-center text-[11px] text-zinc-500">{quotaText}</p>}
+      {quotaText && <p className="text-center text-[11px] text-ink-3">{quotaText}</p>}
 
       <div className="flex gap-2">
         <button type="button" onClick={onAgain} className="v-press v-btn-secondary min-h-[3rem] flex-1">Check another</button>

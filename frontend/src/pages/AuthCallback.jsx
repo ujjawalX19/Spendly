@@ -36,7 +36,7 @@ function AppHandoff({ intentUrl }) {
         <AuthLayout eyebrow="SIGNING IN">
             <div className="flex flex-col gap-6 text-center">
                 <h1 className="text-3xl font-extrabold tracking-tight">Opening Vittova…</h1>
-                <p className="text-sm text-zinc-400">If the app doesn't open by itself, tap the button below.</p>
+                <p className="text-sm text-ink-2">If the app doesn't open by itself, tap the button below.</p>
                 <a href={intentUrl} className="inline-flex h-12 items-center justify-center rounded-xl bg-lime-400 text-sm font-extrabold text-black">Open Vittova</a>
             </div>
         </AuthLayout>

@@ -79,7 +79,7 @@ function SettingRow({ icon: Icon, label, value, color, onClick, danger = false }
     >
       {/* The icon stands on the row itself: no tile behind every icon. */}
       <div className="flex min-w-0 flex-1 items-center gap-3.5">
-        <Icon className={`h-5 w-5 shrink-0 ${danger || color === 'text-red-400' ? 'text-danger' : 'text-ink-2'}`} strokeWidth={1.75} aria-hidden="true" />
+        <Icon className={`h-5 w-5 shrink-0 ${danger || color === 'text-danger' ? 'text-danger' : 'text-ink-2'}`} strokeWidth={1.75} aria-hidden="true" />
         <div className="min-w-0">
           <p className={`text-[15px] font-medium ${danger ? 'text-danger' : 'text-ink'}`}>{label}</p>
           {value && <p className="text-xs leading-snug text-ink-3">{value}</p>}
@@ -498,7 +498,7 @@ export default function Settings() {
 
       {tracking.supported && (
         <SettingsGroup title="Money tracking" note={(tracking.waiting > 0 || tracking.reviewCount > 0) ? (
-          <p role="status" className="mt-2 px-1 text-xs text-zinc-400">
+          <p role="status" className="mt-2 px-1 text-xs text-ink-2">
             {tracking.waiting > 0 ? `${tracking.waiting} waiting to upload. ` : ''}
             {tracking.reviewCount > 0 ? `${tracking.reviewCount} waiting for your review on Home.` : ''}
           </p>
@@ -684,7 +684,7 @@ export default function Settings() {
                 : exportState === 'done' ? exportError || 'Your CSV file is ready'
                   : 'Save or share everything as a CSV file'
           }
-          color={exportState === 'error' ? 'text-red-400' : undefined}
+          color={exportState === 'error' ? 'text-danger' : undefined}
           onClick={exportState === 'working' ? undefined : handleExport}
         />
       </SettingsGroup>

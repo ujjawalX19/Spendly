@@ -13,23 +13,23 @@ export default function DeleteAccountInfo() {
     return (
         <div className="min-h-screen bg-bg px-6 py-12 text-ink-soft">
             <div className="mx-auto max-w-2xl">
-                <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300">
+                <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-ink-3 hover:text-ink-soft">
                     <ArrowLeft className="h-4 w-4" /> Vittova
                 </Link>
-                <h1 className="text-3xl font-black text-white">Delete your Vittova account</h1>
-                <p className="mt-3 text-sm text-zinc-500">Applies to the Vittova Android app and web app.</p>
+                <h1 className="text-3xl font-black text-ink">Delete your Vittova account</h1>
+                <p className="mt-3 text-sm text-ink-3">Applies to the Vittova Android app and web app.</p>
 
                 <section className="mt-8 space-y-3 text-sm leading-7">
-                    <h2 className="text-lg font-bold text-white">Option 1 — in the app (immediate)</h2>
+                    <h2 className="text-lg font-bold text-ink">Option 1 — in the app (immediate)</h2>
                     <ol className="list-decimal space-y-1 pl-5">
                         <li>Open Vittova and sign in.</li>
-                        <li>Go to <strong className="text-zinc-100">Settings → Delete account</strong>.</li>
+                        <li>Go to <strong className="text-ink">Settings → Delete account</strong>.</li>
                         <li>Confirm. Your account is deleted straight away and you are signed out on every device.</li>
                     </ol>
                 </section>
 
                 <section className="mt-8 space-y-3 text-sm leading-7">
-                    <h2 className="text-lg font-bold text-white">Option 2 — by email (if you can't sign in)</h2>
+                    <h2 className="text-lg font-bold text-ink">Option 2 — by email (if you can't sign in)</h2>
                     <p>
                         Email <a className="text-lime-400 underline" href={`mailto:${SUPPORT_EMAIL}?subject=Delete%20my%20Vittova%20account`}>{SUPPORT_EMAIL}</a> from
                         the address registered to your account, with the subject "Delete my Vittova account". We will verify the request
@@ -38,7 +38,7 @@ export default function DeleteAccountInfo() {
                 </section>
 
                 <section className="mt-8 space-y-3 text-sm leading-7">
-                    <h2 className="text-lg font-bold text-white">What is deleted</h2>
+                    <h2 className="text-lg font-bold text-ink">What is deleted</h2>
                     <ul className="list-disc space-y-1 pl-5">
                         <li>Your login (email or Google sign-in link) and all active sessions</li>
                         <li>Your profile, budget and savings target</li>
@@ -51,7 +51,7 @@ export default function DeleteAccountInfo() {
                 </section>
 
                 <section className="mt-8 space-y-3 text-sm leading-7">
-                    <h2 className="text-lg font-bold text-white">What may remain</h2>
+                    <h2 className="text-lg font-bold text-ink">What may remain</h2>
                     <ul className="list-disc space-y-1 pl-5">
                         <li>Payments detected from notifications are saved to your account as expenses and are deleted with it. Payments still waiting on your phone are deleted from the phone when you delete your account in the app. Notification text is never stored.</li>
                         <li>Encrypted database backups kept by our database provider may contain your data until they expire on their normal rotation schedule; they are not used to restore individual accounts.</li>
@@ -62,7 +62,7 @@ export default function DeleteAccountInfo() {
                     </ul>
                 </section>
 
-                <p className="mt-10 text-xs text-zinc-600">
+                <p className="mt-10 text-xs text-ink-3">
                     See also the <Link to="/privacy" className="underline">Privacy Policy</Link>.
                 </p>
             </div>
