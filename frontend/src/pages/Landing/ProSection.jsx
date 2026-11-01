@@ -7,7 +7,8 @@
  * free limits with backend/middleware/proGate.js, and the prices with Play
  * Console.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { apiUrl } from '../../lib/apiConfig';
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PlayStoreCta, PrimaryCta, Reveal, SectionHeading, WRAP } from './shared';
@@ -59,6 +60,11 @@ function Includes({ items }) {
 
 export default function ProSection() {
   const [period, setPeriod] = useState('yearly');
+  // Named only while the server says the offer is on, with no invented end date.
+  const [offerOn, setOfferOn] = useState(false);
+  useEffect(() => {
+    fetch(apiUrl('/app-config')).then((r) => r.json()).then((c) => setOfferOn(c.launchOffer === true)).catch(() => {});
+  }, []);
   const plan = PLANS[period];
   return (
     <section id="pro" className="scroll-mt-20 border-t border-line py-20 lg:py-28">
@@ -90,6 +96,9 @@ export default function ProSection() {
               <span className="text-sm text-ink-2">{plan.per}</span>
             </p>
             <p className="mt-2 text-sm text-ink-2">{plan.note}</p>
+            {offerOn && period === 'yearly' && (
+              <p className="mt-2 text-sm text-ink-2"><span className="font-semibold text-ink">Diwali and launch offer: ₹199</span> for the first year, then ₹449/year. For eligible new subscribers in the Android app.</p>
+            )}
             <Includes items={PRO} />
             <p className="mt-8 rounded-xl bg-surface-2 p-4 text-sm leading-relaxed text-ink-soft">
               <b className="font-semibold text-ink">Available in the Android app.</b> Pro is sold through Google Play in the Vittova Android app, not on this website. Google Play shows the final price and renewal terms before you pay.

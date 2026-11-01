@@ -33,14 +33,15 @@ test('homepage copy makes no promises the product does not keep', () => {
     assert.doesNotMatch(text, bad, String(bad));
   }
   // Pro is on sale in the Android app: no leftover pre-launch wording, and the
-  // prices match the plans (billingPlans.js). The launch offer is not promised
-  // here because it only exists while LIMITED_OFFER_ENABLED is on.
+  // prices match the plans (billingPlans.js). The offer shows only while the
+  // server says it is on, and always says what it renews at.
   const pro = readFileSync(join(dir, 'ProSection.jsx'), 'utf8');
   assert.doesNotMatch(pro, /not available to buy yet|Planned pricing|coming soon/i);
   assert.match(pro, /PlayStoreCta/);
   assert.match(pro, /'₹49'/);
   assert.match(pro, /'₹449'/);
-  assert.doesNotMatch(pro, /₹199/);
+  assert.match(pro, /offerOn && period === 'yearly'/);
+  assert.match(pro, /₹199<\/span> for the first year, then ₹449\/year/);
   assert.doesNotMatch(pro, /student|₹29|₹249|countdown|ends (today|tonight)/i);
   const plans = readFileSync(join(here, '..', '..', 'backend/lib/billingPlans.js'), 'utf8');
   for (const price of ['₹49 / month', '₹449 / year', '₹199 first year, then ₹449 / year']) assert.ok(plans.includes(price), price);

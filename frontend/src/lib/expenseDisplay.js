@@ -31,7 +31,7 @@ export function expenseTitle(row) {
 
 /** "Food · Auto-tracked", or just "Food". */
 export function expenseMeta(row) {
-  const parts = [row?.category || 'Other', sourceLabel(row?.source)].filter(Boolean);
+  const parts = [row?.category || 'Other', row?.subcategory, sourceLabel(row?.source)].filter(Boolean);
   return parts.join(' · ');
 }
 

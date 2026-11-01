@@ -16,6 +16,7 @@ import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import { hasOnboarded } from './pages/Onboarding';
 import { onReminderOpened, refreshReminders } from './lib/debitReminders';
+import { syncAlerts } from './lib/alerts';
 import { startQueueSync } from './lib/missionSync';
 import StartupSplash, { shouldShowSplash } from './components/StartupSplash';
 import { releaseLaunchScreen } from './plugins/LaunchScreen';
@@ -49,6 +50,7 @@ const Budgets = lazy(() => import('./pages/Budgets'));
 const Reports = lazy(() => import('./pages/Reports'));
 const MonthCalendar = lazy(() => import('./pages/MonthCalendar'));
 const Wrapped = lazy(() => import('./pages/Wrapped'));
+const MoneyAlerts = lazy(() => import('./pages/MoneyAlerts'));
 const MoneySaved = lazy(() => import('./pages/MoneySaved'));
 const WeeklyRecap = lazy(() => import('./pages/WeeklyRecap'));
 const PdfImport = lazy(() => import('./pages/PdfImport'));
@@ -119,6 +121,7 @@ function Layout({ children }) {
 
   // Once per signed-in app start: bring debit reminders up to date.
   const reminderUser = session?.user?.id;
+  useEffect(() => { if (reminderUser) syncAlerts(session).catch(() => {}); }, [reminderUser]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (reminderUser) refreshReminders(session); }, [reminderUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mission actions saved without signal are sent when the app starts, the
@@ -374,6 +377,7 @@ function App() {
                 <Route path="/budgets" element={<ProtectedRoute><Layout><Budgets /></Layout></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><Layout><MonthCalendar /></Layout></ProtectedRoute>} />
+                <Route path="/alerts" element={<ProtectedRoute><Layout><MoneyAlerts /></Layout></ProtectedRoute>} />
                 <Route path="/wrapped" element={<ProtectedRoute><Layout><Wrapped /></Layout></ProtectedRoute>} />
                 <Route path="/money-saved" element={<ProtectedRoute><Layout><MoneySaved /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />

@@ -23,7 +23,7 @@ const { hasActivePro } = require('../lib/entitlements');
  * CLOSED (503): the failure mode must not be unlimited free AI usage.
  */
 
-const PRO_ONLY_FEATURES = new Set(['pdf_import', 'subscription_audit', 'sponsored_challenges', 'month_calendar', 'receipt_split']);
+const PRO_ONLY_FEATURES = new Set(['pdf_import', 'subscription_audit', 'sponsored_challenges', 'month_calendar', 'receipt_split', 'pdf_reports']);
 
 const FREE_LIMITS = {
     receipt_scan: 3,   // per calendar month

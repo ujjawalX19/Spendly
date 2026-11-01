@@ -106,6 +106,7 @@ export function useExpenses() {
       const body = { amount, category, description };
       if (options.source) body.source = options.source;
       if (options.occurredAt) body.occurred_at = options.occurredAt;
+      if (options.subcategory) body.subcategory = options.subcategory;
 
       const response = await axios.post(API_URL, body, { headers: getHeaders() });
       if (!response.data.success) return { success: false, message: response.data.message };

@@ -37,6 +37,7 @@ const expenseSchema = z.object({
     amount: amountSchema,
     category: z.enum(VALID_CATEGORIES).optional().default('Other'),
     description: z.string().trim().max(200, 'Description too long (max 200 chars)').optional().default(''),
+    subcategory: z.string().trim().max(40, 'Keep the subcategory under 40 characters').optional(),
     // Only the app's own notification flow may mark an expense as automatic.
     // `ai_scan` and `pdf_import` are set exclusively by their server routes.
     source: z.enum(['manual', 'upi_auto']).optional().default('manual'),
@@ -229,7 +230,13 @@ router.post('/', protect, replayDetectedPayment, proGate('add_expense'), async (
     };
     const insert = (values) => supabase.from('expenses').insert(values).select().single();
 
-    let { data: expense, error } = await insert(clientRef ? { ...row, client_ref: clientRef } : row);
+    const subcategory = parsed.data.subcategory || null;
+    let { data: expense, error } = await insert({ ...row, ...(clientRef ? { client_ref: clientRef } : {}), ...(subcategory ? { subcategory } : {}) });
+    if (error && subcategory && (error.code === 'PGRST204' || error.code === '42703')) {
+        // Database without v1_18: keep the expense, lose only the label.
+        console.error('expenses.subcategory is missing: apply supabase/v1_18_expense_subcategory.sql');
+        ({ data: expense, error } = await insert(clientRef ? { ...row, client_ref: clientRef } : row));
+    }
 
     if (error && clientRef && error.code === '23505') {
         // Two uploads of the same detection raced: the other one won.
@@ -410,6 +417,7 @@ const expenseUpdateSchema = z.object({
     amount: amountSchema.optional(),
     category: z.enum(VALID_CATEGORIES).optional(),
     description: z.string().trim().max(200, 'Description too long (max 200 chars)').optional(),
+    subcategory: z.string().trim().max(40, 'Keep the subcategory under 40 characters').nullable().optional(),
     occurred_at: z.string().datetime({ offset: true })
         .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
         .optional(),

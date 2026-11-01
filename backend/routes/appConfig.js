@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { flag } = require('../lib/featureFlags');
 
 /**
  * The oldest Android build still allowed to run. An app below it shows an
@@ -21,7 +22,8 @@ function minSupportedAndroidVersionCode() {
 // @route GET /api/app-config — public: read before sign-in, holds nothing private.
 router.get('/', (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ success: true, android: { minSupportedVersionCode: minSupportedAndroidVersionCode() } });
+    // The website names the offer only while it is really on.
+    res.json({ success: true, android: { minSupportedVersionCode: minSupportedAndroidVersionCode() }, launchOffer: flag('limitedOfferEnabled') });
 });
 
 module.exports = router;

@@ -4,12 +4,12 @@
  * GET /api/planning/report; the page does no sums of its own.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, FileText, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson, authHeaders, apiUrl } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { markStep } from '../lib/homePrefs';
-import { saveCsv } from '../lib/saveCsv';
+import { saveCsv, savePdf } from '../lib/saveCsv';
 import { ErrorState, Skeleton } from '../components/ui';
 
 const PERIODS = [['week', 'Week'], ['month', 'Month'], ['year', 'Year']];
@@ -100,6 +100,18 @@ export default function Reports() {
       await saveCsv(`vittova-report-${period}-${todayKey()}.csv`, await res.text(), 'Vittova report');
     } catch {
       setNote("We couldn't export this report. Please try again.");
+    }
+  };
+
+  const exportPdf = async () => {
+    setNote('');
+    try {
+      const res = await fetch(apiUrl(`/planning/report.pdf?period=${period}&offset=${offset}`), { headers: authHeaders(session, { json: false }) });
+      if (res.status === 403) { setNote('PDF reports are part of Vittova Pro. CSV export is free.'); return; }
+      if (!res.ok) throw new Error('export');
+      await savePdf(`vittova-report-${period}-${todayKey()}.pdf`, await res.blob(), 'Vittova report');
+    } catch {
+      setNote("We couldn't create the PDF. Please try again.");
     }
   };
 
@@ -198,6 +210,7 @@ export default function Reports() {
 
           {note && <p role="alert" className="px-1 text-sm text-danger">{note}</p>}
           <button type="button" onClick={exportCsv} disabled={empty} className="v-press v-btn-secondary min-h-[48px] w-full disabled:opacity-50"><Download className="h-4 w-4" aria-hidden="true" /> Export this report (CSV)</button>
+          <button type="button" onClick={exportPdf} disabled={empty} className="v-press v-btn-secondary min-h-[48px] w-full disabled:opacity-50"><FileText className="h-4 w-4" aria-hidden="true" /> Download PDF (Pro)</button>
         </>
       )}
     </div>

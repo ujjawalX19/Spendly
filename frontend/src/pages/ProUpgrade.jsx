@@ -141,7 +141,7 @@ export default function ProUpgrade() {
                     {selected === c.key && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-ink-2">{c.key === 'limited_yearly' ? 'Launch offer · Yearly' : c.title}</span>
+                    <span className="block text-[13px] font-medium text-ink-2">{c.key === 'limited_yearly' ? 'Diwali and launch offer · Yearly' : c.title}</span>
                     <span className="mt-0.5 block font-display text-xl font-bold tabular-nums">{c.price}</span>
                     <span className="mt-0.5 block text-xs text-ink-3">{c.renewal}</span>
                   </span>

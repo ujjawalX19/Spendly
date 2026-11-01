@@ -80,17 +80,25 @@ public class DebitRemindersPlugin extends Plugin {
     /** A mission reminder missed while the phone was off is shown only if at most an hour late. */
     static final long MISSION_LATE_GRACE_MS = 60L * 60 * 1000;
     /** The only screens a tapped reminder may open. */
-    static final Set<String> ROUTES = new HashSet<>(java.util.Arrays.asList("/subscription-audit", "/rewards"));
+    static final Set<String> ROUTES = new HashSet<>(java.util.Arrays.asList("/subscription-audit", "/rewards", "/reports"));
+
+    /** Budget, unusual-spending, bill, goal and weekly-summary alerts (lib/alerts on the app side). */
+    static final String GROUP_ALERT = "alert";
+    static final String ACTION_ALERT = "com.vittova.app.MONEY_ALERT";
+    static final String KEY_ALERT_IDS = "alert_request_codes";
+    static final String KEY_ALERT_LIST = "alert_reminders";
 
     static boolean isGroup(String group) {
-        return GROUP_DEBIT.equals(group) || GROUP_MISSION.equals(group);
+        return GROUP_DEBIT.equals(group) || GROUP_MISSION.equals(group) || GROUP_ALERT.equals(group);
     }
 
     static String keyIds(String group) {
+        if (GROUP_ALERT.equals(group)) return KEY_ALERT_IDS;
         return GROUP_MISSION.equals(group) ? KEY_MISSION_IDS : KEY_IDS;
     }
 
     static String keyList(String group) {
+        if (GROUP_ALERT.equals(group)) return KEY_ALERT_LIST;
         return GROUP_MISSION.equals(group) ? KEY_MISSION_LIST : KEY_LIST;
     }
 
@@ -107,6 +115,7 @@ public class DebitRemindersPlugin extends Plugin {
     static Intent alarmIntent(Context ctx, String group) {
         Intent intent = new Intent(ctx, DebitReminderReceiver.class);
         if (GROUP_MISSION.equals(group)) intent.setAction(ACTION_MISSION);
+        if (GROUP_ALERT.equals(group)) intent.setAction(ACTION_ALERT);
         return intent;
     }
 

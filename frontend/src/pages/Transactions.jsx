@@ -379,6 +379,7 @@ function EditSheet({ expense, onCancel, onSave, onDelete }) {
   const [amount, setAmount] = useState(String(expense.amount ?? ''));
   const [category, setCategory] = useState(expense.category || 'Other');
   const [description, setDescription] = useState(expense.description || '');
+  const [subcategory, setSubcategory] = useState(expense.subcategory || '');
   const [date, setDate] = useState(toDateInput(expense.occurred_at || expense.created_at));
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
@@ -401,6 +402,7 @@ function EditSheet({ expense, onCancel, onSave, onDelete }) {
     if (value !== Number(expense.amount)) updates.amount = value;
     if (category !== expense.category) updates.category = category;
     if (description !== (expense.description || '')) updates.description = description;
+    if (subcategory.trim() !== (expense.subcategory || '')) updates.subcategory = subcategory.trim() || null;
     if (date && date !== toDateInput(expense.occurred_at || expense.created_at)) updates.occurred_at = date;
 
     if (Object.keys(updates).length === 0) { onCancel(); return; }
@@ -455,6 +457,11 @@ function EditSheet({ expense, onCancel, onSave, onDelete }) {
             ))}
           </div>
         </div>
+
+        <label className="block">
+          <span className="v-field-label">Subcategory (optional)</span>
+          <input type="text" maxLength={40} value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className="v-input" />
+        </label>
 
         <label className="block">
           <span className="v-field-label">Description</span>

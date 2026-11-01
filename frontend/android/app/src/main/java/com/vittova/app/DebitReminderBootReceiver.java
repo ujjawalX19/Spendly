@@ -26,7 +26,7 @@ public class DebitReminderBootReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         if (!Intent.ACTION_BOOT_COMPLETED.equals(action) && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) return;
         // Each group separately: a problem with one never stops the other.
-        for (String group : new String[] { DebitRemindersPlugin.GROUP_DEBIT, DebitRemindersPlugin.GROUP_MISSION }) {
+        for (String group : new String[] { DebitRemindersPlugin.GROUP_DEBIT, DebitRemindersPlugin.GROUP_MISSION, DebitRemindersPlugin.GROUP_ALERT }) {
             try {
                 DebitRemindersPlugin.rearmStored(context.getApplicationContext(), group, System.currentTimeMillis());
             } catch (Exception e) {

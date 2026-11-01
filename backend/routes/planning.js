@@ -7,6 +7,8 @@ const { validationError } = require('../lib/validation');
 const appTime = require('../lib/appTime');
 const { periodRange, buildReport, reportCsv } = require('../lib/reports');
 const { buildCalendar, buildWrapped } = require('../lib/moneyViews');
+const { buildAlerts } = require('../lib/moneyAlerts');
+const { reportPdf } = require('../lib/reportPdf');
 const { proGate } = require('../middleware/proGate');
 
 /**
@@ -161,6 +163,48 @@ router.get('/report.csv', protect, async (req, res) => {
     } catch (err) {
         console.error('Report export failed:', err.message);
         res.status(500).json({ success: false, message: 'Could not export your report' });
+    }
+});
+
+// ─── Money alerts ──────────────────────────────────────────────────────────
+router.get('/alerts', protect, async (req, res) => {
+    const now = new Date();
+    const uid = req.user.id;
+    const [profile, budgets, expenses, bills, goals] = await Promise.all([
+        supabase.from('profiles').select('monthly_budget').eq('id', uid).maybeSingle(),
+        supabase.from('category_budgets').select('category, limit_inr').eq('user_id', uid),
+        supabase.from('expenses').select('amount, category, occurred_at').eq('user_id', uid).gte('occurred_at', appTime.startOfMonthsAgo(2, now).toISOString()),
+        supabase.from('recurring_bills').select('name, due_day, is_active').eq('user_id', uid),
+        supabase.from('savings_goals').select('id, name, target_date').eq('user_id', uid).eq('status', 'active'),
+    ]);
+    if (profile.error || expenses.error || bills.error) return res.status(500).json({ success: false, message: 'Could not load alerts' });
+    const monthStart = appTime.startOfMonth(now).getTime();
+    res.json({
+        success: true,
+        alerts: buildAlerts({
+            now, month: appTime.localMonthKey(now),
+            monthlyBudget: Number(profile.data?.monthly_budget) || 0,
+            categoryBudgets: budgets.error ? [] : budgets.data,
+            monthExpenses: expenses.data.filter((e) => new Date(e.occurred_at).getTime() >= monthStart),
+            recentExpenses: expenses.data,
+            bills: bills.data,
+            goals: goals.error ? [] : goals.data,
+        }),
+    });
+});
+
+// ─── PDF report (Pro) ──────────────────────────────────────────────────────
+router.get('/report.pdf', protect, proGate('pdf_reports'), async (req, res) => {
+    const parsed = reportQuery.safeParse(req.query);
+    if (!parsed.success) return validationError(res, parsed.error, 'Invalid period');
+    try {
+        const pdf = await reportPdf(await loadReport(req.user.id, parsed.data));
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="vittova-report-${parsed.data.period}-${appTime.localDateKey()}.pdf"`);
+        res.send(pdf);
+    } catch (err) {
+        console.error('PDF report failed:', err.message);
+        res.status(500).json({ success: false, message: 'Could not create your PDF' });
     }
 });
 

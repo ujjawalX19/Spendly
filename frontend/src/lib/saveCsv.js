@@ -4,6 +4,37 @@
  */
 import { Capacitor } from '@capacitor/core';
 
+/** The same for a PDF blob. */
+export async function savePdf(filename, blob, title) {
+  if (Capacitor.isNativePlatform()) {
+    const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+      import('@capacitor/filesystem'),
+      import('@capacitor/share'),
+    ]);
+    const data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    const written = await Filesystem.writeFile({ path: filename, data, directory: Directory.Cache });
+    try {
+      await Share.share({ title, files: [written.uri], dialogTitle: title });
+    } catch (err) {
+      if (!/cancel/i.test(err?.message || '')) throw err;
+    }
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function saveCsv(filename, text, title) {
   if (Capacitor.isNativePlatform()) {
     const [{ Filesystem, Directory, Encoding }, { Share }] = await Promise.all([

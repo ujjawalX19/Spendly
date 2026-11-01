@@ -21,7 +21,7 @@ const tabs = [
   { id: '/transactions', label: 'Activity', icon: Receipt,   match: ['/transactions'] },
   { id: '/wealth',       label: 'Wealth',   icon: BarChart2, match: ['/wealth', '/goals'] },
   { id: '/pool',         label: 'Groups',   icon: Users,     match: ['/pool'] },
-  { id: '/settings',     label: 'Profile',  icon: UserRound, match: ['/settings', '/subscription-audit', '/challenges', '/graveyard', '/import'] },
+  { id: '/settings',     label: 'Profile',  icon: UserRound, match: ['/settings', '/alerts','/subscription-audit', '/challenges', '/graveyard', '/import'] },
 ];
 
 export default function BottomNav() {

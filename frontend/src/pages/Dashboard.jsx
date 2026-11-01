@@ -29,6 +29,7 @@ import MoneyStreakCard from '../components/MoneyStreakCard';
 import { CustomiseButton, CustomiseHome, GettingStarted, PlanShortcuts, ProRow } from '../components/HomeExtras';
 import { getHomePrefs } from '../lib/homePrefs';
 import { updateHomeWidget } from '../lib/homeWidget';
+import { findDuplicate } from '../lib/duplicates';
 import { usePro } from '../contexts/ProContext';
 import { TopBar, BalanceCard, QuickActions, DailyCard, AnalyticsCard, InsightRow, MonthRows, RecentActivity } from '../components/HomeCards';
 import { API_URL, apiFetch } from '../lib/apiConfig';
@@ -40,15 +41,19 @@ import { expenseMeta, expenseTitle } from '../lib/expenseDisplay';
 // was offered here but rejected by the API, so those expenses silently failed.
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
-function AddExpenseModal({ onClose, onAdd, loading, onScan, scanLoading }) {
-  const [form, setForm] = useState({ desc: '', amount: '', category: 'Food' });
+function AddExpenseModal({ onClose, onAdd, loading, onScan, scanLoading, expenses }) {
+  const [form, setForm] = useState({ desc: '', amount: '', category: 'Food', subcategory: '' });
   const [error, setError] = useState('');
+  const [possibleDuplicate, setPossibleDuplicate] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.desc || !form.amount) return;
     setError('');
-    const result = await onAdd(parseFloat(form.amount), form.category, form.desc);
+    const amount = parseFloat(form.amount);
+    const repeat = !possibleDuplicate && findDuplicate(expenses, { amount, category: form.category, description: form.desc });
+    if (repeat) { setPossibleDuplicate(repeat); return; }
+    const result = await onAdd(amount, form.category, form.desc, form.subcategory.trim() ? { subcategory: form.subcategory.trim() } : {});
     // Keep the form open with the reason if the expense was not saved.
     if (result?.success) onClose();
     else setError(result?.message || "We couldn't save that expense. Please try again.");
@@ -132,12 +137,22 @@ function AddExpenseModal({ onClose, onAdd, loading, onScan, scanLoading }) {
               ))}
             </div>
           </div>
+          <div>
+            <label htmlFor="expense-subcategory" className="v-field-label">Subcategory (optional)</label>
+            <input id="expense-subcategory" type="text" maxLength={40} placeholder="Groceries, snacks, fuel..."
+              value={form.subcategory} onChange={e => setForm({ ...form, subcategory: e.target.value })} className="v-input" />
+          </div>
+          {possibleDuplicate && (
+            <p role="alert" className="rounded-xl bg-surface-2 p-3 text-sm text-ink-soft">
+              You may have added this already: {'₹'}{Number(possibleDuplicate.amount).toLocaleString('en-IN')}{possibleDuplicate.description ? ` for ${possibleDuplicate.description}` : ''}. Add it again?
+            </p>
+          )}
           {error && <p role="alert" className="v-error">{error}</p>}
           <button type="submit" disabled={loading}
             className="v-press v-btn-primary w-full disabled:cursor-wait">
             {loading
               ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              : <><Check className="w-4 h-4" /> Add expense</>}
+              : <><Check className="w-4 h-4" /> {possibleDuplicate ? 'Add anyway' : 'Add expense'}</>}
           </button>
         </form>
       </motion.div>
@@ -399,9 +414,9 @@ export default function Dashboard() {
   }, [expenses]);
 
   // ── Handlers ───────────────────────────────────────────────
-  const handleAddExpense = async (amount, category, description) => {
+  const handleAddExpense = async (amount, category, description, options) => {
     setAddLoading(true);
-    try { return await addExpense(amount, category, description); }
+    try { return await addExpense(amount, category, description, options); }
     finally { setAddLoading(false); }
   };
 
@@ -533,6 +548,7 @@ export default function Dashboard() {
             loading={addLoading}
             onScan={() => fileInputRef.current?.click()}
             scanLoading={scanLoading}
+            expenses={expenses}
           />
         )}
       </AnimatePresence>

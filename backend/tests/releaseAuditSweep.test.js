@@ -39,7 +39,7 @@ function discoverRoutes() {
 // Routes that are intentionally reachable without a user session, and why.
 const PUBLIC = [
     [/^GET \/api\/health$/, 'health check'],
-    [/^GET \/api\/app-config$/, 'oldest supported app build: read before sign-in, one number'],
+    [/^GET \/api\/app-config$/, 'oldest supported app build and whether the offer is on: read before sign-in'],
     [/^POST \/api\/telemetry/, 'anonymous crash/usage events (allowlisted names, no user data)'],
     [/^POST \/api\/pro\/rtdn$/, 'Google Play push: authenticated by Google-signed OIDC token instead'],
 ];
@@ -82,7 +82,8 @@ test('public routes are the documented few and leak nothing personal', async () 
     // /api/health is declared in app.js itself, so discovery lists only these.
     assert.deepEqual(pub.sort(), ['GET /api/app-config', 'POST /api/pro/rtdn', 'POST /api/telemetry/events']);
     const config = await t.request('GET', '/api/app-config');
-    assert.deepEqual(Object.keys(config.body).sort(), ['android', 'success']);
+    assert.deepEqual(Object.keys(config.body).sort(), ['android', 'launchOffer', 'success']);
+    assert.equal(typeof config.body.launchOffer, 'boolean');
     assert.deepEqual(Object.keys(config.body.android), ['minSupportedVersionCode']);
     const health = await t.request('GET', '/api/health');
     assert.equal(health.status, 200);

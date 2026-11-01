@@ -13,6 +13,7 @@ import {
 } from '../lib/googleSignIn';
 import { singleFlight } from '../lib/singleFlight';
 import { clearHomeWidget } from '../lib/homeWidget';
+import { clearAlertsForSignOut } from '../lib/alerts';
 import { authErrorKind, authErrorMessage } from '../lib/authMessages';
 import { authLog } from '../lib/authLog';
 
@@ -318,6 +319,7 @@ export function AuthProvider({ children }) {
     await clearRemindersForSignOut();
     await clearMissionRemindersForSignOut();
     await clearHomeWidget();
+    await clearAlertsForSignOut();
     clearQueueForSignOut(lastUserId.current);
     clearLocalAppState();
     markPasswordRecovery(false);
