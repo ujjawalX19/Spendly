@@ -9,7 +9,7 @@
 - **Machine-checked only:** Activity, Ask Vittova, Wealth, Profile, Recurring charges, Import, Subscription audit, Challenges, Save-to-Earn, Rewards, Recap, Goals, Privacy.
 - **Not reviewed:** Owner Console, Delete Account visuals, sign-up, password flows, age gate, tablet and desktop for the new screens.
 
-## Findings (not fixed)
+## Findings
 
 | # | Severity | Finding |
 |---|---|---|
@@ -26,4 +26,4 @@
 
 Dead-button check: not completed across all screens. Only the flows named in FINAL_FEATURE_AUDIT.md were clicked.
 
-No design changes were made in this pass, as you asked.
+On 2 Nov, findings 2, 3 and 7 were fixed; no other design changes were made.
