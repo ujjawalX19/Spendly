@@ -11,6 +11,7 @@ import { friendlyError } from '../lib/errors';
 import { markStep } from '../lib/homePrefs';
 import { saveCsv, savePdf } from '../lib/saveCsv';
 import { ErrorState, Skeleton } from '../components/ui';
+import BackButton from '../components/BackButton';
 
 const PERIODS = [['week', 'Week'], ['month', 'Month'], ['year', 'Year']];
 const SOURCES = ['Salary', 'Freelance', 'Family', 'Refund', 'Other'];
@@ -130,6 +131,7 @@ export default function Reports() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4 pb-24 md:p-6">
+      <BackButton />
       <h1 className="text-2xl font-bold text-ink">Reports</h1>
 
       <div role="group" aria-label="Report period" className="grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1">

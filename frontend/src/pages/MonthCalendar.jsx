@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { ErrorState, Skeleton } from '../components/ui';
+import BackButton from '../components/BackButton';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -45,6 +46,7 @@ export default function MonthCalendar() {
   if (state === 'pro') {
     return (
       <div className="mx-auto max-w-lg space-y-4 p-4 pb-24 md:p-6">
+      <BackButton />
         <h1 className="text-2xl font-bold text-ink">Month Calendar</h1>
         <section className="v-block p-4">
           <p className="text-sm leading-relaxed text-ink-soft">See each day's spending, the bills due and your goal dates in one view. The Month Calendar is part of Vittova Pro.</p>
@@ -59,6 +61,7 @@ export default function MonthCalendar() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4 pb-24 md:p-6">
+      <BackButton />
       <h1 className="text-2xl font-bold text-ink">Month Calendar</h1>
       <div className="flex items-center justify-between">
         <button type="button" aria-label="Previous month" onClick={() => setMonth((m) => shift(m, -1))} className="v-press flex h-11 w-11 items-center justify-center rounded-full text-ink-2"><ChevronLeft className="h-5 w-5" aria-hidden="true" /></button>

@@ -11,6 +11,7 @@ import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { markStep } from '../lib/homePrefs';
 import { ErrorState, Skeleton } from '../components/ui';
+import BackButton from '../components/BackButton';
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -111,6 +112,7 @@ export default function Budgets() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4 pb-24 md:p-6">
+      <BackButton />
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-ink"><Target className="h-6 w-6 text-ink-2" aria-hidden="true" /> Budgets</h1>
         <p className="mt-1 text-sm text-ink-2">Set a monthly limit for any category you want to watch.</p>

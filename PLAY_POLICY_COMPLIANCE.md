@@ -23,4 +23,4 @@ Exported: `MainActivity`, `PaymentNotificationListener`, `SmsPaymentReceiver`, `
 | Privacy Policy | Updated on this branch, not live. Must be live before the upload | **Owner approval** |
 | Widget | Amount hidden by default, cleared at sign-out | Confirm on device |
 | Alerts | Off until chosen; no amounts. Bill and goal names you entered can show on the lock screen | Accepted, owner to confirm |
-| Lint | Release lint passes with 6 errors filtered by the existing `lint-baseline.xml`. Those were not re-examined | **Review** |
+| Lint | Release lint passes. The 6 filtered errors are in the Capacitor library's own baseline, not Vittova code | Reviewed |

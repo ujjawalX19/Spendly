@@ -601,7 +601,7 @@ export default function Settings() {
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="Tools">
+      <SettingsGroup title="Plan and reports">
         <SettingRow icon={PiggyBank} label="Budgets" value="Monthly limits by category" onClick={() => navigate('/budgets')} />
         <SettingRow icon={Bell} label="Money alerts" value="Budgets, bills, goals and a weekly summary" onClick={() => navigate('/alerts')} />
         <SettingRow icon={FileText} label="Reports" value="Week, month, year, income and CSV export" onClick={() => navigate('/reports')} />
@@ -612,6 +612,9 @@ export default function Settings() {
           <SettingRow icon={Settings2} label="Show amount on the widget" value={widgetAmount ? 'On: anyone who sees your phone can read it' : 'Off: the amount stays hidden'}
             onClick={() => { const next = !widgetAmount; setWidgetAmount(next); setWidgetShowsAmount(next); }} />
         )}
+      </SettingsGroup>
+
+      <SettingsGroup title="Tools">
         {rewardsOn && (
           <SettingRow
             icon={Award} label="Rewards" value="Level, XP, Vittova Points and badges"

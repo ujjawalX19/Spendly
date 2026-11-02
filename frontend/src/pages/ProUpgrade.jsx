@@ -264,7 +264,7 @@ export default function ProUpgrade() {
           Expense tracking, budgets, reports, income, CSV export, Safe-to-Spend, groups and your account and data controls.
         </p>
 
-        <h2 className="v-label mb-2">{purchasesAvailable ? 'Pro includes' : 'Planned for Pro'}</h2>
+        <h2 className="v-label mb-2">{purchasesAvailable || isPro ? 'Pro includes' : 'Planned for Pro'}</h2>
         <ul className="v-block v-rows mb-3 px-4">
           {INCLUDES.filter((f) => !f.sponsored || features.sponsoredChallengesEnabled).map((feat) => (
             <li key={feat.title} className="flex min-h-[48px] items-start gap-3 py-3">

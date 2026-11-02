@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { EmptyState, ErrorState, Skeleton } from '../components/ui';
+import BackButton from '../components/BackButton';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const KIND = { skipped_purchase: 'Skipped purchase', price_difference: 'Lower price' };
@@ -61,6 +62,7 @@ export default function MoneySaved() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4 pb-24 md:p-6">
+      <BackButton />
       <h1 className="text-2xl font-bold text-ink">Money-Saved</h1>
       {failed && <ErrorState onRetry={load} message="We couldn't load this. Your data wasn't changed." />}
       {!failed && !data && <Skeleton className="h-48 w-full" />}

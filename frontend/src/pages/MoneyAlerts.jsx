@@ -7,6 +7,7 @@ import { Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ALERT_KINDS, alertPrefs, setAlertKind } from '../lib/alerts';
 import { remindersSupported } from '../lib/debitReminders';
+import BackButton from '../components/BackButton';
 
 export default function MoneyAlerts() {
   const { session } = useAuth();
@@ -23,6 +24,7 @@ export default function MoneyAlerts() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4 pb-24 md:p-6">
+      <BackButton />
       <div>
         <h1 className="text-2xl font-bold text-ink">Money alerts</h1>
         <p className="mt-1 text-sm text-ink-2">Choose only what helps. Alerts never show amounts, because they can appear on your lock screen.</p>

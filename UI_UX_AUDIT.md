@@ -14,12 +14,12 @@
 | # | Severity | Finding |
 |---|---|---|
 | 1 | High | Sign-in took 12–37 s to appear on the emulator. If a phone is anywhere near this, it fails the 60-second goal. Measure first |
-| 2 | Medium | New screens have no back button on mobile; only the bottom bar leaves them |
-| 3 | Medium | Profile → Tools is now a long list of unlike things. Needs grouping |
+| 2 | Fixed | New screens now have a back button |
+| 3 | Fixed | Profile now has a separate "Plan and reports" group |
 | 4 | Medium | While rate-limited, Reports shows a loading block with no message for many seconds |
 | 5 | Medium | Home is long; the most useful content needs scrolling past the checklist |
 | 6 | Low | Pages load their data twice on start: two identical requests were seen on a clean load of Reports |
-| 7 | Low | Pro page says "Planned for Pro" when purchases are off, even for a Pro user |
+| 7 | Fixed | A Pro user sees "Pro includes" |
 | 8 | Low | Money alerts are checked on app open, which a user may not expect |
 | 9 | Low | The app offers no way to reach Wrapped or Money-Saved from Home |
 | 10 | Unresolved | During testing, repeated requests were seen once; clean loads of 9 s and 14 s showed none. Watch for this on a phone |

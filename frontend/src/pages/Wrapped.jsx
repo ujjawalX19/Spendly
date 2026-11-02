@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { ErrorState, Skeleton } from '../components/ui';
+import BackButton from '../components/BackButton';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 const fmtDay = (key) => new Date(`${key}T12:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -66,6 +67,7 @@ export default function Wrapped() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4 pb-24 md:p-6">
+      <BackButton />
       <h1 className="text-2xl font-bold text-ink">Money Wrapped</h1>
       <div role="group" aria-label="Summary period" className="grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1">
         {[['month', 'Month'], ['year', 'Year']].map(([id, label]) => (

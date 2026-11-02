@@ -188,7 +188,7 @@ test('one icon set, no emoji decorating the app screens', () => {
 test('profile is a few titled groups in sentence case, and its switches stay in their tracks', () => {
   const settings = read('src/pages/Settings.jsx');
   const titles = [...settings.matchAll(/<SettingsGroup title="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(titles, ['Budget and goals', 'Money tracking', 'Reminders', 'Tools', 'Vittova Pro', 'Appearance', 'Your data', 'Privacy and legal', 'Account']);
+  assert.deepEqual(titles, ['Budget and goals', 'Money tracking', 'Reminders', 'Plan and reports', 'Tools', 'Vittova Pro', 'Appearance', 'Your data', 'Privacy and legal', 'Account']);
   for (const label of [...settings.matchAll(/label="([^"]+)"/g)].map((m) => m[1])) {
     // Sentence case: no word after the first is capitalised unless it is a name.
     const rest = label.split(' ').slice(1).filter((w) => /^[A-Z]/.test(w) && !['Pool', 'SMS', 'Vittova', 'Pro', 'Save-to-Earn', 'PDF'].includes(w.replace(/[()]/g, '')));
