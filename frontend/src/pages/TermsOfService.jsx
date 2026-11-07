@@ -52,7 +52,7 @@ export default function TermsOfService() {
           {/* The app from Google Play sells Pro through Google Play only and does not describe other ways to pay. */}
           {!isPlayApp() && <>
           <p className="mt-2">
-            <strong>On vittova.in and in the Vittova app from the Indus Appstore,</strong> Pro is a pass: one payment of ₹49 for 30 days or ₹449 for 1 year, or ₹199 for 1 year while the Diwali and launch offer is running (prices include all taxes), processed by Razorpay. A pass does not renew and nothing is charged again unless you buy another; a new pass starts when your current one ends. Vittova never receives your card, UPI or bank details.
+            <strong>In the Vittova app from the Indus Appstore,</strong> Pro is a pass: one payment of ₹49 for 30 days or ₹449 for 1 year, or ₹199 for 1 year while the Diwali and launch offer is running (prices include all taxes), processed by Razorpay. A pass does not renew and nothing is charged again unless you buy another; a new pass starts when your current one ends. Vittova never receives your card, UPI or bank details.
           </p>
           <p className="mt-2">
             Refunds for passes: if you were charged but Pro did not turn on, or you were charged twice, write to support@vittova.in within 7 days and we will refund the payment to its original method (Razorpay usually takes 5–7 working days). Otherwise passes are not refundable once Pro is active. If a pass payment is refunded or reversed, that pass ends.

@@ -32,6 +32,19 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 
 const Landing = lazy(() => import('./pages/Landing'));
+const FeaturesPage = lazy(() => import('./pages/site/FeaturesPage'));
+const DemoPage = lazy(() => import('./pages/site/DemoPage'));
+const DownloadPage = lazy(() => import('./pages/site/SimplePages').then((m) => ({ default: m.DownloadPage })));
+const ProPage = lazy(() => import('./pages/site/SimplePages').then((m) => ({ default: m.ProPage })));
+const AboutPage = lazy(() => import('./pages/site/SimplePages').then((m) => ({ default: m.AboutPage })));
+const AppOnlyPage = lazy(() => import('./pages/site/SimplePages').then((m) => ({ default: m.AppOnlyPage })));
+
+// The website is a showcase; the account and money tools are in the Android app.
+const WEB = !Capacitor.isNativePlatform();
+/** App screens that, on the website, show the "get the Android app" page. */
+export const APP_ONLY_PATHS = ['/login', '/signup', '/forgot-password', '/welcome', '/dash', '/transactions', '/pool', '/pool/:groupId', '/bot',
+  '/wealth', '/settings', '/graveyard', '/import', '/subscription-audit', '/challenges', '/save-to-earn', '/rewards', '/rewards/recap',
+  '/goals', '/budgets', '/reports', '/calendar', '/alerts', '/wrapped', '/money-saved'];
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const HostelPool = lazy(() => import('./pages/HostelPool'));
@@ -342,6 +355,24 @@ function App() {
               </div>
             ) : null}
             <Suspense fallback={<FullScreenLoader />}>
+              {WEB ? (
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/demo" element={<DemoPage />} />
+                <Route path="/download" element={<DownloadPage />} />
+                <Route path="/pro" element={<ProPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/delete-account" element={<DeleteAccountInfo />} />
+                {/* Email links (password reset, the Android sign-in hand-off) still land on the website. */}
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                {APP_ONLY_PATHS.map((p) => <Route key={p} path={p} element={<AppOnlyPage />} />)}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+              ) : (
               <Routes>
                 <Route path="/" element={
                   Capacitor.isNativePlatform()
@@ -384,6 +415,7 @@ function App() {
 
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              )}
             </Suspense>
           </Router>
           </PaymentTrackingProvider>

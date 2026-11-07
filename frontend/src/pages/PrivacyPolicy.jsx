@@ -126,10 +126,10 @@ export default function PrivacyPolicy() {
               <li><strong className="text-ink">Render:</strong> hosting for the Vittova API server.</li>
               <li><strong className="text-ink">Vercel:</strong> hosting for the Vittova website.</li>
               <li><strong className="text-ink">Google:</strong> Google Sign-In (if you choose it), the Gemini API (section 4) and Google Play billing for Vittova Pro.</li>
-              {!isPlayApp() && <li><strong className="text-ink">Razorpay:</strong> payments for Vittova Pro passes on vittova.in and in the Indus Appstore app.</li>}
+              {!isPlayApp() && <li><strong className="text-ink">Razorpay:</strong> payments for Vittova Pro passes in the Indus Appstore app.</li>}
             </ul>
             <p>These providers process data on our behalf and may store it on servers outside India.</p>
-            <p>Purchases: in the app from Google Play, Vittova Pro is bought through Google Play, which handles the payment; we receive the purchase token, the plan and the subscription status to check the purchase and turn Pro on for your account.{!isPlayApp() && ' On vittova.in and in the app from the Indus Appstore, Pro passes are paid through Razorpay, which handles the payment; we receive the order and payment reference, the amount, the plan and whether it succeeded or was refunded, and Razorpay receives the email you sign in with so it can send a receipt.'} We never receive your card, UPI or bank details.</p>
+            <p>Purchases: in the app from Google Play, Vittova Pro is bought through Google Play, which handles the payment; we receive the purchase token, the plan and the subscription status to check the purchase and turn Pro on for your account.{!isPlayApp() && ' In the app from the Indus Appstore, Pro passes are paid through Razorpay, which handles the payment; we receive the order and payment reference, the amount, the plan and whether it succeeded or was refunded, and Razorpay receives the email you sign in with so it can send a receipt.'} We never receive your card, UPI or bank details.</p>
             <p>Notifications: Vittova does not send push notifications from a server. Expected-debit reminders and money alerts, if you turn them on, are scheduled by the app and shown on your phone only. Alert text contains no amounts.</p>
             <p>Home screen widget: if you add it, today's safe-to-spend figure is kept on your phone for the widget. The amount is hidden unless you turn it on, and it is removed when you sign out.</p>
           </Section>

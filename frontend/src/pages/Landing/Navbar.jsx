@@ -6,11 +6,12 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { WRAP } from './shared';
 
 const LINKS = [
-  { label: 'Product', href: '#features' },
-  { label: 'How it works', href: '#how' },
-  { label: 'Pricing', href: '#pro' },
-  { label: 'Privacy', href: '#trust' },
-  { label: 'FAQ', href: '#faq' },
+  { label: 'Home', href: '/' },
+  { label: 'Features', href: '/features' },
+  { label: 'Demo', href: '/demo' },
+  { label: 'Vittova Pro', href: '/pro' },
+  { label: 'About', href: '/about' },
+  { label: 'Help', href: '/support' },
 ];
 
 /** Dark or light, remembered on this device (the same choice as Profile → Appearance). */
@@ -59,8 +60,7 @@ export default function Navbar() {
 
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          <Link to="/login" className="hidden min-h-[44px] items-center px-3 text-sm font-semibold text-ink-2 hover:text-ink sm:inline-flex">Sign in</Link>
-          <Link to="/signup" className="l-press v-btn-primary min-h-10 shrink-0 whitespace-nowrap px-4 text-sm">Get started</Link>
+          <Link to="/download" className="l-press v-btn-primary min-h-10 shrink-0 whitespace-nowrap px-4 text-sm">Download app</Link>
           <button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink-2 hover:text-ink lg:hidden"
             onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? 'Close menu' : 'Open menu'}>
             {open ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
@@ -77,7 +77,6 @@ export default function Navbar() {
               </li>
             ))}
           </ul>
-          <Link to="/login" onClick={() => setOpen(false)} className="v-btn-secondary mt-4 min-h-12 w-full text-[15px]">Sign in</Link>
         </div>
       )}
     </header>

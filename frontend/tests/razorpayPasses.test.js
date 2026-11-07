@@ -10,13 +10,13 @@ import { distribution, paymentChannel } from '../src/lib/distribution.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-test('the Play build sells through Google Play only; the website and Indus build through Razorpay', () => {
+test('the Play build sells through Google Play only; the Indus build through Razorpay; the website sells nothing', () => {
   assert.equal(distribution({}), 'play');
   assert.equal(distribution({ VITE_DISTRIBUTION: 'indus' }), 'indus');
   assert.equal(distribution({ VITE_DISTRIBUTION: 'something-else' }), 'play');
   assert.equal(paymentChannel({ native: true, platform: 'android' }, 'play'), 'play');
   assert.equal(paymentChannel({ native: true, platform: 'android' }, 'indus'), 'razorpay');
-  assert.equal(paymentChannel({ native: false, platform: 'web' }, 'play'), 'razorpay');
+  assert.equal(paymentChannel({ native: false, platform: 'web' }, 'play'), 'none'); // the website sells nothing
   assert.equal(paymentChannel({ native: true, platform: 'ios' }, 'play'), 'none');
 });
 

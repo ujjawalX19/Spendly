@@ -5,7 +5,7 @@
  *                                 policy: the Play app must not sell Pro any
  *                                 other way or point to one.
  *   Indus Appstore build          Razorpay (VITE_DISTRIBUTION=indus at build time)
- *   Website                       Razorpay
+ *   Website                       none: a showcase that links to Google Play
  *
  * Pro bought one way unlocks everywhere after sign-in; the server decides.
  */
@@ -21,7 +21,7 @@ export function distribution(env = import.meta.env) {
  * @returns {'play' | 'razorpay' | 'none'}
  */
 export function paymentChannel({ native, platform }, dist = distribution()) {
-  if (!native) return 'razorpay';
+  if (!native) return 'none'; // the website sells nothing: Pro is bought in the app
   if (platform !== 'android') return 'none';
   return dist === 'indus' ? 'razorpay' : 'play';
 }

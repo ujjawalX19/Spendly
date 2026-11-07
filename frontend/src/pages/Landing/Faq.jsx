@@ -3,6 +3,7 @@
  * /privacy, /terms and the Pro notes in ProSection.jsx); keep them in step.
  * Native <details>, so it works with no JavaScript and with a keyboard.
  */
+import { track } from '../../lib/telemetry';
 import { Plus } from 'lucide-react';
 import { Reveal, SectionHeading, WRAP } from './shared';
 
@@ -24,12 +25,12 @@ const QUESTIONS = [
     a: 'No. Vittova offers general financial education. It does not recommend any security, fund, broker or platform, and it is not a SEBI-registered investment adviser. Illustrations use assumed rates and are not predictions.',
   },
   {
-    q: 'How is Pro billed, and can I buy it on this website?',
-    a: 'In the Vittova app from Google Play, Pro is a subscription billed to your Google account. Where the pricing section above offers it, you can also buy a pass on this website: one payment through Razorpay with UPI, a card or net banking, which never renews.',
+    q: 'Can I buy Pro on this website?',
+    a: 'No. The website shows what Vittova does; Pro is bought in the Vittova Android app as a Google Play subscription, billed to your Google account. Google Play shows the price and renewal terms before you pay.',
   },
   {
     q: 'How do I cancel Pro or get a refund?',
-    a: "A pass doesn't renew, so there is nothing to cancel. If you were charged but Pro didn't turn on, or were charged twice, write to support@vittova.in within 7 days for a refund. Google Play subscriptions are cancelled in Google Play → Payments & subscriptions, and refunds follow Google Play's policies.",
+    a: "Cancel in Google Play → Payments & subscriptions. Pro stays on until the end of the period you paid for, and refunds follow Google Play's policies.",
   },
   {
     q: 'Can I export or delete my data?',
@@ -37,7 +38,7 @@ const QUESTIONS = [
   },
   {
     q: 'Which devices does Vittova work on?',
-    a: 'There is an Android app and a web app, and one account works on both. Automatic payment tracking and debit reminders are Android only.',
+    a: 'Vittova is an Android app, available on Google Play. It is not available for iPhone. This website shows what it does and has a demo with sample data.',
   },
 ];
 
@@ -50,7 +51,7 @@ export default function Faq() {
         </SectionHeading>
         <Reveal className="v-rows border-y border-line">
           {QUESTIONS.map((item) => (
-            <details key={item.q} className="group">
+            <details key={item.q} className="group" onToggle={(e) => { if (e.currentTarget.open) track('site_faq_open'); }}>
               <summary className="flex min-h-[60px] cursor-pointer list-none items-center justify-between gap-4 py-3 text-base font-medium text-ink [&::-webkit-details-marker]:hidden">
                 {item.q}
                 <Plus className="h-4 w-4 shrink-0 text-ink-2 transition-transform duration-200 group-open:rotate-45" aria-hidden="true" />

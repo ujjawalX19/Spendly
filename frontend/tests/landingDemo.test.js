@@ -32,29 +32,23 @@ test('homepage copy makes no promises the product does not keep', () => {
   for (const bad of [/guaranteed? (returns?|profit)/i, /bank[- ]level/i, /military[- ]grade/i, /100% secure/i, /best (stock|fund)/i, /make you rich/i, /predicts? the market/i, /testimonial/i, /\d+(,\d+)*\+? (users|downloads|reviews)/i, /only \d+ (spots|left)/i]) {
     assert.doesNotMatch(text, bad, String(bad));
   }
-  // No leftover pre-launch wording. Prices match both sellers. The offer shows
-  // only while the server says it is on and says what it renews at. Pass copy
-  // and the /pro link show only while Razorpay is on; otherwise the Play listing.
+  // The website sells nothing: Pro links to Google Play. Prices match Play
+  // Console. The offer shows only while the server says it is on and says
+  // what it renews at. Next-update Pro features are labelled as such.
   const pro = readFileSync(join(dir, 'ProSection.jsx'), 'utf8');
-  assert.doesNotMatch(pro, /not available to buy yet|Planned pricing|coming soon/i);
-  assert.match(pro, /webPasses \? \(/);
-  assert.match(pro, /PlayStoreCta/);
-  assert.match(pro, /'₹49'[\s\S]*for 30 days/);
-  assert.match(pro, /'₹449'[\s\S]*for 1 year/);
-  assert.match(pro, /Does not renew/);
+  assert.doesNotMatch(pro, /not available to buy yet|Planned pricing|Razorpay|webPasses|to="\/pro"/i);
+  assert.match(pro, /PlayStoreCta placement="pro" label="Get Vittova Pro in the app"/);
+  assert.match(pro, /'₹49'[\s\S]*\/month/);
+  assert.match(pro, /'₹449'[\s\S]*\/year/);
+  assert.match(pro, /!NEXT_UPDATE_LIVE && <p[^>]*>Coming to Pro in the next app update/);
   assert.match(pro, /offerOn && period === 'yearly'/);
   assert.match(pro, /₹199<\/span> for the first year, then ₹449\/year/);
   assert.doesNotMatch(pro, /student|₹29|₹249|countdown|ends (today|tonight)/i);
   const plans = readFileSync(join(here, '..', '..', 'backend/lib/billingPlans.js'), 'utf8');
   for (const price of ['₹49 / month', '₹449 / year', '₹199 first year, then ₹449 / year']) assert.ok(plans.includes(price), price);
-  const passes = readFileSync(join(here, '..', '..', 'backend/lib/razorpayBilling.js'), 'utf8');
-  assert.match(passes, /monthly: \{ key: 'monthly', amount: 4900, days: 30/);
-  assert.match(passes, /yearly: \{ key: 'yearly', amount: 44900, days: 365/);
-  // Buying happens on /pro after sign-in, never on the homepage itself, and
-  // every example screen is labelled.
-  assert.match(pro, /to="\/pro"/);
-  assert.doesNotMatch(text, /checkout|pay now|buy now|upgrade to pro/i);
-  assert.match(readFileSync(join(dir, 'Faq.jsx'), 'utf8'), /never renews/);
+  // No sign-in or purchase on the website, and every example screen is labelled.
+  assert.doesNotMatch(text, /checkout|pay now|buy now|upgrade to pro|to="\/login"|to="\/signup"/i);
+  assert.match(readFileSync(join(dir, 'Faq.jsx'), 'utf8'), /Can I buy Pro on this website\?[\s\S]*No\./);
   assert.match(readFileSync(join(dir, 'Mocks.jsx'), 'utf8'), /Example figures/);
   // The demo is labelled as an example everywhere it appears.
   assert.match(readFileSync(join(dir, 'AffordDemo.jsx'), 'utf8'), /Example month/);

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import VittovaLogo from '../../components/VittovaLogo';
 import { SUPPORT_EMAIL } from '../../lib/legal';
-import { PLAY_STORE_URL, PlayStoreCta, PrimaryCta, Reveal, WRAP } from './shared';
+import { PrimaryCta, Reveal, WRAP } from './shared';
 
 const LINK = 'inline-flex min-h-[40px] items-center text-ink-2 transition-colors hover:text-ink';
 
@@ -11,11 +11,11 @@ export default function Footer() {
       <div className={WRAP}>
         <Reveal className="v-hero-card my-16 px-6 py-12 text-center sm:px-10 sm:py-16 lg:my-24">
           <h2 className="mx-auto max-w-2xl text-3xl font-semibold leading-[1.1] tracking-[-0.025em] sm:text-4xl">Your next money decision, made easier.</h2>
-          <p className="mx-auto mt-4 max-w-xl text-white/80">Free to start. Add your budget and a few expenses, and Vittova starts answering.</p>
+          <p className="mx-auto mt-4 max-w-xl text-white/80">Free on Google Play. Add your budget and a few expenses, and Vittova starts answering.</p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <PrimaryCta className="w-full sm:w-auto">Start free</PrimaryCta>
-            <PlayStoreCta className="w-full bg-white/15 sm:w-auto" />
+            <PrimaryCta placement="footer_band" className="w-full sm:w-auto" />
           </div>
+          <p className="mt-4 text-xs text-white/70">Available for Android phones. Not available for iPhone.</p>
         </Reveal>
 
         <div className="grid gap-10 border-t border-line py-12 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
@@ -29,11 +29,11 @@ export default function Footer() {
           <nav aria-label="Product">
             <p className="text-sm font-semibold text-ink">Product</p>
             <ul className="mt-3 text-sm">
-              <li><a className={LINK} href="#features">Features</a></li>
-              <li><a className={LINK} href="#pro">Pricing</a></li>
-              <li><a className={LINK} href="#faq">FAQ</a></li>
-              <li><a className={LINK} href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">Android app on Google Play</a></li>
-              <li><Link className={LINK} to="/login">Sign in</Link></li>
+              <li><Link className={LINK} to="/features">Features</Link></li>
+              <li><Link className={LINK} to="/demo">Interactive demo</Link></li>
+              <li><Link className={LINK} to="/pro">Vittova Pro</Link></li>
+              <li><Link className={LINK} to="/about">About</Link></li>
+              <li><Link className={LINK} to="/download">Download for Android</Link></li>
             </ul>
           </nav>
           <nav aria-label="Who it is for">

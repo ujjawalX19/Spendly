@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Download } from 'lucide-react';
+import { PLAY_LISTING, playUrl, trackPlayClick } from '../../lib/playStore';
 
 /** The page's column: one width and one gutter for every section. */
 export const WRAP = 'mx-auto w-full max-w-6xl px-5 sm:px-8';
@@ -42,9 +43,19 @@ export function SectionHeading({ eyebrow, title, children, center = false }) {
   );
 }
 
-export function PrimaryCta({ children = 'Start free', className = '' }) {
+/** The main call to action: install the app from Google Play. */
+export function PrimaryCta({ children = 'Download on Google Play', placement = 'primary', className = '' }) {
   return (
-    <Link to="/signup" className={`l-press v-btn-primary px-6 ${className}`}>
+    <a href={playUrl(placement)} onClick={() => trackPlayClick(placement)} target="_blank" rel="noopener noreferrer" className={`l-press v-btn-primary px-6 ${className}`}>
+      <Download className="h-4 w-4" aria-hidden="true" /> {children}
+    </a>
+  );
+}
+
+/** A quieter link inside the site, for example to the features page. */
+export function ExploreCta({ to = '/features', children = 'Explore Vittova', className = '' }) {
+  return (
+    <Link to={to} className={`l-press v-btn-secondary min-h-12 px-6 text-[15px] ${className}`}>
       {children} <ArrowRight className="h-4 w-4" aria-hidden="true" />
     </Link>
   );
@@ -54,14 +65,14 @@ export function SecondaryCta({ href, children, className = '' }) {
   return <a href={href} className={`l-press v-btn-secondary min-h-12 px-6 text-[15px] ${className}`}>{children}</a>;
 }
 
-/** The Android app's Google Play listing. */
-export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.vittova.app';
+/** The Android app's Google Play listing, without campaign attribution. */
+export const PLAY_STORE_URL = PLAY_LISTING;
 
-/** Opens the Google Play listing in a new tab. */
-export function PlayStoreCta({ className = '' }) {
+/** Opens the Google Play listing in a new tab, as a secondary button. */
+export function PlayStoreCta({ className = '', placement = 'secondary', label = 'Download on Google Play', onClick }) {
   return (
-    <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className={`l-press v-btn-secondary min-h-12 px-6 text-[15px] ${className}`}>
-      <Download className="h-4 w-4" aria-hidden="true" /> Download on Google Play
+    <a href={playUrl(placement)} onClick={() => { trackPlayClick(placement); onClick?.(); }} target="_blank" rel="noopener noreferrer" className={`l-press v-btn-secondary min-h-12 px-6 text-[15px] ${className}`}>
+      <Download className="h-4 w-4" aria-hidden="true" /> {label}
     </a>
   );
 }

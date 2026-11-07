@@ -63,6 +63,9 @@ const CLIENT_EVENTS = [
     'payment_tracking_switch',
     'payment_tracking_mode',
     'payment_queue_cleared',
+    // Website (vittova.in): page views and download buttons only
+    'site_home_view', 'site_feature_view', 'site_demo_started', 'site_demo_completed',
+    'site_play_click', 'site_qr_click', 'site_faq_open', 'site_pro_cta',
 ];
 
 /** Events the backend records itself. */
