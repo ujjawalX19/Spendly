@@ -282,7 +282,11 @@ test('"What bills are coming up?" lists the bills the user added', async () => {
     const due = Math.min(28, appTime.daysInMonth(new Date()));
     push('recurring_bills', { id: crypto.randomUUID(), user_id: u.id, name: 'Rent', amount: 9000, due_day: due, is_active: true });
     const res = await ask(u, 'What bills are coming up?');
-    if (appTime.dayOfMonth(new Date()) <= due) assert.match(res.body.reply, /Rent: ₹9,000 on day/);
+    if (appTime.dayOfMonth(new Date()) <= due) {
+        assert.match(res.body.reply, new RegExp(`Rent: ₹9,000 on day ${due}\\b`));
+        const insights = await t.request('GET', '/api/ai/insights', { token: u.token });
+        assert.deepEqual(insights.body.overview.nextBill, { name: 'Rent', amount: 9000, dueDay: due });
+    }
     assert.ok(res.body.links.some((l) => l.to === '/alerts'));
 });
 

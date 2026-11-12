@@ -181,7 +181,7 @@ function composeWithContext(intent, facts, context, question) {
         return answer({
             direct: bills.length ? `${plural(bills.length, 'bill')} still due this month, ${inr(facts.upcomingBills)} in total.` : 'No bills you added are still due this month.',
             numbers: [
-                ...bills.slice(0, 5).map((b) => `${b.name || 'Bill'}: ${inr(b.amount)} on day ${b.due_day}`),
+                ...bills.slice(0, 5).map((b) => `${b.name || 'Bill'}: ${inr(b.amount)} on day ${b.dueDay ?? b.due_day}`),
                 facts.subscriptionsMonthly ? `Repeat payments Vittova noticed: about ${inr(facts.subscriptionsMonthly)} a month` : null,
             ],
             reasoning: bills.length ? 'These are already set aside in your Safe-to-Spend, so the daily figure accounts for them.' : 'Only bills you add in Vittova are counted. A bill you have not added is not in any figure here.',

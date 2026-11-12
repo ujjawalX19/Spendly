@@ -35,7 +35,7 @@ const QUICK_ACTIONS = [
 const GREETING = {
     id: 'greeting',
     role: 'bot',
-    content: "I'm your money mentor. Before I answer, I look at your budget, spending, bills, recurring charges and savings target in Vittova, and every number I give comes from that data.\n\nIncome, bank balances and debts aren't tracked yet, so I'll say when something is missing. General education, not investment advice.",
+    content: "I'm your money mentor. Before I answer, I look at your budgets, spending, bills, recurring charges, goals and any income you enter in Vittova, and every number I give comes from that data.\n\nBank balances and debts aren't tracked, so I'll say when something is missing. General education, not investment advice.",
 };
 
 /** Inline **bold** and ₹ amounts, rendered as React nodes (never HTML). */
@@ -421,7 +421,7 @@ export default function Chatbot() {
                                 </li>
                             ))}
                         </ul>
-                        <p className="mt-3 text-xs leading-5 text-ink-3">I read your budget, spending, bills and savings target in Vittova. Income and bank balances aren't tracked, so I'll say when something is missing.</p>
+                        <p className="mt-3 text-xs leading-5 text-ink-3">I read your budgets, spending, bills, goals and any income you enter in Vittova. Bank balances aren't tracked, so I'll say when something is missing.</p>
                     </section>
                 )}
 

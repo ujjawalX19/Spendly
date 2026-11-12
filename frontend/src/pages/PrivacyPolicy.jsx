@@ -42,7 +42,8 @@ export default function PrivacyPolicy() {
               <li><strong className="text-ink">Expenses:</strong> amount, category, description, date, and how it was added (manual, receipt scan, bank SMS, payment notification, or statement import).</li>
               <li><strong className="text-ink">Budget settings:</strong> monthly budget, savings target, and recurring bills you add.</li>
               <li><strong className="text-ink">Afford-It checks and SIP stress tests:</strong> the amount and optional description you enter are used to work out the answer and are not stored. We only count how many checks you used today, for the free-plan limit.</li>
-              <li><strong className="text-ink">Coach conversations:</strong> the questions you ask the money coach and its answers.</li>
+              <li><strong className="text-ink">Coach conversations:</strong> the questions you ask the money coach, its answers, the screen you asked from, and any rating you give an answer (helpful or not helpful).</li>
+              <li><strong className="text-ink">Vittova AI memory (optional):</strong> short facts you choose to save so the coach can personalise its answers, for example when your income usually arrives or a goal you are working towards. The coach may suggest a fact, but nothing is saved unless you confirm it. You can see, edit and delete each fact in Profile → Vittova AI memory. Turning personalisation off deletes everything saved there.</li>
             </ul>
           </Section>
 
@@ -100,7 +101,7 @@ export default function PrivacyPolicy() {
             <p>Some features send content to Google's Gemini API, operated by Google LLC, to generate a result:</p>
             <ul className="list-disc space-y-1 pl-5">
               <li><strong className="text-ink">Receipt scan:</strong> the receipt photo you choose. We save the merchant name, item list and total; we do not store the photo. When you split a receipt in a group, the photo is read the same way and nothing is saved until you confirm the split.</li>
-              <li><strong className="text-ink">Money coach:</strong> your question and a summary of your spending figures (for example monthly totals by category, budget and upcoming bills). Your name and email are not included.</li>
+              <li><strong className="text-ink">Money coach:</strong> your question and a summary of your own figures (for example monthly totals by category, budgets, income you entered, savings goals and upcoming bills), plus any facts saved in Vittova AI memory. Your name and email are not included. A change the coach suggests, such as creating a budget or a goal, is made only after you tap to confirm it.</li>
               <li><strong className="text-ink">Spending tip:</strong> when you are projected to exceed your budget, your budget, amount spent and top spending category.</li>
               <li><strong className="text-ink">Bank statement import</strong> (when available): the text of the PDF you upload. The file is processed in memory and not stored; the extracted transactions are saved.</li>
             </ul>

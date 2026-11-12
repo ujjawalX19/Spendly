@@ -268,6 +268,7 @@ export default function Dashboard() {
   const [safeError, setSafeError]           = useState(false);
   const [reloadKey, setReloadKey]           = useState(0);
   const [burnRate, setBurnRate]             = useState(null);
+  const [coachOverview, setCoachOverview]   = useState(null);
   const [moneyStreak, setMoneyStreak]       = useState(null);
   const [scanToast, setScanToast]           = useState(null); // { type: 'success'|'error', message: string }
   const fileInputRef = useRef(null);
@@ -323,6 +324,8 @@ export default function Dashboard() {
     setSafeError(false);
     load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend), () => setSafeError(true));
     load('/burn-rate', (d) => setBurnRate(d.burnRate));
+    // The coach's overview (no model call, no quota): a category limit or a goal for the insight row.
+    load('/ai/insights', (d) => setCoachOverview(d.overview || null));
     load('/money-streak', (d) => applyMoneyStreak(d.moneyStreak), () => setMoneyStreak((s) => s || cachedMissionState(userId)));
     return () => { cancelled = true; };
   }, [token, expensesVersion, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -613,7 +616,7 @@ export default function Dashboard() {
         )}
 
         {/* 4. The one thing that needs attention, if there is one */}
-        {shown('insight') && <InsightRow burn={burnRate} foodThisMonth={foodThisMonth} />}
+        {shown('insight') && <InsightRow burn={burnRate} foodThisMonth={foodThisMonth} overview={coachOverview} />}
 
         <PlanShortcuts />
 

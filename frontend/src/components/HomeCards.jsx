@@ -12,7 +12,8 @@
  *   RecentActivity  the last few expenses
  *
  * Presentation only: every figure comes from the existing APIs
- * (/safe-to-spend, /burn-rate) or sums of the user's own expense rows.
+ * (/safe-to-spend, /burn-rate, the coach overview from /ai/insights) or sums
+ * of the user's own expense rows.
  */
 
 import { useNavigate } from 'react-router-dom';
@@ -219,14 +220,28 @@ export function AnalyticsCard({ days, limit, loading }) {
  * from the user's own food spending. Written as a plain finding with one way
  * to act on it; where it comes from is not the point.
  */
-export function InsightRow({ burn, foodThisMonth }) {
+export function InsightRow({ burn, foodThisMonth, overview }) {
   const navigate = useNavigate();
+  const watch = overview?.watch;
+  const goal = overview?.goal;
   let insight = null;
   if (burn?.willGoBroke) {
     insight = {
       icon: AlertTriangle, tone: 'text-warn',
       text: burn.budgetRemaining < 0 ? `You're ${inr(Math.abs(burn.budgetRemaining))} over this month's budget.` : `At this pace, your budget runs out around ${burn.brokeDate}.`,
       action: 'See why', question: 'Why is my spending pace high this month?',
+    };
+  } else if (watch) {
+    insight = {
+      icon: AlertTriangle, tone: watch.over ? 'text-danger' : 'text-warn',
+      text: `${watch.category}: ${inr(watch.spent)} of its ${inr(watch.limit)} limit${watch.over ? ', over the limit' : ''}.`,
+      action: 'Ask Vittova what to do', question: 'How is my budget going?',
+    };
+  } else if (goal && goal.neededPerMonth > 0) {
+    insight = {
+      icon: MessageCircle, tone: 'text-accent',
+      text: `${goal.name} is ${goal.percent}% saved. About ${inr(goal.neededPerMonth)} a month finishes it on time.`,
+      action: 'Am I on track?', question: `Am I on track for my ${goal.name.toLowerCase()} goal?`,
     };
   } else if (foodThisMonth >= 500) {
     insight = {
@@ -237,7 +252,7 @@ export function InsightRow({ burn, foodThisMonth }) {
   }
   if (!insight) return null;
   return (
-    <button type="button" onClick={() => navigate('/bot', { state: { ask: insight.question } })} className="v-press v-enter v-item w-full">
+    <button type="button" onClick={() => navigate('/bot', { state: { ask: insight.question, screen: 'home' } })} className="v-press v-enter v-item w-full">
       <span className={`v-item-icon ${insight.tone}`}><insight.icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /></span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium leading-snug text-ink">{insight.text}</span>

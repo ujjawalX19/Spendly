@@ -157,7 +157,7 @@ function overviewOf(f, c) {
         income: c.income?.thisMonth ? { value: c.income.thisMonth.value, selfReported: true } : null,
         goal: goal ? { name: goal.name, percent: goal.percent, left: goal.left, neededPerMonth: goal.neededPerMonth } : null,
         watch: budget ? { category: budget.category, spent: budget.spent, limit: budget.limit, over: budget.over } : null,
-        nextBill: bill ? { name: bill.name, amount: Number(bill.amount), dueDay: Number(bill.due_day) } : null,
+        nextBill: bill ? { name: bill.name, amount: Number(bill.amount), dueDay: Number(bill.dueDay ?? bill.due_day) || null } : null,
         moneySavedThisMonth: c.moneySaved?.value ?? null,
         confidence: f.confidence,
     };
