@@ -37,8 +37,10 @@ test('no promised or guaranteed return, and no "best" product', () => {
 });
 
 test('the assistant is told: education only, no named products, not a registered adviser', () => {
-    const route = fs.readFileSync(path.join(__dirname, '../routes/ai.js'), 'utf8');
-    assert.match(route, /no named stock, fund scheme, ETF, policy, broker, app or platform/);
+    // The instructions now live in lib/aiCoach.js (systemInstructions).
+    const route = fs.readFileSync(path.join(__dirname, '../lib/aiCoach.js'), 'utf8');
+    assert.match(route, /no named stock, fund, ETF, policy, broker, app or platform/);
     assert.match(route, /no promised returns/);
+    assert.match(route, /no buy\/sell\/hold calls/);
     assert.match(lib('investingGuide.js'), /not a SEBI-registered investment adviser/);
 });

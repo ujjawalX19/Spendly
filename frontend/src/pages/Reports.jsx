@@ -12,6 +12,7 @@ import { markStep } from '../lib/homePrefs';
 import { saveCsv, savePdf } from '../lib/saveCsv';
 import { ErrorState, Skeleton } from '../components/ui';
 import BackButton from '../components/BackButton';
+import AskVittova from '../components/AskVittova';
 
 const PERIODS = [['week', 'Week'], ['month', 'Month'], ['year', 'Year']];
 const SOURCES = ['Salary', 'Freelance', 'Family', 'Refund', 'Other'];
@@ -152,6 +153,7 @@ export default function Reports() {
 
       {report && (
         <>
+          {report.expenseCount >= 5 && <AskVittova screen="reports" question={period === 'week' ? 'Why did I spend more this week?' : 'Give me a monthly summary'} label="Ask Vittova to explain this" />}
           <section className="v-block p-4" aria-label="Summary">
             <p className="v-label">Spent</p>
             <p className="mt-1 text-3xl font-bold tabular-nums text-ink">{inr(report.totalSpent)}</p>

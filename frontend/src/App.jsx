@@ -44,7 +44,7 @@ const WEB = !Capacitor.isNativePlatform();
 /** App screens that, on the website, show the "get the Android app" page. */
 export const APP_ONLY_PATHS = ['/login', '/signup', '/forgot-password', '/welcome', '/dash', '/transactions', '/pool', '/pool/:groupId', '/bot',
   '/wealth', '/settings', '/graveyard', '/import', '/subscription-audit', '/challenges', '/save-to-earn', '/rewards', '/rewards/recap',
-  '/goals', '/budgets', '/reports', '/calendar', '/alerts', '/wrapped', '/money-saved'];
+  '/goals', '/budgets', '/reports', '/calendar', '/alerts', '/wrapped', '/money-saved', '/ai-memory'];
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const HostelPool = lazy(() => import('./pages/HostelPool'));
@@ -64,6 +64,7 @@ const Reports = lazy(() => import('./pages/Reports'));
 const MonthCalendar = lazy(() => import('./pages/MonthCalendar'));
 const Wrapped = lazy(() => import('./pages/Wrapped'));
 const MoneyAlerts = lazy(() => import('./pages/MoneyAlerts'));
+const AiMemory = lazy(() => import('./pages/AiMemory'));
 const MoneySaved = lazy(() => import('./pages/MoneySaved'));
 const WeeklyRecap = lazy(() => import('./pages/WeeklyRecap'));
 const PdfImport = lazy(() => import('./pages/PdfImport'));
@@ -409,6 +410,7 @@ function App() {
                 <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><Layout><MonthCalendar /></Layout></ProtectedRoute>} />
                 <Route path="/alerts" element={<ProtectedRoute><Layout><MoneyAlerts /></Layout></ProtectedRoute>} />
+                <Route path="/ai-memory" element={<ProtectedRoute><Layout><AiMemory /></Layout></ProtectedRoute>} />
                 <Route path="/wrapped" element={<ProtectedRoute><Layout><Wrapped /></Layout></ProtectedRoute>} />
                 <Route path="/money-saved" element={<ProtectedRoute><Layout><MoneySaved /></Layout></ProtectedRoute>} />
                 <Route path="/pro" element={<ProtectedRoute><ProUpgrade /></ProtectedRoute>} />

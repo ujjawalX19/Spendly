@@ -21,6 +21,7 @@ import { istDateKey } from '../lib/offlineQueue';
 import { submitAction } from '../lib/missionSync';
 import { usePendingActions } from '../hooks/usePendingActions';
 import { EmptyState, ErrorState, PrimaryButton, SecondaryButton, SectionLabel, Skeleton, StatusPill } from '../components/ui';
+import AskVittova from '../components/AskVittova';
 
 const fmtDay = (key) => new Date(`${key}T12:00:00+05:30`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 
@@ -304,6 +305,7 @@ export default function Goals() {
 
       <p className="rounded-xl bg-surface px-4 py-3 text-xs text-ink-2">{data.note}</p>
       {note && <p role="status" className="text-sm text-ink-2">{note}</p>}
+      {active > 0 && <AskVittova screen="goals" question="Am I on track for my savings goals?" />}
 
       {data.goals.length === 0 ? (
         <EmptyState icon={PiggyBank} title="No goals yet"

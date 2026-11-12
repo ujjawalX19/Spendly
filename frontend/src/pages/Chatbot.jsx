@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUp, Info, RotateCcw, ChevronRight } from 'lucide-react';
+import { ArrowUp, Info, RotateCcw, ChevronRight, Check, ThumbsUp, ThumbsDown, Brain } from 'lucide-react';
+import { isRunnable, runAction } from '../lib/aiActions';
 import { useAuth } from '../contexts/AuthContext';
 import { usePro } from '../contexts/ProContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { API_URL, apiFetch } from '../lib/apiConfig';
+import { API_URL, apiFetch, apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { track } from '../lib/telemetry';
 import VittovaLogo from '../components/VittovaLogo';
@@ -80,6 +81,62 @@ function AnswerText({ text }) {
                 );
             })}
         </div>
+    );
+}
+
+/**
+ * An action Vittova AI suggests. Nothing happens until the person taps "Do it";
+ * the app then calls the ordinary endpoint with the server-chosen values.
+ */
+function ActionCard({ action, session, onDone }) {
+    const navigate = useNavigate();
+    const [state, setState] = useState('idle'); // idle | busy | done | dismissed | error
+    const [note, setNote] = useState('');
+    if (state === 'dismissed' || !isRunnable(action)) return null;
+    const run = async () => {
+        setState('busy');
+        setNote('');
+        try {
+            const result = await runAction(action, session);
+            if (result.navigate) { navigate(result.navigate); return; }
+            setNote(result.message);
+            setState(result.ok ? 'done' : 'error');
+            if (result.ok) onDone?.(action);
+        } catch (err) {
+            setNote(friendlyError(err, "That didn't work. Nothing was changed."));
+            setState('error');
+        }
+    };
+    return (
+        <div className="rounded-xl border border-line p-3">
+            <p className="text-sm font-medium text-ink">{action.label}</p>
+            {state === 'done' ? (
+                <p role="status" className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-accent"><Check className="h-3.5 w-3.5" aria-hidden /> {note}</p>
+            ) : (
+                <div className="mt-2 flex gap-2">
+                    <button type="button" onClick={run} disabled={state === 'busy'} className="v-press v-btn-primary min-h-[40px] px-4 text-sm disabled:opacity-60">{state === 'busy' ? 'Saving…' : 'Do it'}</button>
+                    <button type="button" onClick={() => setState('dismissed')} className="v-press v-btn-secondary min-h-[40px] px-4 text-sm">Not now</button>
+                </div>
+            )}
+            {state === 'error' && note && <p role="alert" className="mt-1 text-xs text-danger">{note}</p>}
+        </div>
+    );
+}
+
+function Feedback({ msg, session }) {
+    const [sent, setSent] = useState(null);
+    if (!msg.messageId) return null;
+    const rate = (helpful) => {
+        setSent(helpful);
+        apiJson('/ai/feedback', { session, method: 'POST', body: { messageId: msg.messageId, helpful, intent: msg.intent, source: msg.source } }).catch(() => {});
+    };
+    if (sent !== null) return <span role="status">{sent ? 'Thanks for the feedback' : 'Thanks. This helps us improve.'}</span>;
+    return (
+        <span className="inline-flex items-center gap-1">
+            <span>Helpful?</span>
+            <button type="button" aria-label="Helpful" onClick={() => rate(true)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-3 hover:text-ink"><ThumbsUp className="h-3.5 w-3.5" aria-hidden /></button>
+            <button type="button" aria-label="Not helpful" onClick={() => rate(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-3 hover:text-ink"><ThumbsDown className="h-3.5 w-3.5" aria-hidden /></button>
+        </span>
     );
 }
 
@@ -196,7 +253,7 @@ export default function Chatbot() {
     const addBot = (content, extra = {}) =>
         setMessages((prev) => [...prev, { id: `bot-${Date.now()}-${Math.random()}`, role: 'bot', content, ...extra }]);
 
-    const send = async (text) => {
+    const send = async (text, screen) => {
         const query = String(text || '').trim();
         if (!query || isLoading || query.length > MAX_CHARS || limitReached) return;
 
@@ -211,7 +268,7 @@ export default function Chatbot() {
             const res = await fetch(`${API_URL}/ai/invest-advice`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify(screen ? { query, screen } : { query }),
                 signal: controller.signal,
             });
             const data = await res.json().catch(() => ({}));
@@ -237,7 +294,10 @@ export default function Chatbot() {
             }
 
             if (data.quota) applyQuota(data.quota);
-            addBot(data.reply, { source: data.source, aiFallback: data.aiFallback });
+            addBot(data.reply, {
+                source: data.source, aiFallback: data.aiFallback, intent: data.intent, messageId: data.messageId,
+                actions: Array.isArray(data.actions) ? data.actions : [], links: Array.isArray(data.links) ? data.links : [],
+            });
         } catch (err) {
             const timedOut = err?.name === 'AbortError';
             addBot(timedOut ? 'That took longer than expected. Your financial data is safe; please try again.' : friendlyError(err, UNAVAILABLE), { isError: true, retry: query });
@@ -249,11 +309,12 @@ export default function Chatbot() {
 
     // A question passed from another screen (Home's "See why") is asked once.
     const pendingAsk = location.state?.ask;
+    const pendingScreen = location.state?.screen;
     useEffect(() => {
         if (!token || !pendingAsk || askedFromState.current) return;
         askedFromState.current = true;
         navigate(location.pathname, { replace: true, state: null });
-        send(pendingAsk);
+        send(pendingAsk, pendingScreen);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, pendingAsk]);
 
@@ -304,6 +365,7 @@ export default function Chatbot() {
                     <h1 className="text-base font-bold leading-tight text-ink">Ask Vittova</h1>
                     <p className="text-xs text-ink-2">Answers from your own numbers</p>
                 </div>
+                <Link to="/ai-memory" aria-label="Vittova AI memory" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-2"><Brain className="h-5 w-5" strokeWidth={1.75} aria-hidden /></Link>
                 {remaining !== null && (
                     <span className={`shrink-0 text-xs font-medium tabular-nums ${remaining === 0 ? 'text-danger' : 'text-ink-2'}`}>
                         {remaining} left today
@@ -356,6 +418,20 @@ export default function Chatbot() {
                                         }`}>
                                             {msg.isError || msg.isLimitAlert ? <p>{msg.content}</p> : <AnswerText text={msg.content} />}
                                         </div>
+                                        {msg.actions?.length > 0 && (
+                                            <div className="mt-3 space-y-2" aria-label="Suggested actions">
+                                                {msg.actions.map((a) => <ActionCard key={`${a.tool}-${a.label}`} action={a} session={session} />)}
+                                            </div>
+                                        )}
+                                        {msg.links?.length > 0 && (
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {msg.links.map((l) => (
+                                                    <Link key={l.to + l.label} to={l.to} state={l.state} className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-line px-3 text-[13px] font-medium text-ink-soft no-underline">
+                                                        {l.label} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        )}
                                         <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-ink-3">
                                             {msg.source === 'ai' && <span>Based on your Vittova data</span>}
                                             {msg.source === 'calculated' && <span>{msg.aiFallback ? 'Calculated from your data (AI wording unavailable)' : 'Calculated from your data'}</span>}
@@ -364,6 +440,7 @@ export default function Chatbot() {
                                                     <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Try again
                                                 </button>
                                             )}
+                                            {!msg.isError && !msg.isLimitAlert && <Feedback msg={msg} session={session} />}
                                             {msg.isLimitAlert && <Link to="/pro" className="font-semibold text-ink underline">See what Vittova Pro will include</Link>}
                                         </div>
                                     </div>

@@ -56,6 +56,7 @@ const CASCADE = [
     ['campaign_members', 'user_id'], ['guardian_consents', 'user_id'],
     ['money_daily_missions', 'user_id'], ['money_mission_checkins', 'user_id'], ['money_points_ledger', 'user_id'],
     ['savings_contributions', 'user_id'], ['savings_goals', 'user_id'],
+    ['ai_memories', 'user_id'], ['ai_feedback', 'user_id'],
     ['profiles', 'id'],
 ];
 

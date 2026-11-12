@@ -12,6 +12,7 @@ import { friendlyError } from '../lib/errors';
 import { markStep } from '../lib/homePrefs';
 import { ErrorState, Skeleton } from '../components/ui';
 import BackButton from '../components/BackButton';
+import AskVittova from '../components/AskVittova';
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -130,6 +131,7 @@ export default function Budgets() {
           <ul className="v-block v-rows px-4">
             {CATEGORIES.map((name) => <CategoryRow key={name} name={name} spent={spentIn(name)} limit={limits[name] ?? null} onSave={onSave} onRemove={onRemove} />)}
           </ul>
+          <AskVittova screen="budgets" question={Object.keys(limits).length ? 'How is my budget going?' : 'Help me set realistic category budgets'} />
         </>
       )}
     </div>

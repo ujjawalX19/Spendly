@@ -55,21 +55,26 @@ const INVESTING_WORDS = /\b(invest|investing|investment|sip|sips|mutual funds?|i
 const INTENTS = [
     // Concept questions ("what is a SIP", "explain index funds"), but not
     // "explain my spending".
+    // "What is my savings rate" is about the user, not a concept: it goes first.
+    ['savings_rate', /\b(savings? rate|how much of my (income|salary)|percent(age)? of (my )?(income|salary)|income (left|remaining)|net (this month|income))\b/],
     ['education', /\b(what is|what are|what's|whats|meaning of|difference between|how does .* work)\b|\bexplain (?!my\b|why\b|where\b|how\b)/],
     ['debt', /\b(debts?|loans?|emis?|credit card (bill|debt|dues|balance)|pay ?off|repay(ing|ment)?)\b/],
     // Investing questions get a personalised, education-only plan.
     ['investing', INVESTING_WORDS],
     ['what_if', /\b(what if|what happens if|if i (save|saved|put aside|cut|reduce|spend|spent|increase|stop)|(income|salary|pay) (drops?|falls?|is cut|reduces?|goes down)|how much (will|would) i have)\b/],
+    // Irregular income: a buffer plan, before generic saving advice.
+    ['irregular_income', /\b(freelanc\w*|irregular (income|pay)|income (changes|varies|is not fixed|isn't fixed)|variable (income|pay)|commission|gig work|self[- ]employed)\b/],
     ['emergency_fund', /\bemergency (fund|savings|money|corpus|buffer)\b/],
+    ['bills', /\b(bills?|due dates?|coming up|upcoming (payments?|bills?|debits?)|rent (is )?due|what (is|are) due)\b/],
     ['priorities', /\b(what should i (improve|fix|focus on|work on|do first|change)|where (should|do) i start|first step|priorit(y|ies|ise|ize)|biggest (problem|issue|opportunity|risk|mistake)|financial health|improve first|how am i doing overall)\b/],
-    ['finish_month', /\b(finish (the|this) month|end of (the|this) month|make it (to|through)|last (till|until|through)|run out|survive (the|this) month|rest of the month)\b/],
+    ['finish_month', /\b(finish (the|this) month|end of (the|this) month|month end|make it (to|through)|last (till|until|through)|run(ning)? out|survive (the|this) month|rest of the month)\b/],
     ['safe_to_spend', /\b(safe to spend|safely spend|how much (can|do) i (spend|have)( left)?|left to spend|daily (limit|budget)|per day)\b/],
     ['affordability', /\b(can i afford|afford|should i buy|worth buying|can i spend|is it ok to (buy|spend))\b/],
     ['subscriptions', /\b(subscriptions?|recurring|autopay|mandate|netflix|spotify|prime|renewal|membership)\b/],
     ['unusual_spending', /\b(unusual|weird|strange|spike|suspicious|biggest|largest|highest (purchase|expense|payment)|out of (the )?ordinary)\b/],
-    ['goal_planning', /\b(goal|save up|saving for|reach|target|how long (will it|to)|by (next|december|january|diwali)|emergency fund of)\b/],
-    ['monthly_summary', /\b(summary|summari[sz]e|overview|recap|how (am i|did i) do(ing)?|this month so far|month in review)\b/],
-    ['spending_analysis', /\b(why did i|overspen[dt]|where (did|does|is) (my|the) money go|spent (so )?much|spending (more|less|so high|high|too much)|why is my \w+ (spending|bill)|compared? (to|with) last month|increase|decrease|categor(y|ies)|(explain|break ?down|analy[sz]e) my (spending|expenses))\b/],
+    ['goal_planning', /\b(goal|save up|saving for|reach|target|how long (will it|to)|by (next|december|january|diwali)|emergency fund of|i need ₹?\s?[\d,]+\s*(for|in)\b|in \d+ months?)\b/],
+    ['monthly_summary', /\b(summary|summari[sz]e|overview|recap|how (am i|did i) do(ing)?|this month so far|month in review|(kitna|kitne) (kharch|kharcha|hua|bacha|bache|gaya)|kharcha kitna|mahine (ka|mein|me) (kharcha|hisaab))\b/],
+    ['spending_analysis', /\b(why did i|overspen[dt]\w*|where (did|does|is) (my|the) money (go|going)|(went|go|gone|going) up|higher than (usual|last)|spent (so )?much|spending (more|less|so high|high|too much)|why is my \w+ (spending|bill)|compared? (to|with) last month|increase|decrease|categor(y|ies)|(explain|break ?down|analy[sz]e) my (spending|expenses))\b/],
     ['budget_advice', /\b(budget|stick to|stay within|over budget|limit|allowance)\b/],
     ['savings_advice', /\b(save|saving|savings|cut (back|down)?|reduce|spend less|cheaper)\b/],
     ['education', /\b(how does|how do|compound|compounding|inflation|credit score|needs vs wants|sinking fund|opportunity cost|lifestyle inflation|cash flow)\b/],
@@ -191,6 +196,19 @@ function buildFacts({ profile = {}, expenses = [], bills = [], groupPool = null,
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 3);
 
+    // Possible duplicates: the same amount and description logged twice within
+    // a day this month. Only a question to the user; never removed or excluded.
+    const possibleDuplicates = [];
+    const seen = new Map();
+    for (const x of [...thisMonth].sort((a, b) => t(a) - t(b))) {
+        const key = `${Math.round(Number(x.amount) * 100)}|${String(x.description || '').trim().toLowerCase()}`;
+        const prev = seen.get(key);
+        if (prev !== undefined && t(x) - prev <= DAY && String(x.description || '').trim()) {
+            if (!possibleDuplicates.some((d) => d.key === key)) possibleDuplicates.push({ key, description: x.description, category: x.category || 'Other', amount: r(x.amount) });
+        }
+        seen.set(key, t(x));
+    }
+
     const avgPrior = monthsWithData ? sum(priorThree) / monthsWithData : 0;
     const spikes = monthsWithData === 0 ? [] : Object.entries(catNow)
         .map(([category, amount]) => {
@@ -246,6 +264,7 @@ function buildFacts({ profile = {}, expenses = [], bills = [], groupPool = null,
         last7Days: r(last7),
         previous7Days: r(prev7),
         unusualExpenses: unusual,
+        possibleDuplicates: possibleDuplicates.slice(0, 3).map(({ key, ...d }) => d),
         categorySpikes: spikes.slice(0, 3),
         threeMonthAverage: r(avgPrior),
         monthsOfHistory: monthsWithData,
@@ -274,7 +293,7 @@ function mentorContext(f) {
         budget: { monthly: f.budget, spentThisMonth: f.spentThisMonth, usedPercent: f.budgetUsedPercent, left: f.budgetLeft, projectedMonthEnd: f.projectedMonthEnd, projectedOverBy: f.projectedOverBudgetBy, dailyPace: f.dailyPace, runsOut: f.budgetRunsOut },
         safeToSpend: { perDay: f.safeToSpendPerDay, remainingThisMonth: f.safeToSpendRemaining, shortfall: f.shortfall, formula: 'monthly budget − spent this month − active bills due today or later − monthly savings target, spread over the days left' },
         spending: { categoriesThisMonth: f.categories, lastMonthTotal: f.spentLastMonth, lastMonthSamePoint: f.spentLastMonthSamePoint, changeVsLastMonthSamePoint: f.changeVsLastMonthSamePoint, last7Days: f.last7Days, previous7Days: f.previous7Days, averageMonthPrior: f.threeMonthAverage, monthsOfHistory: f.monthsOfHistory },
-        unusualSpending: { expenses: f.unusualExpenses, categorySpikes: f.categorySpikes },
+        unusualSpending: { expenses: f.unusualExpenses, categorySpikes: f.categorySpikes, possibleDuplicates: f.possibleDuplicates },
         recurringBills: { dueRestOfMonth: f.upcomingBills, bills: f.upcomingBillList },
         subscriptions: { monthly: f.subscriptionsMonthly, annual: f.subscriptionsAnnual, detected: f.subscriptions },
         savings: { monthlySavingsTarget: f.savingsTarget, roundUpsNoted: f.roundUpsTotal },
@@ -359,8 +378,15 @@ function composeAnswer(intent, f, question) {
             const saving = up.reduce((s, c) => s + r(c.thisMonth * 0.2), 0);
             return answer({
                 direct,
-                numbers: [...up.map((c) => `${c.category}: ${inr(c.thisMonth)} this month, up ${inr(c.change)}`), ...f.categorySpikes.slice(0, 1).map((s) => `${s.category} vs your monthly average: ${inr(s.thisMonth)} vs ${inr(s.threeMonthAverage)}`)],
-                reasoning: up.length ? `Most of the increase comes from ${up.map((c) => c.category).join(' and ')}. Increases in flexible categories are the easiest to reverse.` : 'No category rose meaningfully.',
+                numbers: [
+                    ...up.map((c) => `${c.category}: ${inr(c.thisMonth)} this month, up ${inr(c.change)}`),
+                    ...f.categorySpikes.slice(0, 1).map((s) => `${s.category} vs your monthly average: ${inr(s.thisMonth)} vs ${inr(s.threeMonthAverage)}`),
+                    ...(f.possibleDuplicates || []).slice(0, 2).map((d) => `Logged twice? ${d.description}, ${inr(d.amount)}, twice within a day`),
+                ],
+                reasoning: [
+                    up.length ? `Most of the increase comes from ${up.map((c) => c.category).join(' and ')}. Increases in flexible categories are the easiest to reverse.` : 'No category rose meaningfully.',
+                    (f.possibleDuplicates || []).length ? `Also check ${f.possibleDuplicates[0].description} for ${inr(f.possibleDuplicates[0].amount)}: it appears twice within a day. If it is a repeat, deleting one lowers the total.` : '',
+                ].filter(Boolean).join(' '),
                 action: up.length ? `Trimming ${up.map((c) => c.category).join(' and ')} by 20% would save about ${inr(saving)} for the rest of this month's pace.` : 'Keep going at your current pace.',
                 next: up.length ? `Before your next ${up[0].category} purchase, check it against your ${inr(f.safeToSpendPerDay)} daily Safe-to-Spend.` : '',
                 note: f.confidence === 'limited' ? 'Based on limited history, so treat it as a rough picture.' : '',
@@ -378,6 +404,7 @@ function composeAnswer(intent, f, question) {
                 next: /\bplan\b/.test(q) ? `Plan the rest of the month as: bills ${inr(f.upcomingBills)}, savings ${inr(f.savingsTarget)}, and ${inr(f.safeToSpendPerDay)} a day for everything else.` : '',
             });
         }
+        case 'savings_rate': // handled in lib/aiCoach with income context; this is the safety net
         case 'savings_advice': {
             const s = f.savingScenario;
             const howMuch = /\bhow much (should|do) i (save|keep)\b/.test(q);
@@ -691,6 +718,7 @@ module.exports = {
     buildFacts,
     mentorContext,
     composeAnswer,
+    answer,
     toText,
     buildDailyInsight,
     suggestPrompts,

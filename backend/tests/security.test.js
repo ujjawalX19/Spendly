@@ -241,13 +241,14 @@ test('the free AI quota is enforced server-side with 429', async () => {
     const ok = await t.request('POST', '/api/ai/invest-advice', { token: a.token, body: { query: 'Why did I spend so much?' } });
     assert.equal(ok.status, 200);
     assert.equal(t.db.profile(a.id).chat_messages_today, 10);
+    const callsBefore = t.gemini.calls.length;
 
     const blocked = await t.request('POST', '/api/ai/invest-advice', { token: a.token, body: { query: 'And now?' } });
     assert.equal(blocked.status, 429);
     assert.equal(blocked.body.code, 'QUOTA_EXCEEDED');
     assert.equal(blocked.body.limit, 10);
     assert.ok(blocked.body.resetsAt);
-    assert.equal(t.gemini.calls.length, 1, 'no AI call once the quota is exhausted');
+    assert.equal(t.gemini.calls.length, callsBefore, 'no AI call once the quota is exhausted');
 });
 
 test('parallel AI requests cannot overshoot the quota', async () => {

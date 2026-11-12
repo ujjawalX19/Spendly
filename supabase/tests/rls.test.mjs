@@ -137,6 +137,7 @@ const CURRENT = [
     'v1_16_budgets_income.sql',
     'v1_17_financial_features.sql',
     'v1_18_expense_subcategory.sql',
+    'v1_19_ai_memory.sql',
 ];
 const BEFORE_P0 = CURRENT.slice(0, 2); // the state the audit found possible in production
 
@@ -1025,8 +1026,27 @@ test('verify_production.sql flags a database where v1_13 has not been applied', 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-test('v1_14 to v1_18 on a database with existing data: nothing is lost, each can re-run, each rolls back', async () => {
-    const LATER = ['v1_14_rewards.sql', 'v1_15_razorpay_passes.sql', 'v1_16_budgets_income.sql', 'v1_17_financial_features.sql', 'v1_18_expense_subcategory.sql'];
+test('v1_19 AI memory: own rows only, server-written, gone with the account', async () => {
+    const db = await buildDatabase(CURRENT);
+    const svc = (statement) => as(db, 'service_role', null, statement);
+    assert.ok((await svc(`insert into public.ai_memories (user_id, kind, content) values ('${USERS.alice}', 'goal', 'Saving for a laptop')`)).ok);
+    assert.ok((await svc(`insert into public.ai_feedback (user_id, helpful) values ('${USERS.alice}', true)`)).ok);
+    assert.ok(!(await svc(`insert into public.ai_memories (user_id, kind, content) values ('${USERS.alice}', 'secret', 'x')`)).ok, 'unknown kinds are refused');
+    for (const table of ['ai_memories', 'ai_feedback']) {
+        assert.equal((await asUser(db, USERS.alice, `select * from public.${table}`)).rows.length, 1, table);
+        assert.equal((await asUser(db, USERS.bob, `select * from public.${table}`)).rows.length, 0, table);
+        assert.ok(denied(await as(db, 'anon', null, `select * from public.${table}`)), `anon ${table}`);
+        assert.ok(denied(await asUser(db, USERS.alice, `delete from public.${table}`)), `delete ${table}`);
+    }
+    assert.ok(denied(await asUser(db, USERS.alice, `insert into public.ai_memories (user_id, kind, content) values ('${USERS.alice}', 'goal', 'x y')`)));
+    assert.equal((await db.query(`select ai_personalisation from public.profiles where id = '${USERS.alice}'`)).rows[0].ai_personalisation, true, 'on by default');
+    await db.exec(`delete from auth.users where id = '${USERS.alice}'`);
+    assert.equal((await db.query('select count(*)::int as n from public.ai_memories')).rows[0].n, 0);
+    await db.close();
+});
+
+test('v1_14 to v1_19 on a database with existing data: nothing is lost, each can re-run, each rolls back', async () => {
+    const LATER = ['v1_14_rewards.sql', 'v1_15_razorpay_passes.sql', 'v1_16_budgets_income.sql', 'v1_17_financial_features.sql', 'v1_18_expense_subcategory.sql', 'v1_19_ai_memory.sql'];
     const db = await buildDatabase(CURRENT.filter((f) => !LATER.includes(f)));
     await db.exec(`
         update public.profiles set is_pro = true, pro_source = 'manual' where id = '${USERS.alice}';

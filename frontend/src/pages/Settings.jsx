@@ -604,6 +604,7 @@ export default function Settings() {
       <SettingsGroup title="Plan and reports">
         <SettingRow icon={PiggyBank} label="Budgets" value="Monthly limits by category" onClick={() => navigate('/budgets')} />
         <SettingRow icon={Bell} label="Money alerts" value="Budgets, bills, goals and a weekly summary" onClick={() => navigate('/alerts')} />
+        <SettingRow icon={Settings2} label="Vittova AI memory" value="What Vittova AI remembers, and personalisation" onClick={() => navigate('/ai-memory')} />
         <SettingRow icon={FileText} label="Reports" value="Week, month, year, income and CSV export" onClick={() => navigate('/reports')} />
         <SettingRow icon={FileText} label="Month calendar" value={isPro ? 'Spending, bills and goal dates by day' : 'Part of Vittova Pro'} onClick={() => navigate('/calendar')} />
         <SettingRow icon={Award} label="Money wrapped" value="Your month or year in plain figures" onClick={() => navigate('/wrapped')} />

@@ -122,7 +122,9 @@ test('a grounded model reply is used; the prompt carries context but no identity
     assert.equal(res.body.aiFallback, false);
 
     const prompt = t.gemini.calls[0].contents;
-    assert.match(prompt, /FINANCIAL CONTEXT/);
+    assert.match(prompt, /CONTEXT \(calculated from the user's own data/);
+    assert.match(prompt, /MEMORIES/);
+    assert.match(prompt, /reliability/);
     assert.match(prompt, /<user_question>\nGive me a monthly summary\n<\/user_question>/);
     assert.match(prompt, /notTracked/);
     assert.doesNotMatch(prompt, /private-person@example\.com|Private Person|token-/);
