@@ -140,6 +140,35 @@ function Feedback({ msg, session }) {
     );
 }
 
+/**
+ * Where things stand, from the server's figures: a goal, a category to watch,
+ * the next bill, income if entered. Each row asks the matching question.
+ * Rows without data are left out rather than shown as zero.
+ */
+function OverviewCard({ overview, onAsk, disabled }) {
+    if (!overview) return null;
+    const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
+    const rows = [];
+    if (overview.watch) rows.push({ label: overview.watch.over ? `${overview.watch.category} is over its limit` : `${overview.watch.category} is close to its limit`, detail: `${inr(overview.watch.spent)} of ${inr(overview.watch.limit)}`, ask: 'How is my budget going?' });
+    if (overview.goal) rows.push({ label: `${overview.goal.name}: ${overview.goal.percent}% saved`, detail: `About ${inr(overview.goal.neededPerMonth)} a month to finish on time`, ask: `Am I on track for my ${overview.goal.name.toLowerCase()} goal?` });
+    if (overview.nextBill) rows.push({ label: `${overview.nextBill.name} due on day ${overview.nextBill.dueDay}`, detail: inr(overview.nextBill.amount), ask: 'What bills are coming up?' });
+    if (overview.income) rows.push({ label: 'Income entered this month', detail: `${inr(overview.income.value)} (you entered it)`, ask: 'What is my savings rate this month?' });
+    if (!rows.length) return null;
+    return (
+        <section aria-label="Where things stand" className="v-block v-rows overflow-hidden">
+            {rows.map((r) => (
+                <button key={r.label} type="button" disabled={disabled} onClick={() => onAsk(r.ask)} className="v-press flex min-h-[56px] w-full items-center gap-3 px-4 py-2 text-left disabled:opacity-60">
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-ink">{r.label}</span>
+                        <span className="block text-xs text-ink-3">{r.detail}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-ink-3" aria-hidden />
+                </button>
+            ))}
+        </section>
+    );
+}
+
 // A status is plain coloured text, never a badge.
 const TONE = {
     alert: { text: 'text-danger', label: 'Needs attention' },
@@ -193,6 +222,7 @@ export default function Chatbot() {
     const [isLoading, setIsLoading] = useState(false);
     const [limitReached, setLimitReached] = useState(false);
     const [insight, setInsight] = useState(null);
+    const [overview, setOverview] = useState(null);
     const [insightLoading, setInsightLoading] = useState(true);
     const [suggestions, setSuggestions] = useState(FALLBACK_SUGGESTIONS);
     const scrollRef = useRef(null);
@@ -215,6 +245,7 @@ export default function Chatbot() {
             const data = await res.json().catch(() => ({}));
             if (res.ok && data.success) {
                 setInsight(data.insight);
+                setOverview(data.overview || null);
                 if (Array.isArray(data.suggestions) && data.suggestions.length) setSuggestions(data.suggestions);
             } else if (data.code === 'PROFILE_NOT_FOUND') {
                 refreshProfile?.();
@@ -375,6 +406,7 @@ export default function Chatbot() {
 
             <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4">
                 <InsightCard insight={insight} loading={insightLoading} />
+                {fresh && <OverviewCard overview={overview} onAsk={send} disabled={limitReached} />}
 
                 {fresh && (
                     <section aria-labelledby="quick-asks" className="v-enter">

@@ -20,6 +20,7 @@ import { useExpenses } from '../hooks/useExpenses';
 import { usePaymentTracking } from '../contexts/PaymentTrackingContext';
 import CategoryIcon from '../components/CategoryIcon';
 import { expenseMeta, expenseTitle, groupByDay } from '../lib/expenseDisplay';
+import AskVittova from '../components/AskVittova';
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
@@ -113,6 +114,9 @@ export default function Transactions() {
             : `${s.total.toLocaleString('en-IN')} ${s.total === 1 ? 'expense' : 'expenses'}${s.isFiltered ? ' matching' : ''} · ${rupees(pageTotal)} shown`}
         </p>
       </header>
+      {!s.loading && s.total >= 5 && (
+        <div className="mb-3"><AskVittova screen="transactions" question="Is anything unusual in my spending this month?" label="Ask Vittova about these expenses" /></div>
+      )}
 
       {/* Payments captured while the app was closed that are not in the list yet */}
       {tracking.supported && (tracking.waiting > 0 || tracking.reviewCount > 0) && (

@@ -10,6 +10,7 @@ import { apiJson } from '../lib/apiConfig';
 import { friendlyError } from '../lib/errors';
 import { EmptyState, ErrorState, Skeleton } from '../components/ui';
 import BackButton from '../components/BackButton';
+import AskVittova from '../components/AskVittova';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const KIND = { skipped_purchase: 'Skipped purchase', price_difference: 'Lower price' };
@@ -88,6 +89,7 @@ export default function MoneySaved() {
             </form>
           )}
           {error && <p role="alert" className="px-1 text-sm text-danger">{error}</p>}
+          {data.total > 0 && <AskVittova screen="saved" question="Where should my savings go?" />}
           {data.events.length === 0
             ? <EmptyState icon={PiggyBank} title="Nothing here yet" body="Skip a purchase after an Afford-It check, or record a lower price, and it will show here." />
             : (

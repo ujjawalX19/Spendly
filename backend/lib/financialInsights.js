@@ -55,6 +55,8 @@ const INVESTING_WORDS = /\b(invest|investing|investment|sip|sips|mutual funds?|i
 const INTENTS = [
     // Concept questions ("what is a SIP", "explain index funds"), but not
     // "explain my spending".
+    // Scam and fraud questions are about safety: answered before anything else.
+    ['scams', /\b(scam|fraud|otp|phishing|fake (call|message|link|app)|kyc (update|expired)|lottery|asked (for )?my (upi )?(pin|otp|password))\b/],
     // "What is my savings rate" is about the user, not a concept: it goes first.
     ['savings_rate', /\b(savings? rate|how much of my (income|salary)|percent(age)? of (my )?(income|salary)|income (left|remaining)|net (this month|income))\b/],
     ['education', /\b(what is|what are|what's|whats|meaning of|difference between|how does .* work)\b|\bexplain (?!my\b|why\b|where\b|how\b)/],
@@ -77,7 +79,7 @@ const INTENTS = [
     ['spending_analysis', /\b(why did i|overspen[dt]\w*|where (did|does|is) (my|the) money (go|going)|(went|go|gone|going) up|higher than (usual|last)|spent (so )?much|spending (more|less|so high|high|too much)|why is my \w+ (spending|bill)|compared? (to|with) last month|increase|decrease|categor(y|ies)|(explain|break ?down|analy[sz]e) my (spending|expenses))\b/],
     ['budget_advice', /\b(budget|stick to|stay within|over budget|limit|allowance)\b/],
     ['savings_advice', /\b(save|saving|savings|cut (back|down)?|reduce|spend less|cheaper)\b/],
-    ['education', /\b(how does|how do|compound|compounding|inflation|credit score|needs vs wants|sinking fund|opportunity cost|lifestyle inflation|cash flow)\b/],
+    ['education', /\b(how does|how do|compound|compounding|inflation|credit score|cibil|credit report|needs vs wants|sinking fund|opportunity cost|lifestyle inflation|cash flow|insurance|term plan|mediclaim|income tax|tax regime|itr|80c|diversif\w*|50[\s/-]?30[\s/-]?20)\b/],
 ];
 
 function classifyIntent(question) {
@@ -616,6 +618,7 @@ function composeAnswer(intent, f, question) {
             if (goalShaped) return answer(composeInvestingAnswer(f, question, amount));
             return answer(composeInvestmentAnswer(buildInvestmentContext(f, question, amount)));
         }
+        case 'scams': // answered by lib/educationLibrary through aiCoach; this is the safety net
         case 'education':
             return answer(composeConceptAnswer(question));
         default: {

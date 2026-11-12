@@ -6,6 +6,7 @@
  * Nothing here calls the model or the database. routes/ai.js does that.
  */
 const { composeAnswer, answer, toText, extractAmount, extractMonths } = require('./financialInsights');
+const { composeEducation } = require('./educationLibrary');
 
 const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -19,7 +20,7 @@ const CAPABILITY_BY_INTENT = {
     debt: 'debt_coach',
     subscriptions: 'subscription_coach', bills: 'subscription_coach',
     irregular_income: 'goal_coach',
-    education: 'education', investing: 'education',
+    education: 'education', investing: 'education', scams: 'education',
 };
 const capabilityFor = (intent) => CAPABILITY_BY_INTENT[intent] || 'money_coach';
 
@@ -123,6 +124,12 @@ function withEmpathy(structured, question) {
 
 /** Savings-rate and goal answers that need the extended context. Returns null to defer to composeAnswer. */
 function composeWithContext(intent, facts, context, question) {
+    // Concept questions: the sourced library first, with the user's own figures where they help.
+    if (intent === 'education' || intent === 'scams') {
+        const lesson = composeEducation(question, facts);
+        if (lesson) return answer(lesson.parts);
+    }
+
     const amount = extractAmount(question);
     const months = extractMonths(question);
     const inc = context.income?.thisMonth?.value;

@@ -262,6 +262,7 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
     let structured;
     let fixed = false;
     if (coach.asksForTip(query)) { structured = coach.TIP_REFUSAL; fixed = true; }
+    else if (intent === 'scams') { structured = coach.composeWithContext(intent, facts, context, query) || composeAnswer(intent, facts, query); fixed = true; }
     else if (coach.isOffTopic(query)) { structured = coach.OFF_TOPIC_ANSWER; fixed = true; }
     else if (teenInvesting) { structured = TEEN_INVESTING_ANSWER; fixed = true; }
     else structured = coach.withEmpathy(coach.composeWithContext(intent, facts, context, query) || composeAnswer(intent, facts, query), query);

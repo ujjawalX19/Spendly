@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { ErrorState, Skeleton } from '../components/ui';
 import BackButton from '../components/BackButton';
+import AskVittova from '../components/AskVittova';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 const fmtDay = (key) => new Date(`${key}T12:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -97,6 +98,7 @@ export default function Wrapped() {
           {data.saved > 0 && <Stat label="Money-Saved" value={inr(data.saved)} sub="As you recorded it" />}
           <button type="button" onClick={share} className="v-press v-btn-secondary min-h-[48px] w-full"><Share2 className="h-4 w-4" aria-hidden="true" /> Share (counts only, no amounts)</button>
           {note && <p role="status" className="text-center text-xs text-ink-2">{note}</p>}
+          <AskVittova screen="wrapped" question={period === 'year' ? 'How did I do this year, and what should I change?' : 'Give me a monthly summary'} label="Ask Vittova what this means" />
         </>
       )}
     </div>

@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiJson } from '../lib/apiConfig';
 import { ErrorState, Skeleton } from '../components/ui';
 import BackButton from '../components/BackButton';
+import AskVittova from '../components/AskVittova';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -106,6 +107,7 @@ export default function MonthCalendar() {
               {day.goals.map((g) => <p key={g} className="mt-1 text-sm text-ink-soft">Goal date: {g}</p>)}
             </section>
           )}
+          {data.totalBills > 0 && <AskVittova screen="calendar" question="What bills are coming up, and will I have enough for them?" />}
         </>
       )}
     </div>

@@ -337,6 +337,52 @@ test('a Hinglish question is understood even when the AI is unavailable', async 
     assert.doesNotMatch(res.body.reply, /Ask me what you can afford, why your spending changed/);
 });
 
+// ─── Education library ───────────────────────────────────────────────────
+test('concept answers are sourced, dated, and use the user\'s own figures where they help', async () => {
+    const u = t.db.addUser({ monthly_budget: 20000 });
+    for (let i = 0; i < 12; i++) addExpense(u.id, 400, 'Food', i % 6);
+    const res = await ask(u, 'What is an emergency fund and how big should mine be?');
+    assert.equal(res.body.capability, 'education');
+    assert.match(res.body.reply, /Source: National Centre for Financial Education \(ncfe\.org\.in\), reviewed 12 Nov 2026/);
+    assert.match(res.body.reply, /3 months of that: ₹/);
+});
+
+test('scam questions get safety steps and the 1930 helpline, with no model call', async () => {
+    const u = t.db.addUser({ monthly_budget: 20000 });
+    t.gemini.configured = true;
+    const res = await ask(u, 'Someone called saying my KYC expired and asked for my OTP');
+    assert.equal(res.body.intent, 'scams');
+    assert.match(res.body.reply, /No bank, app or government office will ever ask for your OTP/);
+    assert.match(res.body.reply, /1930/);
+});
+
+test('every library entry names a real source, a review date, and no tax rates or products', () => {
+    const lib = require('../lib/educationLibrary');
+    assert.ok(lib.TOPICS.length >= 10);
+    for (const topic of lib.TOPICS) {
+        assert.ok(lib.SOURCES[topic.source], topic.key);
+        const text = JSON.stringify(topic.explain({ typicalMonthlySpend: 10000, budget: 20000 }));
+        assert.doesNotMatch(text, /\d+(\.\d+)?% (tax|slab)|₹\s?\d+ lakh (exempt|deduction)/i, `${topic.key} quotes a tax rate`);
+        assert.doesNotMatch(text, /\b(buy|invest in)\s+[A-Z][a-z]+ (Fund|Bank|Insurance|Life)\b/, `${topic.key} names a product`);
+    }
+    assert.match(lib.REVIEWED, /^\d{1,2} [A-Z][a-z]{2} \d{4}$/);
+});
+
+test('every question the app asks from a screen reaches a specific answer, not the generic one', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const { classifyIntent } = require('../lib/financialInsights');
+    const pages = path.join(__dirname, '../../frontend/src/pages');
+    const questions = new Set();
+    for (const file of fs.readdirSync(pages).filter((f) => f.endsWith('.jsx'))) {
+        const src = fs.readFileSync(path.join(pages, file), 'utf8');
+        for (const m of src.matchAll(/(?:question=|ask: )(?:\{[^}]*?)?['"`]([^'"`]{8,}\?)['"`]/g)) questions.add(m[1].replace(/\$\{[^}]+\}/g, 'laptop'));
+        for (const m of src.matchAll(/'([A-Z][^']{8,}\?)' : '([A-Z][^']{8,}\?)'/g)) { questions.add(m[1]); questions.add(m[2]); }
+    }
+    assert.ok(questions.size >= 10, `found ${questions.size} questions`);
+    for (const q of questions) assert.notEqual(classifyIntent(q), 'general', q);
+});
+
 test('pure helpers: capability mapping, language and tip detection', () => {
     assert.equal(coach.capabilityFor('affordability'), 'affordability_coach');
     assert.equal(coach.capabilityFor('nonsense'), 'money_coach');
