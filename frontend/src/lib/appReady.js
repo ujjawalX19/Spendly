@@ -5,6 +5,8 @@
  * the app shows a full-screen loader. The splash must not fade onto that (a
  * dark screen with a spinner, then the app a moment later): it waits here
  * until no loader is on screen, so it fades straight onto the first screen.
+ * A screen whose first figures are still loading (Home) registers itself as
+ * a loader too, so the splash fades onto numbers, not placeholders.
  */
 
 let loaders = 0;

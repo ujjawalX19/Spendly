@@ -134,6 +134,16 @@ test('the splash fades onto a screen, never onto a loading spinner', async () =>
   assert.ok(Number(/const READY_WAIT_MS = (\d+);/.exec(splash)[1]) <= 3000);
 });
 
+test('the splash holds until Home has its first figures, never fading onto placeholders', () => {
+  const home = read('src/pages/Dashboard.jsx');
+  // Home counts as loading from its first render…
+  assert.match(home, /useEffect\(\(\) => \{\s*const release = loaderShown\(\);\s*releaseSplashRef\.current = release;\s*return release;/);
+  // …until every first-round request has answered or failed (allSettled, so one failure cannot hold it)…
+  assert.match(home, /const round = Promise\.allSettled\(\[[\s\S]*?'\/safe-to-spend'[\s\S]*?'\/burn-rate'[\s\S]*?'\/money-streak'[\s\S]*?\]\);\s*[\s\S]{0,120}round\.then\(\(\) => releaseSplashRef\.current\(\)\);/);
+  // …and lets go at once when there is nothing to wait for.
+  assert.match(home, /if \(!token \|\| expensesUnavailable\) releaseSplashRef\.current\(\);/);
+});
+
 test('before the app code runs, the page shows the launch frame, not an empty page', () => {
   assert.match(css, /#root:empty \{\s*position: fixed; inset: 0; z-index: 999;\s*background: #000000 var\(--v-boot-mark\) center \/ 288px 288px no-repeat;/);
   assert.equal(LAUNCH_BACKGROUND, '#000000');

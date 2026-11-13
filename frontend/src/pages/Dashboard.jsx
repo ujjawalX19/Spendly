@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Zap, AlertCircle, Bell, MessageCircle, Plus, ScanLine, ShoppingBag, X, Check, CheckCircle } from 'lucide-react';
 import { cacheMissionState, cachedMissionState } from '../lib/offlineQueue';
+import { loaderShown } from '../lib/appReady';
 import { syncMissionReminders } from '../lib/missionReminders';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -309,6 +310,20 @@ export default function Dashboard() {
   // whenever the loaded expenses change.
   const token = session?.access_token;
   const expensesVersion = loading ? null : `${expenses.length}:${Math.round(totalSpent * 100)}`;
+
+  // Cold start: the startup splash stays up until Home's first figures
+  // (expenses, then Safe-to-Spend, forecast, overview, streak) have arrived or
+  // failed, so the app opens on numbers, not placeholders. lib/appReady caps
+  // the wait, so a slow network never keeps the splash up.
+  const releaseSplashRef = useRef(() => {});
+  useEffect(() => {
+    const release = loaderShown();
+    releaseSplashRef.current = release;
+    return release; // left Home before it loaded
+  }, []);
+  useEffect(() => {
+    if (!token || expensesUnavailable) releaseSplashRef.current();
+  }, [token, expensesUnavailable]);
   useEffect(() => {
     if (!token || expensesVersion === null) return undefined;
     let cancelled = false;
@@ -322,11 +337,15 @@ export default function Dashboard() {
       .catch(() => { if (!cancelled && onFail) onFail(); });
 
     setSafeError(false);
-    load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend), () => setSafeError(true));
-    load('/burn-rate', (d) => setBurnRate(d.burnRate));
-    // The coach's overview (no model call, no quota): a category limit or a goal for the insight row.
-    load('/ai/insights', (d) => setCoachOverview(d.overview || null));
-    load('/money-streak', (d) => applyMoneyStreak(d.moneyStreak), () => setMoneyStreak((s) => s || cachedMissionState(userId)));
+    const round = Promise.allSettled([
+      load('/safe-to-spend', (d) => setSafeToSpend(d.safeToSpend), () => setSafeError(true)),
+      load('/burn-rate', (d) => setBurnRate(d.burnRate)),
+      // The coach's overview (no model call, no quota): a category limit or a goal for the insight row.
+      load('/ai/insights', (d) => setCoachOverview(d.overview || null)),
+      load('/money-streak', (d) => applyMoneyStreak(d.moneyStreak), () => setMoneyStreak((s) => s || cachedMissionState(userId))),
+    ]);
+    // The first round's figures are what the splash fades onto (see the hold below).
+    round.then(() => releaseSplashRef.current());
     return () => { cancelled = true; };
   }, [token, expensesVersion, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 

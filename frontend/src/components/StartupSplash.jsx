@@ -21,7 +21,8 @@
  *   1130 ms       second, softer beat (1.8%) and a fainter ripple
  *   1500 ms       wait, if needed, until the first screen is ready underneath
  *                 (lib/appReady; at most READY_WAIT_MS more), so the splash
- *                 never fades onto a loading spinner
+ *                 never fades onto a loading spinner or, on Home, onto
+ *                 placeholders: Home holds it until its first figures arrive
  *   then 320 ms   the mark and words fade first, then the background
  *                 dissolves onto the app (already rendered below), so the two
  *                 never overlap in a double exposure
@@ -46,7 +47,7 @@ export { shouldShowSplash } from '../lib/splash';
 
 const PLAY_MS = 1500;      // from hand-off to the start of the exit
 const REDUCED_PLAY_MS = 350;
-const READY_WAIT_MS = 2500; // the longest the still mark waits for the first screen
+const READY_WAIT_MS = 3000; // the longest the still mark waits for the first screen and Home's figures
 const EXIT_MS = 320;       // mark and tagline out (160 ms), then the background (200 ms, from 120 ms)
 const LIGHT_WIDTH = 64;    // the sheen runs inside the 116-wide stroke
 
