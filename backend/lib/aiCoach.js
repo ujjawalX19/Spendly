@@ -32,16 +32,60 @@ const detectLanguage = (text, memories = []) => (HINGLISH.test(String(text || ''
 const OFF_TOPIC = /\b(weather|cricket|movie|film|song|recipe|joke|poem|football|ipl|election|code|python|javascript|homework|essay|translate|girlfriend|boyfriend)\b/i;
 const isOffTopic = (text) => OFF_TOPIC.test(String(text || '')) && !/\b(spend|spent|budget|save|money|paisa|cost|price|afford|rupee|₹)\b/i.test(String(text || ''));
 
-/** Stock tips and the like: never answered with a name, whatever the phrasing. */
-const STOCK_TIP = /\b(which|what|best|top|good)\s+(stocks?|shares?|mutual funds?|funds?|crypto|coins?)\s+(to|should i|do i|can i)?\s*(buy|invest|pick)|\b(buy|sell|hold)\s+[A-Z]{2,10}\b|\bshould i (buy|sell)\s+(stocks?|shares?|bitcoin|crypto|gold)\b/i;
+/** Stock tips and the like: never answered with a name, whatever the phrasing (English or Hinglish). */
+const STOCK_TIP = /\b(which|what|best|top|good)\s+(stocks?|shares?|mutual funds?|funds?|crypto|coins?)\s+(to|should i|do i|can i)?\s*(buy|invest|pick)|\b(buy|sell|hold)\s+[A-Z]{2,10}\b|\bshould i (buy|sell)\s+(stocks?|shares?|bitcoin|crypto|gold)\b|\b(stocks?|shares?|funds?|coins?)\b[^.?!]{0,30}\b(batao|bata do|bataiye|suggest karo|bolo)\b|\b(kaunsa|konsa|kaun sa|kon sa)\s+(stock|share|fund|coin)|\bdouble ho(ga|gi|jaye|jayega)\b/i;
 const asksForTip = (text) => STOCK_TIP.test(String(text || ''));
 
 /**
  * Prompt-injection attempts in the question: the model is told the question is
  * data, but these are also stripped of their force by answering from the draft.
  */
-const INJECTION = /\b(ignore (all|the|your|previous|above) (instructions|rules)|you are now|system prompt|developer mode|reveal (your|the) (prompt|instructions)|other user|another user'?s?|user id)\b/i;
-const looksLikeInjection = (text) => INJECTION.test(String(text || ''));
+const INJECTION = /\b(ignore (all|the|your|previous|above) (instructions|rules)|you are now|system prompt|developer mode|jailbreak|rules? (bhool|bhul)|reveal (your|the) (prompt|instructions)|other user|another user'?s?|user id)\b/i;
+// "DAN" only in capitals: lower-case "dan" (daan, a donation) is ordinary Hindi.
+const looksLikeInjection = (text) => INJECTION.test(String(text || '')) || /\bDAN\b/.test(String(text || ''));
+
+/**
+ * Words that may mean the person is thinking about suicide or self-harm
+ * (English and Hinglish). The answer is fixed, never the model's: support and
+ * a helpline first, money later. "My parents will kill me" is not matched.
+ */
+const CRISIS = /\b(suicid\w*|kill(ing)? myself|end(ing)? (it all|my life|everything)|take my (own )?life|don'?t want to (live|be alive|wake up)|no reason to live|better off dead|want to die|hurt(ing)? myself|self[- ]?harm|khudkushi|aatmahatya|atmahatya|marna chah(ta|ti)|mar jaun|jeena nahi|jina nahi)\b/i;
+const isCrisis = (text) => CRISIS.test(String(text || ''));
+
+const CRISIS_ANSWER = answer({
+    // The helpline is in the opening lines: nobody in crisis should have to scroll for it.
+    direct: "I'm really sorry you're feeling this way. You don't have to carry this alone, and you deserve support right now, before anything about money. Please call Tele-MANAS on 14416 or 1-800-891-4416: it is free, open 24 hours a day and speaks many Indian languages. If you are in danger right now, call 112.",
+    action: 'If you can, tell one person you trust how you are feeling today. You do not have to explain everything.',
+    reasoning: 'Money trouble can feel like it has no way out, but it can be worked through one step at a time, and debts can be talked down and spread out.',
+    next: 'Whenever you are ready, I am here to look at your numbers with you and find the first small step.',
+});
+
+/** Betting and gambling, including chasing losses: a fixed answer. Questions about money already spent are let through. */
+const GAMBLING = /\b(betting|gambl\w*|satta|casino|bet on|odds for|win (it )?back what i lost|chase (my )?loss(es)?|recover (my )?loss(es)? (by|through|with) (betting|playing))\b/i;
+const asksAboutGambling = (text) => GAMBLING.test(String(text || '')) && !/\b(how much|spent|spend|kharcha)\b/i.test(String(text || ''));
+
+const GAMBLING_ANSWER = answer({
+    direct: "I won't help with betting or picking odds. Trying to win back losses usually makes them bigger, because the odds are set so the house wins over time.",
+    reasoning: 'Real-money online gaming, including betting, is banned in India under the Promotion and Regulation of Online Gaming Act, 2025, so there is also no protection if an app keeps your money.',
+    action: "Stop for today, don't borrow to play, and uninstall or block the apps. If it is hard to stop, Tele-MANAS (14416) is free, confidential and can help with gambling too.",
+    next: 'When you are ready, ask me "how do I finish this month?" and I will work out a plan from your numbers.',
+});
+
+/** Borrowing to invest or trade: a fixed answer, whatever the asset. */
+const BORROW_TO_INVEST = /\b(loan|borrow\w*|credit card|emi)\b[^.?!]{0,40}\b(invest\w*|crypto|bitcoin|stocks?|shares?|trading|f&o|options)\b|\b(invest\w*|crypto|bitcoin|trading)\b[^.?!]{0,40}\b(loan|borrow\w*)\b/i;
+const asksToBorrowToInvest = (text) => BORROW_TO_INVEST.test(String(text || ''));
+
+const BORROW_TO_INVEST_ANSWER = answer({
+    direct: "Please don't borrow to invest, least of all in crypto. The loan's interest is certain; the returns are not. If prices fall, you still owe every EMI.",
+    reasoning: 'Crypto is not regulated as an investment in India, so there is no protection if a platform fails, and "everyone is making money" is usually said near a peak, not at the start.',
+    action: 'Invest only money you already have and will not need for years, after an emergency fund is in place.',
+    next: 'Ask me "how much could I invest a month?" and I will work it out from your own budget, with no loan involved.',
+    note: 'General financial education, not investment advice.',
+});
+
+/** "Use my emergency fund for a trip/phone/wedding?": answered directly, before the general explainer. */
+const EMERGENCY_FUND_MISUSE = /emergency fund[^.?!]{0,60}\b(trip|holiday|vacation|goa|phone|iphone|wedding|party|shopping|gadget|bike|car|concert|sale)\b|\b(use|spend|break|withdraw|take)\b[^.?!]{0,30}emergency fund/i;
+const NON_EMERGENCY = /\b(trip|holiday|vacation|goa|phone|iphone|wedding|party|shopping|gadget|bike|car|concert|sale)\b/i;
 
 // ─── Tools ────────────────────────────────────────────────────────────────
 
@@ -72,8 +116,10 @@ function proposeActions({ intent, facts, context, question, memorySuggestions = 
     const months = extractMonths(question);
 
     const explicit = explicitBudget(question);
-    if (explicit) add('create_budget', { category: explicit.category, limit_inr: explicit.limit });
-    else if (intent === 'budget_advice' || intent === 'spending_analysis' || intent === 'savings_advice') {
+    if (explicit) {
+        // Only the user's own, valid number is ever proposed; an invalid one gets no action at all.
+        if (explicit.limit) add('create_budget', { category: explicit.category, limit_inr: explicit.limit });
+    } else if (intent === 'budget_advice' || intent === 'spending_analysis' || intent === 'savings_advice') {
         const spike = facts.categorySpikes?.[0];
         const top = facts.categories?.[0];
         const existing = new Set((context.categoryBudgets?.budgets || []).map((b) => b.category));
@@ -100,13 +146,25 @@ function proposeActions({ intent, facts, context, question, memorySuggestions = 
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Recharge', 'Entertainment', 'Rent', 'Other'];
 
-/** "set my food budget/limit to ₹3,000" → { category, limit }, or null. */
+/** The largest monthly limit for one category that is plausibly meant (₹10 lakh). */
+const MAX_CATEGORY_LIMIT = 1_000_000;
+
+/**
+ * "set my food budget/limit to ₹3,000" → { category, limit }; a request with
+ * an amount that cannot be a limit → { category, invalid: 'negative' |
+ * 'too_large' | 'unreadable' } (never silently turned into another number);
+ * anything else → null.
+ */
 function explicitBudget(question) {
     const q = String(question || '');
     if (!/\b(budget|limit)\b/i.test(q)) return null;
     const category = CATEGORIES.find((c) => new RegExp(`\\b${c}\\b`, 'i').test(q));
+    if (!category || !/\d/.test(q)) return null;
+    if (/(₹|rs\.?|inr)\s*[-−–]\s*\d|[-−–]\s*(₹|rs\.?|inr)?\s*\d/i.test(q)) return { category, invalid: 'negative' };
     const amount = extractAmount(q);
-    if (!category || !amount || amount < 1 || amount > 100_000_000) return null;
+    if (!amount) return { category, invalid: /\d[\d,]{8,}/.test(q) ? 'too_large' : 'unreadable' };
+    if (amount > MAX_CATEGORY_LIMIT) return { category, invalid: 'too_large' };
+    if (amount < 1) return { category, invalid: 'unreadable' };
     return { category, limit: Math.round(amount) };
 }
 
@@ -124,6 +182,17 @@ function withEmpathy(structured, question) {
 
 /** Savings-rate and goal answers that need the extended context. Returns null to defer to composeAnswer. */
 function composeWithContext(intent, facts, context, question) {
+    // "Should I use my emergency fund for a trip?": the answer first, then how to fund the plan instead.
+    if (EMERGENCY_FUND_MISUSE.test(String(question || '')) && NON_EMERGENCY.test(String(question || ''))) {
+        const found = NON_EMERGENCY.exec(String(question))[1].toLowerCase();
+        const what = { goa: 'trip', holiday: 'trip', vacation: 'trip', sale: 'purchase', iphone: 'phone' }[found] || found;
+        return answer({
+            direct: `I'd keep the emergency fund for emergencies. A ${what} can be planned, and spending the fund on it leaves you with nothing if a real emergency comes next.`,
+            numbers: [facts.safeToSpendRemaining > 0 ? `Safe to spend left this month: ${inr(facts.safeToSpendRemaining)}` : null],
+            action: `Make the ${what} its own savings goal and put a little aside each month. If it is soon, see how much of it this month's spare budget can cover.`,
+            next: `Ask "can I afford ₹… for the ${what}?" with the amount, and I'll check it against your month.`,
+        });
+    }
     // Concept questions: the sourced library first, with the user's own figures where they help.
     if (intent === 'education' || intent === 'scams') {
         const lesson = composeEducation(question, facts);
@@ -230,8 +299,18 @@ function composeWithContext(intent, facts, context, question) {
 
     // "Set my food budget to ₹3,000": the user's own number, proposed for confirmation.
     const explicit = explicitBudget(question);
+    if (explicit?.invalid) {
+        return answer({
+            direct: {
+                negative: `A ${explicit.category} limit can't be below zero, so I haven't set anything.`,
+                too_large: `That amount is far more than a monthly ${explicit.category} limit would be, so I haven't set anything.`,
+                unreadable: `I couldn't read that amount, so I haven't set anything.`,
+            }[explicit.invalid],
+            next: `Tell me the monthly amount you want, for example "set my ${explicit.category.toLowerCase()} budget to ₹3,000", and I'll set it up for you to confirm.`,
+        });
+    }
     if (explicit) {
-        const spent = (facts.categories || []).find((c) => c.category === explicit.category)?.thisMonth || 0;
+        const spent =(facts.categories || []).find((c) => c.category === explicit.category)?.thisMonth || 0;
         return answer({
             direct: `I can set a ${explicit.category} limit of ${inr(explicit.limit)} a month. Tap "Do it" below to confirm.`,
             numbers: [`${explicit.category} spent so far this month: ${inr(spent)}`],
@@ -297,4 +376,4 @@ const OFF_TOPIC_ANSWER = answer({
     next: 'Try "where is most of my money going?" or "can I afford ₹2,000 this week?"',
 });
 
-module.exports = { withEmpathy, explicitBudget, capabilityFor, detectLanguage, isOffTopic, asksForTip, looksLikeInjection, READ_TOOLS, WRITE_TOOLS, proposeActions, composeWithContext, systemInstructions, TIP_REFUSAL, OFF_TOPIC_ANSWER, composeAnswer, toText };
+module.exports = { withEmpathy, explicitBudget, capabilityFor, detectLanguage, isOffTopic, asksForTip, looksLikeInjection, isCrisis, CRISIS_ANSWER, asksAboutGambling, GAMBLING_ANSWER, asksToBorrowToInvest, BORROW_TO_INVEST_ANSWER, READ_TOOLS, WRITE_TOOLS, proposeActions, composeWithContext, systemInstructions, TIP_REFUSAL, OFF_TOPIC_ANSWER, composeAnswer, toText };

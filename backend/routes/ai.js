@@ -261,7 +261,11 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
     // Fixed answers: no model, no invented figures.
     let structured;
     let fixed = false;
-    if (coach.asksForTip(query)) { structured = coach.TIP_REFUSAL; fixed = true; }
+    // Safety first: possible self-harm gets support and a helpline, never a money checklist.
+    if (coach.isCrisis(query)) { structured = coach.CRISIS_ANSWER; fixed = true; }
+    else if (coach.asksAboutGambling(query)) { structured = coach.GAMBLING_ANSWER; fixed = true; }
+    else if (coach.asksToBorrowToInvest(query)) { structured = coach.BORROW_TO_INVEST_ANSWER; fixed = true; }
+    else if (coach.asksForTip(query)) { structured = coach.TIP_REFUSAL; fixed = true; }
     else if (intent === 'scams') { structured = coach.composeWithContext(intent, facts, context, query) || composeAnswer(intent, facts, query); fixed = true; }
     else if (coach.isOffTopic(query)) { structured = coach.OFF_TOPIC_ANSWER; fixed = true; }
     else if (teenInvesting) { structured = TEEN_INVESTING_ANSWER; fixed = true; }
@@ -320,7 +324,7 @@ router.post('/invest-advice', protect, aiLimiter, validateAdvice, proGate('chat_
 
     // Proposals the user may confirm; memory suggestions only while personalisation is on.
     const personalisationOn = !context.unavailable && await aiMemory.personalisationOn(req.user.id).catch(() => false);
-    const memorySuggestions = personalisationOn && !fixed ? aiMemory.suggestFromMessage(query).filter((s) => !context.memories.some((m) => m.kind === s.kind && m.content === s.content)) : [];
+    const memorySuggestions = personalisationOn && !fixed && !injection ? aiMemory.suggestFromMessage(query).filter((s) => !context.memories.some((m) => m.kind === s.kind && m.content === s.content)) : [];
     const actions = fixed ? [] : coach.proposeActions({ intent, facts, context, question: query, memorySuggestions });
     const links = fixed ? [] : linksFor(capability, context);
 
